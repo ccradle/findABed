@@ -105,6 +105,7 @@
 - [ ] 8.8 Configure Spring `LocaleResolver` (Accept-Language header) and `MessageSource` (resource bundle) for localized API error responses
 - [ ] 8.9 Add integration test: verify API error responses are localized when `Accept-Language: es` is sent
 - [ ] 8.10 Add integration test: verify no PII (names, addresses, phone numbers of people experiencing homelessness) appears in structured log output during shelter CRUD, user creation, and OAuth2 callback operations. Shelter names and addresses (public business data) are permitted in logs.
+- [ ] 8.11 Add `data_freshness` enum (FRESH, AGING, STALE, UNKNOWN) and derive it from `data_age_seconds` in DataAgeResponseAdvice
 
 ## 9. PWA Shell
 
@@ -149,11 +150,23 @@
 - [ ] 12.3 Create `CONTRIBUTING.md` with setup instructions, architecture overview, and PR guidelines
 - [ ] 12.4 Add OpenAPI spec auto-generation and Swagger UI at `/api/v1/docs`
 
-## 13. Documentation Standards
+## 13. MCP-Ready API Design
 
-- [ ] 13.1 Create `docs/schema.dbml` — DBML source derived from Flyway migrations V1–V10 (all tables, relationships, enums). Workflow: create DBML → paste into dbdiagram.io → export PNG → commit both
-- [ ] 13.2 Create `docs/erd.png` — ERD image exported from dbdiagram.io, embedded inline in README
-- [ ] 13.3 Create `docs/asyncapi.yaml` — AsyncAPI 3.0 spec documenting the EventBus contract: shelter-availability-updated, surge-event-activated, surge-event-deactivated channels. Covers all three tiers (Spring Events, PG NOTIFY, Kafka) with the same message schema
-- [ ] 13.4 Create `README.md` — Project overview, mission statement, architecture diagram (ASCII + Mermaid), deployment tier table, ERD embed, badges (CI status, license, Java version), quick start instructions, API docs link, link to CONTRIBUTING.md
-- [ ] 13.5 Create `docs/architecture.drawio` — draw.io diagram showing backend, frontend, PostgreSQL, Redis (optional), Kafka (optional), and the three deployment tiers
-- [ ] 13.6 _(Deferred to future change)_ Create `docs/TEST-AUTOMATION-STRATEGY.md` — Cross-project test automation strategy (Karate, Pact, Gatling). Requires more implementation before test patterns can be documented meaningfully
+- [ ] 13.1 Redesign `ErrorResponse` to include: `error` (snake_case code), `message`, `status`, `timestamp`, `context` (Map<String, Object>). Update `GlobalExceptionHandler` to populate error codes and context for all exception types
+- [ ] 13.2 Add `@Operation` and `@Parameter` annotations with semantic, agent-readable descriptions to all REST endpoints (TenantController, TenantConfigController, AuthController, UserController, ApiKeyController). Descriptions must explain behavior, edge cases, and data freshness caveats
+- [ ] 13.3 Enhance `DomainEvent` record with `schemaVersion` (String, default "1.0.0") field. Ensure all published events include entity names and sufficient context
+- [ ] 13.4 Create Flyway migration `V11__create_subscriptions.sql`: subscription table (id UUID PK, tenant_id FK, event_type VARCHAR, filter JSONB, callback_url VARCHAR, callback_secret_hash VARCHAR, status VARCHAR, expires_at TIMESTAMPTZ, last_error TEXT, created_at TIMESTAMPTZ)
+- [ ] 13.5 Create `Subscription` entity, `SubscriptionRepository`, `SubscriptionService` in a new `subscription` module (api/, domain/, repository/, service/)
+- [ ] 13.6 Create `SubscriptionController`: POST/GET/DELETE `/api/v1/subscriptions`
+- [ ] 13.7 Create `WebhookDeliveryService`: match events to subscriptions, deliver via HTTP POST with HMAC-SHA256 signature, retry with exponential backoff (1m, 5m, 30m, 2h), deactivate on 410 Gone
+- [ ] 13.8 Add integration test: create subscription, publish matching event, verify webhook delivery
+- [ ] 13.9 Add integration test: verify error responses include error code and context on all endpoints
+
+## 14. Documentation Standards
+
+- [ ] 14.1 Create `docs/schema.dbml` — DBML source derived from Flyway migrations V1–V10 (all tables, relationships, enums). Workflow: create DBML → paste into dbdiagram.io → export PNG → commit both
+- [ ] 14.2 Create `docs/erd.png` — ERD image exported from dbdiagram.io, embedded inline in README
+- [ ] 14.3 Create `docs/asyncapi.yaml` — AsyncAPI 3.0 spec documenting the EventBus contract: shelter-availability-updated, surge-event-activated, surge-event-deactivated channels. Covers all three tiers (Spring Events, PG NOTIFY, Kafka) with the same message schema
+- [ ] 14.4 Create `README.md` — Project overview, mission statement, architecture diagram (ASCII + Mermaid), deployment tier table, ERD embed, badges (CI status, license, Java version), quick start instructions, API docs link, link to CONTRIBUTING.md
+- [ ] 14.5 Create `docs/architecture.drawio` — draw.io diagram showing backend, frontend, PostgreSQL, Redis (optional), Kafka (optional), and the three deployment tiers
+- [ ] 14.6 _(Deferred to future change)_ Create `docs/TEST-AUTOMATION-STRATEGY.md` — Cross-project test automation strategy (Karate, Pact, Gatling). Requires more implementation before test patterns can be documented meaningfully

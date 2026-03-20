@@ -234,6 +234,25 @@ All imports go through a `ShelterImportService` that validates, deduplicates (by
 
 **Rationale:** Cities with existing 211 data or HSDS directories shouldn't re-enter everything manually. The import service normalizes all paths to the same validation pipeline.
 
+### D8: MCP-Ready API Design
+
+**Decision:** Design all REST API endpoints to be trivially wrappable as MCP tools in Phase 2. This is enforced through six requirements:
+
+1. **Atomic endpoints (REQ-MCP-1):** Each endpoint does exactly one thing. 1:1 mapping to future MCP tools.
+2. **Machine-readable errors (REQ-MCP-2):** Error responses include: `error` (snake_case code), `message` (human-readable), `status` (HTTP code), `timestamp`, and `context` (structured object with domain-specific details like nearest_partial_match, constraints_applied). AI agents must be able to reason about errors and take corrective action.
+3. **Semantic OpenAPI descriptions (REQ-MCP-3):** Every endpoint and parameter has a rich `description` field in OpenAPI that explains behavior, ranking logic, data freshness caveats, and edge cases. Written for a reasoning model, not a human skimming docs.
+4. **Stable UUID identifiers (REQ-MCP-4):** Already satisfied — all PKs are UUIDs.
+5. **Self-describing domain events (REQ-MCP-5):** Events on EventBus include `schema_version`, entity names, previous values, and enough context that no follow-up API call is needed to understand what happened.
+6. **Stateless queries (REQ-MCP-6):** Already satisfied — JWT auth, no sessions, no server-side query state.
+
+**Webhook Subscriptions (Addition 1):** `POST /api/v1/subscriptions` allows callers to subscribe to filtered availability events via webhook callback. Uses outbox pattern over the EventBus. Subscriptions have: event_type, filter (population_types, bounding_box, min_beds_available), callback_url, callback_secret (HMAC-SHA256), expiry. Phase 2 MCP agents use this for proactive alerting without polling.
+
+**Data Freshness Enum (Addition 2):** Every availability response includes `data_age_seconds` (already specced) AND a derived `data_freshness` enum: FRESH (< 2 hours), AGING (2-8 hours), STALE (> 8 hours), UNKNOWN (no snapshot). AI agents use this to deprioritize or warn about stale data.
+
+**Rationale:** MCP server in Phase 2 is a thin wrapper — estimated 2-4 weeks for one contributor given a clean API. These requirements add zero Phase 1 cost because they are good API design practice. The alternative (skip MCP design) makes Phase 2 a retrofit costing 2-4x more.
+
+**Phase 2 trigger:** At least one pilot city with active shelter data, 20+ outreach workers using the query app, and a specific pain point where natural language interface would change behavior.
+
 ## Risks / Trade-offs
 
 - **[Shared schema data leak]** → Mitigation: Every tenant-scoped query MUST include `tenant_id`. Code review checklist item. Integration tests verify cross-tenant isolation.

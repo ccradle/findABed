@@ -19,6 +19,7 @@ There is no open-source infrastructure for real-time shelter bed availability. A
 - Multiple data import paths: manual entry, HSDS JSON import, 211 directory import
 - CI/CD pipeline (GitHub Actions) and Terraform infrastructure modules
 - Seed data generator with synthetic shelters modeled on realistic patterns
+- MCP-ready API design: atomic single-purpose endpoints, machine-readable error responses with error codes and context, semantic OpenAPI descriptions for AI agent consumption, self-describing domain events with schema versioning
 
 ## Capabilities
 
@@ -31,6 +32,7 @@ There is no open-source infrastructure for real-time shelter bed availability. A
 - `data-import`: HSDS JSON bulk import, 211 directory import, and manual entry — all tenant-scoped with validation and error reporting
 - `pwa-shell`: React + Vite PWA with role-gated routing, service worker registration, offline storage foundation (IndexedDB), and i18n wiring (react-intl)
 - `observability`: Micrometer metrics, structured JSON logging, health endpoints, and data-age tracking infrastructure
+- `webhook-subscriptions`: Webhook subscription endpoint for push notifications on availability changes, using outbox pattern over EventBus. Enables AI agent proactive alerting in Phase 2
 - `documentation-standards`: DBML schema + ERD, OpenAPI (auto-gen), AsyncAPI 3.0 (event contracts), README with architecture diagrams (ASCII + Mermaid + draw.io), CI badges
 
 ### Modified Capabilities
@@ -42,6 +44,6 @@ _None — this is a greenfield foundation._
 - **New codebase**: Monorepo with `/backend` (Spring Boot 3.4.x, Java 21, Spring MVC + JDBC, **modular monolith** with ArchUnit-enforced module boundaries), `/frontend` (React + Vite), `/infra` (Terraform + Docker)
 - **Database**: PostgreSQL 16 schema with tenant, organization, shelter, user, role, and API key tables; RLS policies for DV isolation
 - **APIs**: `/api/v1/tenants`, `/api/v1/shelters`, `/api/v1/users`, `/api/v1/import`, `/api/v1/auth`
-- **Dependencies**: Spring Boot 3.4.x, Spring Security, Spring Security OAuth2 Client, Flyway, Caffeine, optionally Redis (Lettuce) and Kafka (Spring Kafka), React 18, Vite, Workbox, react-intl
+- **Dependencies**: Spring Boot 3.4.x, Spring Security, Spring Security OAuth2 Client, Flyway, Caffeine, optionally Redis (Lettuce) and Kafka (Spring Kafka), React 18, Vite, Workbox, react-intl, springdoc @Operation annotations on all endpoints
 - **Infrastructure**: Terraform modules for network, PostgreSQL, Redis, Kafka, app; GitHub Actions CI/CD pipeline; Docker image (`ghcr.io/ccradle/finding-a-bed-tonight`)
 - **External systems**: None directly — HMIS bridge and 211 integration are import-path only in this change

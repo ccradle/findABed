@@ -56,3 +56,7 @@ The system SHALL track and expose the age of data to callers so that stale data 
 #### Scenario: Data age in cache responses
 - **WHEN** a shelter response is served from cache
 - **THEN** `data_age_seconds` reflects the time since the original data was fetched, not the time since it was cached
+
+#### Scenario: Data freshness enum included
+- **WHEN** a GET `/api/v1/shelters` or GET `/api/v1/shelters/{id}` response is returned
+- **THEN** the response includes a `data_freshness` field derived from `data_age_seconds`: FRESH (< 7200s), AGING (7200-28800s), STALE (> 28800s), UNKNOWN (no snapshot)
