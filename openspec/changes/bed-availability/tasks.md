@@ -1,6 +1,6 @@
 ## 1. Database Schema
 
-- [ ] 1.1 Create Flyway migration `V12__create_bed_availability.sql`: bed_availability table (id UUID PK, shelter_id FK, tenant_id FK, population_type VARCHAR, beds_total INTEGER, beds_occupied INTEGER DEFAULT 0, beds_on_hold INTEGER DEFAULT 0, accepting_new_guests BOOLEAN DEFAULT TRUE, snapshot_ts TIMESTAMPTZ DEFAULT NOW(), updated_by VARCHAR, notes VARCHAR(500)). Index on (shelter_id, population_type, snapshot_ts DESC). Index on (tenant_id, snapshot_ts DESC). ON CONFLICT DO NOTHING constraint on (shelter_id, population_type, snapshot_ts).
+- [ ] 1.1 Create Flyway migration `V12__create_bed_availability.sql`: bed_availability table (id UUID PK, shelter_id FK, tenant_id FK, population_type VARCHAR, beds_total INTEGER, beds_occupied INTEGER DEFAULT 0, beds_on_hold INTEGER DEFAULT 0, accepting_new_guests BOOLEAN DEFAULT TRUE, snapshot_ts TIMESTAMPTZ DEFAULT NOW(), updated_by VARCHAR, notes VARCHAR(500)). Index on (shelter_id, population_type, snapshot_ts DESC). Index on (tenant_id, snapshot_ts DESC). UNIQUE constraint on (shelter_id, population_type, snapshot_ts) — enables ON CONFLICT DO NOTHING for concurrent inserts. Add SQL comment explaining: if two coordinators submit at the exact same millisecond for the same shelter/population type, one insert is silently dropped per HSDS extension spec requirement.
 - [ ] 1.2 Enable RLS on bed_availability table: same dv_shelter policy pattern (join through shelter table) as shelter_constraints/shelter_capacity
 
 ## 2. Availability Module
@@ -14,8 +14,8 @@
 
 ## 3. Bed Search
 
-- [ ] 3.1 Create `BedSearchRequest` record: populationType (optional), constraints (optional: petsAllowed, wheelchairAccessible, sobrietyRequired), location (optional: latitude, longitude, radiusMiles), limit (default 20)
-- [ ] 3.2 Create `BedSearchResult` record: shelterId, shelterName, address, phone, latitude, longitude, bedsAvailable (per population type), dataAgeSeconds, dataFreshness, constraints summary
+- [ ] 3.1 Create `BedSearchRequest` record: populationType (optional), constraints (optional: petsAllowed, wheelchairAccessible, sobrietyRequired), location (optional: latitude, longitude, radiusMiles — accepted for MCP tool schema compatibility but ignored until PostGIS geo-search change), limit (default 20)
+- [ ] 3.2 Create `BedSearchResult` record: shelterId, shelterName, address, phone, latitude, longitude, bedsAvailable (per population type), dataAgeSeconds, dataFreshness, distanceMiles (null until geo-search change — placeholder for MCP tool response schema), constraints summary
 - [ ] 3.3 Create `BedSearchService`: query shelters with availability, apply constraint filters, rank results (beds_available > 0 first, fewer barriers, beds_available DESC), compute data_age_seconds from snapshot_ts
 - [ ] 3.4 Create `BedSearchController`: POST /api/v1/queries/beds — any authenticated user. Returns ranked BedSearchResult list.
 - [ ] 3.5 Add @Operation annotation with semantic MCP-ready description to POST /api/v1/queries/beds
