@@ -11,3 +11,5 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+**/.terraform/
+**/.terraform.lock.hcl

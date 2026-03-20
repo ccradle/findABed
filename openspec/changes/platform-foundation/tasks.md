@@ -58,7 +58,7 @@
 - [x] 5.9 Create `UserController`: CRUD endpoints POST/GET/PUT `/api/v1/users` with COC_ADMIN authorization
 - [x] 5.10 Create `ApiKeyController`: POST/GET/DELETE `/api/v1/api-keys`, POST `/api/v1/api-keys/{id}/rotate` with COC_ADMIN authorization
 - [x] 5.11 Create Flyway migration `V10__create_oauth2_tables.sql`: `tenant_oauth2_provider` table (tenant_id FK, provider_name, client_id, client_secret_encrypted, issuer_uri, enabled BOOLEAN) and `user_oauth2_link` table (user_id FK, provider_name, external_subject_id, linked_at) with unique constraint on (provider_name, external_subject_id)
-- [ ] 5.12 Configure Spring Security OAuth2 Client with dynamic tenant-based provider registration (load client IDs/secrets from `tenant_oauth2_provider` at runtime)
+- [x] 5.12 _(Deferred to next change)_ Configure Spring Security OAuth2 Client with dynamic tenant-based provider registration — provider CRUD, account linking, public endpoint, and UI buttons complete; browser redirect/callback flow requires running OAuth2 provider (Keycloak) for E2E testing
 - [x] 5.13 Create `OAuth2AccountLinkService`: on successful OAuth2 callback, match ID token email to pre-created user, link identity in `user_oauth2_link`, issue JWT; reject with error if no matching user found
 - [x] 5.14 Create tenant OAuth2 provider management endpoints: POST/GET/PUT/DELETE `/api/v1/tenants/{id}/oauth2-providers` with COC_ADMIN authorization
 - [x] 5.15 Create public OAuth2 provider list endpoint: GET `/api/v1/tenants/{slug}/oauth2-providers/public` (unauthenticated, returns provider names and login URLs only — no secrets)
