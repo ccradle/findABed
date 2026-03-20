@@ -6,7 +6,7 @@
 - [x] 1.4 Add optional dependencies with Maven profiles: Lettuce (Redis), Spring Kafka
 - [x] 1.5a Create modular monolith package structure: `shared/` (config, cache, event, security, web) + domain modules (`tenant/`, `auth/`, `shelter/`, `dataimport/`, `observability/`) each with `api/`, `domain/`, `repository/`, `service/` sub-packages and `package-info.java`
 - [x] 1.5b Create `ArchitectureTest.java` with ArchUnit rules enforcing: shared kernel must not depend on modules, modules must not access other modules' repositories or domain entities, controllers in `api/` packages, repositories in `repository/` packages
-- [ ] 1.5 Initialize React + Vite project in `/frontend` with TypeScript, React Router, react-intl, Workbox, and vite-plugin-pwa (generates `manifest.json` with app name, theme color, and PWA icons)
+- [x] 1.5 Initialize React + Vite project in `/frontend` with TypeScript, React Router, react-intl, Workbox, and vite-plugin-pwa (generates `manifest.json` with app name, theme color, and PWA icons)
 - [ ] 1.6 Create root `docker-compose.yml` for local development (PostgreSQL 16, Redis 7, Kafka optional)
 - [ ] 1.7 Create multi-stage `Dockerfile` for backend (build + runtime)
 - [ ] 1.8 Create `Dockerfile` for frontend (build + nginx serve)
@@ -109,20 +109,20 @@
 
 ## 9. PWA Shell
 
-- [ ] 9.1 Create `AuthContext` and `AuthGuard` component: store JWT, decode roles, redirect unauthorized
-- [ ] 9.2 Set up React Router with role-gated routes: `/login`, `/coordinator/*`, `/outreach/*`, `/admin/*` (depends on AuthGuard from 9.1)
-- [ ] 9.3 Create login page with username/password form and dynamic OAuth2 provider buttons (fetched from `/api/v1/tenants/{slug}/oauth2-providers/public`)
-- [ ] 9.4 Create API client service with JWT/API key header injection and error handling
-- [ ] 9.5 Configure Workbox: precache app shell, runtime cache API responses with stale-while-revalidate
-- [ ] 9.6 Create `OfflineQueue` service: IndexedDB-backed action queue with timestamp, sync on reconnect, conflict reporting
-- [ ] 9.7 Create `OnlineStatus` hook and offline indicator banner component
-- [ ] 9.8 Create `DataAge` component: display "Updated X minutes ago" from `data_age_seconds`
-- [ ] 9.9 Set up react-intl: English (`en.json`) as source of truth, Spanish (`es.json`) starter, locale selector component
-- [ ] 9.10 Create responsive layout shell: sidebar navigation (desktop), bottom nav (mobile), minimum 44x44px touch targets
-- [ ] 9.11 Create placeholder pages: coordinator dashboard, outreach search, admin panel (with role-appropriate placeholders for future capabilities)
-- [ ] 9.12 Create shelter creation form for manual entry (CoC admin)
-- [ ] 9.13 Create HSDS import file upload page with progress and report display
-- [ ] 9.14 Create 211 import page with column mapping preview/confirmation step, file upload, progress, and report display
+- [x] 9.1 Create `AuthContext` and `AuthGuard` component: store JWT, decode roles, redirect unauthorized
+- [x] 9.2 Set up React Router with role-gated routes: `/login`, `/coordinator/*`, `/outreach/*`, `/admin/*` (depends on AuthGuard from 9.1)
+- [x] 9.3 Create login page with username/password form and dynamic OAuth2 provider buttons (fetched from `/api/v1/tenants/{slug}/oauth2-providers/public`)
+- [x] 9.4 Create API client service with JWT/API key header injection and error handling
+- [x] 9.5 Configure Workbox: precache app shell, runtime cache API responses with stale-while-revalidate
+- [x] 9.6 Create `OfflineQueue` service: IndexedDB-backed action queue with timestamp, sync on reconnect, conflict reporting
+- [x] 9.7 Create `OnlineStatus` hook and offline indicator banner component
+- [x] 9.8 Create `DataAge` component: display "Updated X minutes ago" from `data_age_seconds`
+- [x] 9.9 Set up react-intl: English (`en.json`) as source of truth, Spanish (`es.json`) starter, locale selector component
+- [x] 9.10 Create responsive layout shell: sidebar navigation (desktop), bottom nav (mobile), minimum 44x44px touch targets
+- [x] 9.11 Create placeholder pages: coordinator dashboard, outreach search, admin panel (with role-appropriate placeholders for future capabilities)
+- [x] 9.12 Create shelter creation form for manual entry (CoC admin)
+- [x] 9.13 Create HSDS import file upload page with progress and report display
+- [x] 9.14 Create 211 import page with column mapping preview/confirmation step, file upload, progress, and report display
 
 ## 10. CI/CD Pipeline
 
