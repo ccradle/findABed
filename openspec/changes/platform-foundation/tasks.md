@@ -146,3 +146,12 @@
 - [ ] 12.2 Create `dev-setup.sh` script: start docker-compose, run migrations, load seed data
 - [ ] 12.3 Create `CONTRIBUTING.md` with setup instructions, architecture overview, and PR guidelines
 - [ ] 12.4 Add OpenAPI spec auto-generation and Swagger UI at `/api/v1/docs`
+
+## 13. Documentation Standards
+
+- [ ] 13.1 Create `docs/schema.dbml` — DBML source derived from Flyway migrations V1–V10 (all tables, relationships, enums). Workflow: create DBML → paste into dbdiagram.io → export PNG → commit both
+- [ ] 13.2 Create `docs/erd.png` — ERD image exported from dbdiagram.io, embedded inline in README
+- [ ] 13.3 Create `docs/asyncapi.yaml` — AsyncAPI 3.0 spec documenting the EventBus contract: shelter-availability-updated, surge-event-activated, surge-event-deactivated channels. Covers all three tiers (Spring Events, PG NOTIFY, Kafka) with the same message schema
+- [ ] 13.4 Create `README.md` — Project overview, mission statement, architecture diagram (ASCII + Mermaid), deployment tier table, ERD embed, badges (CI status, license, Java version), quick start instructions, API docs link, link to CONTRIBUTING.md
+- [ ] 13.5 Create `docs/architecture.drawio` — draw.io diagram showing backend, frontend, PostgreSQL, Redis (optional), Kafka (optional), and the three deployment tiers
+- [ ] 13.6 _(Deferred to future change)_ Create `docs/TEST-AUTOMATION-STRATEGY.md` — Cross-project test automation strategy (Karate, Pact, Gatling). Requires more implementation before test patterns can be documented meaningfully

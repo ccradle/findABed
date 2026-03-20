@@ -30,6 +30,7 @@ There is no open-source infrastructure for real-time shelter bed availability. A
 - `data-import`: HSDS JSON bulk import, 211 directory import, and manual entry — all tenant-scoped with validation and error reporting
 - `pwa-shell`: React + Vite PWA with role-gated routing, service worker registration, offline storage foundation (IndexedDB), and i18n wiring (react-intl)
 - `observability`: Micrometer metrics, structured JSON logging, health endpoints, and data-age tracking infrastructure
+- `documentation-standards`: DBML schema + ERD, OpenAPI (auto-gen), AsyncAPI 3.0 (event contracts), README with architecture diagrams (ASCII + Mermaid + draw.io), CI badges
 
 ### Modified Capabilities
 
