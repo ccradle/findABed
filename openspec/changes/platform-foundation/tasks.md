@@ -1,9 +1,11 @@
 ## 1. Project Scaffold
 
 - [ ] 1.1 Initialize monorepo structure: `/backend`, `/frontend`, `/infra`, root `README.md`
-- [ ] 1.2 Initialize Spring Boot 3.4.x project in `/backend` with Java 21, Maven, groupId `org.fabt`
-- [ ] 1.3 Add core dependencies: Spring Web, Spring Security, Spring Data JDBC, PostgreSQL driver, Flyway, Caffeine, Jackson, Springdoc OpenAPI, Micrometer, Logback (JSON encoder)
+- [ ] 1.2 Initialize Spring Boot 3.4.x project in `/backend` with Java 21, Maven, groupId `org.fabt`, structured as a modular monolith
+- [ ] 1.3 Add core dependencies: Spring Web, Spring Security, Spring Data JDBC, PostgreSQL driver, Flyway, Caffeine, Jackson, Springdoc OpenAPI, Micrometer, Logback (JSON encoder), ArchUnit (test scope)
 - [ ] 1.4 Add optional dependencies with Maven profiles: Lettuce (Redis), Spring Kafka
+- [ ] 1.5a Create modular monolith package structure: `shared/` (config, cache, event, security, web) + domain modules (`tenant/`, `auth/`, `shelter/`, `dataimport/`, `observability/`) each with `api/`, `domain/`, `repository/`, `service/` sub-packages and `package-info.java`
+- [ ] 1.5b Create `ArchitectureTest.java` with ArchUnit rules enforcing: shared kernel must not depend on modules, modules must not access other modules' repositories or domain entities, controllers in `api/` packages, repositories in `repository/` packages
 - [ ] 1.5 Initialize React + Vite project in `/frontend` with TypeScript, React Router, react-intl, Workbox, and vite-plugin-pwa (generates `manifest.json` with app name, theme color, and PWA icons)
 - [ ] 1.6 Create root `docker-compose.yml` for local development (PostgreSQL 16, Redis 7, Kafka optional)
 - [ ] 1.7 Create multi-stage `Dockerfile` for backend (build + runtime)

@@ -39,50 +39,104 @@ The project uses two independent git repositories (not submodules):
 - `.gitignore` excludes `finding-a-bed-tonight/`
 
 **Repo 2: Code Monorepo** (`C:\Development\findABed\finding-a-bed-tonight`, GitHub: `ccradle/finding-a-bed-tonight`, private)
+
+**Modular monolith architecture:** The backend is a single deployable Spring Boot application, but internally structured as isolated domain modules. Each module owns its entities, repositories, services, and API controllers. Modules communicate through published interfaces and the EventBus — never by reaching into another module's internals. ArchUnit tests enforce these boundaries at build time. If a module later needs extraction (e.g., HMIS bridge under load), the boundary is already clean.
+
 ```
 finding-a-bed-tonight/
-├── backend/                    # Spring Boot application
+├── backend/
 │   ├── src/main/java/org/fabt/
-│   │   ├── config/             # Spring configuration, profiles, security
-│   │   ├── tenant/             # Tenant entity, service, filter
-│   │   ├── auth/               # JWT, API key, roles, security config
-│   │   ├── shelter/            # Shelter, ShelterConstraints, HSDS model
-│   │   ├── user/               # User entity, service
-│   │   ├── dataimport/         # Import services (HSDS, 211, manual)
-│   │   └── common/             # Shared: pagination, error handling, i18n
+│   │   ├── Application.java
+│   │   │
+│   │   ├── shared/                     # Shared kernel (no domain logic)
+│   │   │   ├── config/                 # Deployment tier, Spring profiles
+│   │   │   ├── cache/                  # CacheService interface + impls
+│   │   │   ├── event/                  # EventBus interface + impls, DomainEvent
+│   │   │   ├── security/              # SecurityConfig, filters, JWT utilities
+│   │   │   └── web/                    # Pagination, error handling, i18n
+│   │   │
+│   │   ├── tenant/                     # MODULE: Tenant management
+│   │   │   ├── api/                    # TenantController, TenantConfigController
+│   │   │   ├── domain/                 # Tenant entity, TenantConfig
+│   │   │   ├── repository/            # TenantRepository
+│   │   │   ├── service/               # TenantService
+│   │   │   └── package-info.java      # @ApplicationModule annotation
+│   │   │
+│   │   ├── auth/                       # MODULE: Authentication & authorization
+│   │   │   ├── api/                    # AuthController, UserController, ApiKeyController
+│   │   │   ├── domain/                 # User, ApiKey, Role, OAuth2Link
+│   │   │   ├── repository/            # UserRepository, ApiKeyRepository
+│   │   │   ├── service/               # JwtService, ApiKeyService, OAuth2AccountLinkService
+│   │   │   └── package-info.java
+│   │   │
+│   │   ├── shelter/                    # MODULE: Shelter profiles & constraints
+│   │   │   ├── api/                    # ShelterController
+│   │   │   ├── domain/                 # Shelter, ShelterConstraints, ShelterCapacity, PopulationType
+│   │   │   ├── repository/            # ShelterRepository
+│   │   │   ├── service/               # ShelterService, ShelterHsdsMapper
+│   │   │   └── package-info.java
+│   │   │
+│   │   ├── dataimport/                 # MODULE: Data import (HSDS, 211, manual)
+│   │   │   ├── api/                    # ImportController
+│   │   │   ├── domain/                 # ImportLog
+│   │   │   ├── repository/            # ImportLogRepository
+│   │   │   ├── service/               # ShelterImportService, HsdsImportAdapter, TwoOneOneImportAdapter
+│   │   │   └── package-info.java
+│   │   │
+│   │   └── observability/              # MODULE: Metrics, logging, health
+│   │       ├── DataAgeResponseAdvice.java
+│   │       ├── TenantMdcFilter.java
+│   │       └── package-info.java
+│   │
 │   ├── src/main/resources/
-│   │   ├── db/migration/       # Flyway SQL migrations
-│   │   ├── application.yml     # Base config
+│   │   ├── db/migration/               # Flyway SQL migrations (V1–V10)
+│   │   ├── application.yml             # Base config
 │   │   ├── application-lite.yml
 │   │   ├── application-standard.yml
 │   │   ├── application-full.yml
-│   │   └── messages/           # i18n message bundles
-│   └── src/test/
-├── frontend/                   # React + Vite PWA
+│   │   └── messages/                   # i18n message bundles
+│   │
+│   └── src/test/java/org/fabt/
+│       ├── ApplicationTest.java
+│       ├── ArchitectureTest.java        # ArchUnit: enforce module boundaries
+│       ├── tenant/                      # Module integration tests
+│       ├── auth/
+│       ├── shelter/
+│       └── dataimport/
+│
+├── frontend/                            # React + Vite PWA
 │   ├── src/
-│   │   ├── components/         # Shared UI components
-│   │   ├── pages/              # Route-level pages
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── services/           # API client, offline queue
-│   │   ├── i18n/               # Message catalogs
-│   │   ├── auth/               # Auth context, guards
-│   │   └── sw/                 # Service worker, Workbox config
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── i18n/
+│   │   ├── auth/
+│   │   └── sw/
 │   └── public/
+│
 ├── infra/
-│   ├── terraform/              # Terraform modules
-│   │   ├── modules/            # network, postgres, redis, kafka, app
-│   │   └── environments/       # lite, standard, full
+│   ├── terraform/modules/
+│   ├── terraform/environments/
 │   ├── docker/
-│   │   ├── Dockerfile          # Multi-stage backend build
-│   │   └── docker-compose.yml  # Local development
-│   └── scripts/                # Setup, seed data, migration helpers
-└── .github/workflows/          # CI/CD pipeline
+│   └── scripts/
+│
+└── .github/workflows/
 ```
 
-**Rationale:** Single repo lowers the barrier for contributors — clone once, build everything. Module boundaries are directory-based, not repo-based. If scale demands splitting later, the package structure supports it.
+**Module boundary rules (enforced by ArchUnit):**
+1. A module MAY depend on `shared/` (the shared kernel)
+2. A module MUST NOT directly access another module's `repository/` or `domain/` packages
+3. Inter-module communication goes through published `service/` interfaces or the `EventBus`
+4. `shared/` MUST NOT depend on any module
+5. `auth` module is a dependency exception: other modules may read `Role` and the security context, but not `UserRepository`
+
+**Rationale:** Single deployable, but with clean seams. If the HMIS bridge (future change) or analytics module needs to scale independently, it's a package move to a separate service, not a rewrite. Spring Modulith or ArchUnit tests enforce these boundaries at build time — not just convention.
 
 **Alternatives considered:**
-- Multi-repo (backend, frontend, infra separate): Higher contributor friction, version coordination overhead. Rejected for MVP.
+- Flat package-by-layer (controller/service/repository): No module boundaries, everything can reach everything. Fine for small apps, breaks down as domains grow. Rejected.
+- Multi-repo microservices: Operational overhead disproportionate to scale. A rural county shouldn't need a service mesh. Rejected for MVP.
+- Spring Modulith framework: Considered, but ArchUnit gives the same enforcement with less framework lock-in. Can adopt Spring Modulith later if its module interaction testing adds value.
 - Gradle multi-module: Adds build complexity without clear benefit at current scale. Single Spring Boot module is sufficient.
 
 ### D2: Multi-tenancy via shared schema with tenant_id

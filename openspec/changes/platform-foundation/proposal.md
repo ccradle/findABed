@@ -4,6 +4,7 @@ There is no open-source infrastructure for real-time shelter bed availability. A
 
 ## What Changes
 
+- Modular monolith backend architecture: isolated domain modules (tenant, auth, shelter, dataimport, observability) with ArchUnit-enforced boundaries, shared kernel for cross-cutting concerns, inter-module communication via published interfaces and EventBus
 - New multi-tenant data model with shared schema (tenant_id pattern) on PostgreSQL 16 with Flyway migrations
 - Tenant, organization, shelter, and user entities with role-based access control
 - Hybrid auth: user/role model as primary, OAuth2/OIDC social login (Google, Microsoft, etc.), configurable shelter/org-level API key auth
@@ -38,7 +39,7 @@ _None — this is a greenfield foundation._
 
 ## Impact
 
-- **New codebase**: Monorepo with `/backend` (Spring Boot 3.4.x, Java 21, Spring MVC + JDBC), `/frontend` (React + Vite), `/infra` (Terraform + Docker)
+- **New codebase**: Monorepo with `/backend` (Spring Boot 3.4.x, Java 21, Spring MVC + JDBC, **modular monolith** with ArchUnit-enforced module boundaries), `/frontend` (React + Vite), `/infra` (Terraform + Docker)
 - **Database**: PostgreSQL 16 schema with tenant, organization, shelter, user, role, and API key tables; RLS policies for DV isolation
 - **APIs**: `/api/v1/tenants`, `/api/v1/shelters`, `/api/v1/users`, `/api/v1/import`, `/api/v1/auth`
 - **Dependencies**: Spring Boot 3.4.x, Spring Security, Spring Security OAuth2 Client, Flyway, Caffeine, optionally Redis (Lettuce) and Kafka (Spring Kafka), React 18, Vite, Workbox, react-intl
