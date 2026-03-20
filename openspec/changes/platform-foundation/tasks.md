@@ -134,14 +134,14 @@
 
 ## 11. Infrastructure as Code
 
-- [ ] 11.1 Create Terraform module `modules/network`: VPC, subnets, security groups
-- [ ] 11.2 Create Terraform module `modules/postgres`: PostgreSQL instance (RDS compatible), database, user, RLS-enabled role
-- [ ] 11.3 Create Terraform module `modules/redis`: Redis instance (ElastiCache compatible)
-- [ ] 11.4 Create Terraform module `modules/kafka`: Kafka cluster (MSK compatible)
-- [ ] 11.5 Create Terraform module `modules/app`: ECS/container service, load balancer, environment variables
-- [ ] 11.6 Create environment compositions: `environments/lite` (network + postgres + app), `environments/standard` (+ redis), `environments/full` (+ kafka)
-- [ ] 11.7 Configure remote state: S3 + DynamoDB backend
-- [ ] 11.8 Add cost guardrail: `$50/month` budget alarm for Lite tier
+- [x] 11.1 Create Terraform module `modules/network`: VPC, subnets, security groups
+- [x] 11.2 Create Terraform module `modules/postgres`: PostgreSQL instance (RDS compatible), database, user, RLS-enabled role
+- [x] 11.3 Create Terraform module `modules/redis`: Redis instance (ElastiCache compatible)
+- [x] 11.4 Create Terraform module `modules/kafka`: Kafka cluster (MSK compatible)
+- [x] 11.5 Create Terraform module `modules/app`: ECS/container service, load balancer, environment variables
+- [x] 11.6 Create environment compositions: `environments/lite` (network + postgres + app), `environments/standard` (+ redis), `environments/full` (+ kafka)
+- [x] 11.7 Configure remote state: S3 + DynamoDB backend
+- [x] 11.8 Add cost guardrail: `$50/month` budget alarm for Lite tier
 
 ## 12. Seed Data and Developer Experience
 
