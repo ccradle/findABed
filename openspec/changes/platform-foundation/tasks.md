@@ -7,9 +7,9 @@
 - [x] 1.5a Create modular monolith package structure: `shared/` (config, cache, event, security, web) + domain modules (`tenant/`, `auth/`, `shelter/`, `dataimport/`, `observability/`) each with `api/`, `domain/`, `repository/`, `service/` sub-packages and `package-info.java`
 - [x] 1.5b Create `ArchitectureTest.java` with ArchUnit rules enforcing: shared kernel must not depend on modules, modules must not access other modules' repositories or domain entities, controllers in `api/` packages, repositories in `repository/` packages
 - [x] 1.5 Initialize React + Vite project in `/frontend` with TypeScript, React Router, react-intl, Workbox, and vite-plugin-pwa (generates `manifest.json` with app name, theme color, and PWA icons)
-- [ ] 1.6 Create root `docker-compose.yml` for local development (PostgreSQL 16, Redis 7, Kafka optional)
-- [ ] 1.7 Create multi-stage `Dockerfile` for backend (build + runtime)
-- [ ] 1.8 Create `Dockerfile` for frontend (build + nginx serve)
+- [x] 1.6 Create root `docker-compose.yml` for local development (PostgreSQL 16, Redis 7, Kafka optional)
+- [x] 1.7 Create multi-stage `Dockerfile` for backend (build + runtime)
+- [x] 1.8 Create `Dockerfile` for frontend (build + nginx serve)
 
 ## 2. Database Schema and Migrations
 
@@ -126,11 +126,11 @@
 
 ## 10. CI/CD Pipeline
 
-- [ ] 10.1 Create GitHub Actions workflow `.github/workflows/ci.yml`: lint → test → build → docker
-- [ ] 10.2 Backend stage: Maven build, run unit tests, run integration tests (Testcontainers for PostgreSQL, Redis)
-- [ ] 10.3 Frontend stage: npm install, lint (ESLint), test (Vitest), build
-- [ ] 10.4 Docker stage: build backend image, build frontend image, push to `ghcr.io/ccradle/finding-a-bed-tonight`
-- [ ] 10.5 Add test profile configuration for Testcontainers (PostgreSQL 16, Redis 7)
+- [x] 10.1 Create GitHub Actions workflow `.github/workflows/ci.yml`: lint → test → build → docker
+- [x] 10.2 Backend stage: Maven build, run unit tests, run integration tests (Testcontainers for PostgreSQL, Redis)
+- [x] 10.3 Frontend stage: npm install, lint (ESLint), test (Vitest), build
+- [x] 10.4 Docker stage: build backend image, build frontend image, push to `ghcr.io/ccradle/finding-a-bed-tonight`
+- [x] 10.5 Add test profile configuration for Testcontainers (PostgreSQL 16, Redis 7)
 
 ## 11. Infrastructure as Code
 
@@ -145,22 +145,22 @@
 
 ## 12. Seed Data and Developer Experience
 
-- [ ] 12.1 Create seed data SQL script: default tenant ("Development CoC"), admin user (dvAccess=true), outreach worker user (dvAccess=false), sample OAuth2 provider config (Google, for local testing), sample shelters (10 synthetic shelters with varied constraints and capacities, including 1 DV shelter)
-- [ ] 12.2 Create `dev-setup.sh` script: start docker-compose, run migrations, load seed data
-- [ ] 12.3 Create `CONTRIBUTING.md` with setup instructions, architecture overview, and PR guidelines
+- [x] 12.1 Create seed data SQL script: default tenant ("Development CoC"), admin user (dvAccess=true), outreach worker user (dvAccess=false), sample OAuth2 provider config (Google, for local testing), sample shelters (10 synthetic shelters with varied constraints and capacities, including 1 DV shelter)
+- [x] 12.2 Create `dev-setup.sh` script: start docker-compose, run migrations, load seed data
+- [x] 12.3 Create `CONTRIBUTING.md` with setup instructions, architecture overview, and PR guidelines
 - [x] 12.4 Add OpenAPI spec auto-generation and Swagger UI at `/api/v1/docs`
 
 ## 13. MCP-Ready API Design
 
 - [x] 13.1 Redesign `ErrorResponse` to include: `error` (snake_case code), `message`, `status`, `timestamp`, `context` (Map<String, Object>). Update `GlobalExceptionHandler` to populate error codes and context for all exception types
-- [ ] 13.2 Add `@Operation` and `@Parameter` annotations with semantic, agent-readable descriptions to all REST endpoints (TenantController, TenantConfigController, AuthController, UserController, ApiKeyController). Descriptions must explain behavior, edge cases, and data freshness caveats
+- [x] 13.2 Add `@Operation` and `@Parameter` annotations with semantic, agent-readable descriptions to all REST endpoints (TenantController, TenantConfigController, AuthController, UserController, ApiKeyController). Descriptions must explain behavior, edge cases, and data freshness caveats
 - [x] 13.3 Enhance `DomainEvent` record with `schemaVersion` (String, default "1.0.0") field. Ensure all published events include entity names and sufficient context
-- [ ] 13.4 Create Flyway migration `V11__create_subscriptions.sql`: subscription table (id UUID PK, tenant_id FK, event_type VARCHAR, filter JSONB, callback_url VARCHAR, callback_secret_hash VARCHAR, status VARCHAR, expires_at TIMESTAMPTZ, last_error TEXT, created_at TIMESTAMPTZ)
-- [ ] 13.5 Create `Subscription` entity, `SubscriptionRepository`, `SubscriptionService` in a new `subscription` module (api/, domain/, repository/, service/)
-- [ ] 13.6 Create `SubscriptionController`: POST/GET/DELETE `/api/v1/subscriptions`
-- [ ] 13.7 Create `WebhookDeliveryService`: match events to subscriptions, deliver via HTTP POST with HMAC-SHA256 signature, retry with exponential backoff (1m, 5m, 30m, 2h), deactivate on 410 Gone
-- [ ] 13.8 Add integration test: create subscription, publish matching event, verify webhook delivery
-- [ ] 13.9 Add integration test: verify error responses include error code and context on all endpoints
+- [x] 13.4 Create Flyway migration `V11__create_subscriptions.sql`: subscription table (id UUID PK, tenant_id FK, event_type VARCHAR, filter JSONB, callback_url VARCHAR, callback_secret_hash VARCHAR, status VARCHAR, expires_at TIMESTAMPTZ, last_error TEXT, created_at TIMESTAMPTZ)
+- [x] 13.5 Create `Subscription` entity, `SubscriptionRepository`, `SubscriptionService` in a new `subscription` module (api/, domain/, repository/, service/)
+- [x] 13.6 Create `SubscriptionController`: POST/GET/DELETE `/api/v1/subscriptions`
+- [x] 13.7 Create `WebhookDeliveryService`: match events to subscriptions, deliver via HTTP POST with HMAC-SHA256 signature, retry with exponential backoff (1m, 5m, 30m, 2h), deactivate on 410 Gone
+- [x] 13.8 Add integration test: create subscription, publish matching event, verify webhook delivery
+- [x] 13.9 Add integration test: verify error responses include error code and context on all endpoints
 
 ## 14. Documentation Standards
 
