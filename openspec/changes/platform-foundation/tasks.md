@@ -95,17 +95,17 @@
 
 ## 8. Observability
 
-- [ ] 8.1 Configure structured JSON logging with logback-encoder: timestamp, level, logger, message, tenantId, userId, traceId, spanId
-- [ ] 8.2 Create `TenantMdcFilter`: inject tenantId and userId into MDC for all log entries
-- [ ] 8.3 Configure Micrometer metrics: API timer (endpoint, method, status, tenantId), cache counters (cache_name, result)
-- [ ] 8.4 Configure Spring Actuator: health (liveness, readiness with DB/Redis/Kafka checks), prometheus endpoint
-- [ ] 8.5 Implement `DataAgeResponseAdvice`: `@ControllerAdvice` that adds `data_age_seconds` to responses served from cache or containing a `snapshot_ts` field (shelter list, shelter detail endpoints)
-- [ ] 8.6 Add integration test: verify structured log output includes tenantId
-- [ ] 8.7 Add integration test: verify /actuator/health reports component status per deployment tier
-- [ ] 8.8 Configure Spring `LocaleResolver` (Accept-Language header) and `MessageSource` (resource bundle) for localized API error responses
-- [ ] 8.9 Add integration test: verify API error responses are localized when `Accept-Language: es` is sent
-- [ ] 8.10 Add integration test: verify no PII (names, addresses, phone numbers of people experiencing homelessness) appears in structured log output during shelter CRUD, user creation, and OAuth2 callback operations. Shelter names and addresses (public business data) are permitted in logs.
-- [ ] 8.11 Add `data_freshness` enum (FRESH, AGING, STALE, UNKNOWN) and derive it from `data_age_seconds` in DataAgeResponseAdvice
+- [x] 8.1 Configure structured JSON logging with logback-encoder: timestamp, level, logger, message, tenantId, userId, traceId, spanId
+- [x] 8.2 Create `TenantMdcFilter`: inject tenantId and userId into MDC for all log entries
+- [x] 8.3 Configure Micrometer metrics: API timer (endpoint, method, status, tenantId), cache counters (cache_name, result)
+- [x] 8.4 Configure Spring Actuator: health (liveness, readiness with DB/Redis/Kafka checks), prometheus endpoint
+- [x] 8.5 Implement `DataAgeResponseAdvice`: `@ControllerAdvice` that adds `data_age_seconds` to responses served from cache or containing a `snapshot_ts` field (shelter list, shelter detail endpoints)
+- [x] 8.6 Add integration test: verify structured log output includes tenantId
+- [x] 8.7 Add integration test: verify /actuator/health reports component status per deployment tier
+- [x] 8.8 Configure Spring `LocaleResolver` (Accept-Language header) and `MessageSource` (resource bundle) for localized API error responses
+- [x] 8.9 Add integration test: verify API error responses are localized when `Accept-Language: es` is sent
+- [x] 8.10 Add integration test: verify no PII (names, addresses, phone numbers of people experiencing homelessness) appears in structured log output during shelter CRUD, user creation, and OAuth2 callback operations. Shelter names and addresses (public business data) are permitted in logs.
+- [x] 8.11 Add `data_freshness` enum (FRESH, AGING, STALE, UNKNOWN) and derive it from `data_age_seconds` in DataAgeResponseAdvice
 
 ## 9. PWA Shell
 
