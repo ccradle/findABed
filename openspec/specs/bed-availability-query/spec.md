@@ -38,6 +38,15 @@ The system SHALL provide a bed availability search endpoint at POST `/api/v1/que
 - **THEN** the result for that shelter includes `bedsHeld: 2` alongside `bedsAvailable: 3` (which already accounts for holds via beds_on_hold)
 - **AND** the outreach worker can assess contention before initiating transport
 
+#### Scenario: Search results include overflow beds during active surge
+- **WHEN** an outreach worker sends POST `/api/v1/queries/beds` and a surge is active for the tenant
+- **THEN** each result includes `overflowBeds` per population type and `surgeActive: true`
+- **AND** overflow beds are shown as additional capacity beyond `bedsAvailable`
+
+#### Scenario: No surge indicator when no active surge
+- **WHEN** an outreach worker sends POST `/api/v1/queries/beds` and no surge is active
+- **THEN** results do not include `surgeActive` or show `surgeActive: false`
+
 ### Requirement: bed-search-ranking
 The system SHALL rank bed search results to surface the most actionable placements first. Shelters with available beds appear before full shelters. Among shelters with equal availability status, those with fewer barriers (fewer true constraint flags) rank higher. Among shelters with equal barrier levels, those with more `beds_available` rank higher.
 

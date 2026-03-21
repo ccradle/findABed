@@ -36,6 +36,11 @@ The system SHALL allow shelter coordinators to submit availability updates via P
 - **AND** the snapshot's `updated_by` field records the system actor (e.g., "reservation:create", "reservation:expire")
 - **AND** cache invalidation and event publishing follow the same synchronous flow as coordinator updates
 
+#### Scenario: Availability update with overflow beds
+- **WHEN** a coordinator sends PATCH `/api/v1/shelters/{id}/availability` with `overflowBeds: 15`
+- **THEN** the snapshot is created with `overflow_beds = 15`
+- **AND** the `availability.updated` event payload includes `overflow_beds`
+
 ### Requirement: availability-snapshot-immutability
 The system SHALL enforce append-only semantics on the `bed_availability` table. Snapshots are never updated or deleted through the application layer. Each new availability update creates a new row. The latest snapshot for a given shelter and population type is retrieved via `DISTINCT ON (shelter_id, population_type) ... ORDER BY snapshot_ts DESC`.
 
