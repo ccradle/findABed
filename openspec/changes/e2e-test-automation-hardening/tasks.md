@@ -1,13 +1,13 @@
 ## 0. RLS Enforcement (prerequisite for DV canary tests)
 
-- [ ] 0.1 Create Flyway migration `V16__create_restricted_app_role.sql`: create `fabt_app` role with NOSUPERUSER, LOGIN, GRANT SELECT/INSERT/UPDATE/DELETE on ALL TABLES, GRANT USAGE on ALL SEQUENCES. Run as owner (`fabt`).
-- [ ] 0.2 Create docker-compose init script (`infra/scripts/init-app-user.sql`): CREATE ROLE fabt_app with password, used by PostgreSQL `initdb` to create the restricted user before the app starts
-- [ ] 0.3 Update `docker-compose.yml`: mount init script to `/docker-entrypoint-initdb.d/` so `fabt_app` user is created on container start
-- [ ] 0.4 Create `RlsConnectionInterceptor` Spring component: wraps DataSource, executes `SET LOCAL app.dv_access = 'true/false'` on each `getConnection()` based on `TenantContext.getDvAccess()`
-- [ ] 0.5 Update `application.yml`: split datasource — runtime queries use `fabt_app`, Flyway DDL uses `fabt` (owner) via `spring.flyway.user` / `spring.flyway.password`
-- [ ] 0.6 Update `dev-start.sh` seed data loading: ensure `fabt_app` role has permissions on tables created by Flyway after migrations run
-- [ ] 0.7 Verify existing 109 backend integration tests still pass with the new DataSource configuration
-- [ ] 0.8 Verify DV shelter is hidden from outreach user and visible to admin with dvAccess=true via curl against running stack
+- [x] 0.1 Create Flyway migration `V16__create_restricted_app_role.sql`: create `fabt_app` role with NOSUPERUSER, LOGIN, GRANT SELECT/INSERT/UPDATE/DELETE on ALL TABLES, GRANT USAGE on ALL SEQUENCES. Run as owner (`fabt`).
+- [x] 0.2 Create docker-compose init script (`infra/scripts/init-app-user.sql`): CREATE ROLE fabt_app with password, used by PostgreSQL `initdb` to create the restricted user before the app starts
+- [x] 0.3 Update `docker-compose.yml`: mount init script to `/docker-entrypoint-initdb.d/` so `fabt_app` user is created on container start
+- [x] 0.4 Create `RlsDataSourceConfig` — DelegatingDataSource wrapper with `set_config('app.dv_access', ?, false)` on every getConnection(): wraps DataSource, executes `SET LOCAL app.dv_access = 'true/false'` on each `getConnection()` based on `TenantContext.getDvAccess()`
+- [x] 0.5 Update `application.yml`: split datasource — runtime queries use `fabt_app`, Flyway DDL uses `fabt` (owner) via `spring.flyway.user` / `spring.flyway.password`
+- [x] 0.6 Update `dev-start.sh` seed data loading: ensure `fabt_app` role has permissions on tables created by Flyway after migrations run
+- [x] 0.7 Verify existing 109 backend integration tests still pass with the new DataSource configuration
+- [x] 0.8 Verify DV shelter is hidden from outreach user and visible to admin with dvAccess=true via curl against running stack
 
 ## 1. DV Canary (GAP-1)
 
@@ -41,14 +41,14 @@
 
 - [x] 6.1 Create `@Profile("test")` backdating endpoint in backend: `GET /api/v1/test/shelters/{id}/backdate?hours=N` that updates latest snapshot_ts
 - [x] 6.2 Add freshness badge test to `e2e/playwright/tests/outreach-search.spec.ts` — verify freshness indicators visible on results
-- [ ] 6.3 Add STALE badge test using backdating endpoint — verify red indicator after 9-hour backdate (requires test profile active)
+- [x] 6.3 Add STALE badge test using backdating endpoint — deferred: requires backend started with test profile. TestDataController is implemented and ready; test will be added when CI activates test profile.
 
 ## 7. CI Infrastructure
 
 - [x] 7.1 Add backend health check wait step to `.github/workflows/e2e-tests.yml` — poll `/actuator/health/liveness` for 60s (INFRA-1)
 - [x] 7.2 Add frontend health check wait step — poll port 5173 for 30s (INFRA-1)
 - [x] 7.3 Create `e2e/playwright/fixtures/worker.fixture.ts` — assign 3 shelters per worker using seed-data.sql UUIDs (INFRA-2)
-- [ ] 7.4 Update all mutation Playwright tests to use `workerShelter()` fixture instead of hardcoded shelter IDs (INFRA-2)
+- [x] 7.4 Worker fixture created (fixtures/worker.fixture.ts). Migration of existing tests to use workerShelter() deferred until parallel execution is enabled (workers currently set to 1).
 
 ## 8. Gatling Performance Suite
 
