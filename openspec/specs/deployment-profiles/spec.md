@@ -52,3 +52,43 @@ The system SHALL abstract tier-specific infrastructure behind common interfaces 
 - **WHEN** no Spring profile is explicitly set
 - **THEN** the system defaults to the Lite profile
 - **AND** logs a warning: "No deployment profile set — defaulting to lite"
+
+### Requirement: dynamodb-deletion-protection
+The Terraform bootstrap DynamoDB state lock table SHALL have `deletion_protection_enabled = true` to prevent accidental destruction.
+
+#### Scenario: State lock table protected from deletion
+- **WHEN** someone runs `terraform destroy` on the bootstrap stack
+- **THEN** the DynamoDB table destruction is blocked by AWS deletion protection
+
+### Requirement: owasp-cve-gate
+The CI pipeline SHALL fail the build when any dependency has a CVSS score >= 7.0 (HIGH or CRITICAL). Known false-positives SHALL be documented in an OWASP suppressions file with rationale and review dates.
+
+#### Scenario: Build fails on HIGH CVE
+- **WHEN** a dependency has a known vulnerability with CVSS >= 7.0
+- **THEN** the Maven build fails with OWASP dependency-check error
+
+#### Scenario: Suppressed CVE does not fail build
+- **WHEN** a dependency CVE is listed in `owasp-suppressions.xml` with documented rationale
+- **THEN** the build succeeds and the suppression includes a review date for re-evaluation
+
+### Requirement: terraform-security-posture
+The Terraform modules SHALL enforce IAM role separation (task vs execution), private RDS placement, Secrets Manager credential injection, and least-privilege security groups.
+
+#### Scenario: ECS task and execution roles are separate
+- **WHEN** the ECS task definition is provisioned
+- **THEN** the execution role has only ECR, CloudWatch, and Secrets Manager permissions
+- **AND** the task role has only RDS access permissions
+
+#### Scenario: RDS is not publicly accessible
+- **WHEN** the RDS instance is provisioned
+- **THEN** `publicly_accessible = false` and the instance is in a private subnet
+
+#### Scenario: Credentials injected via Secrets Manager
+- **WHEN** the ECS task definition is provisioned
+- **THEN** database credentials are injected as ECS `secrets` from Secrets Manager ARNs
+
+#### Scenario: Security group chain is least-privilege
+- **WHEN** the infrastructure is provisioned
+- **THEN** only the ALB allows ingress from 0.0.0.0/0 (ports 80, 443)
+- **AND** ECS allows ingress only from ALB (port 8080)
+- **AND** RDS allows ingress only from ECS (port 5432)
