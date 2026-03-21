@@ -77,21 +77,19 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 openspec/
 ├── config.yaml                          # OpenSpec configuration
 ├── specs/                               # Main project specifications (synced from changes)
+│   ├── auth-and-roles/                  # 10 capabilities across platform
+│   ├── bed-availability-query/
+│   ├── shelter-availability-update/
+│   ├── shelter-profile/
+│   ├── observability/
+│   ├── webhook-subscriptions/
+│   └── ...
 └── changes/
-    └── platform-foundation/             # Active change
-        ├── .openspec.yaml               # Change metadata
-        ├── proposal.md                  # Business case
-        ├── design.md                    # Architecture decisions
-        ├── specs/                       # 8 capability specs, 30+ requirements
-        │   ├── auth-and-roles/
-        │   ├── data-import/
-        │   ├── deployment-profiles/
-        │   ├── multi-tenancy/
-        │   ├── observability/
-        │   ├── pwa-shell/
-        │   ├── shelter-profile/
-        │   └── webhook-subscriptions/
-        └── tasks.md                     # 119 tasks across 13 sections
+    ├── reservation-system/              # Active (implemented, pending archive)
+    ├── e2e-test-automation/             # Active (specced, ready for implementation)
+    └── archive/
+        ├── 2026-03-20-platform-foundation/
+        └── 2026-03-20-bed-availability/
 ```
 
 ### Available Commands
@@ -109,19 +107,19 @@ openspec/
 ### Archived Changes
 
 - **[platform-foundation](openspec/changes/archive/2026-03-20-platform-foundation/)** — Modular monolith backend, multi-tenant auth, shelter profiles, data import, observability, PWA, CI/CD, Terraform. 130/131 tasks. Archived 2026-03-20.
+- **[bed-availability](openspec/changes/archive/2026-03-20-bed-availability/)** — Real-time bed availability with append-only snapshots, ranked bed search, coordinator update flow, data freshness. 40/40 tasks. Archived 2026-03-20.
 
 ### Active Changes
 
-- **[bed-availability](openspec/changes/bed-availability/)** — Real-time bed availability with append-only snapshots, ranked search, coordinator update flow. 35 tasks. Specced, ready for implementation.
+- **[reservation-system](openspec/changes/reservation-system/)** — Soft-hold bed reservations with auto-expiry, availability integration, countdown UI. 44/44 tasks complete. Pending archive.
+- **[e2e-test-automation](openspec/changes/e2e-test-automation/)** — Playwright (UI) + Karate (API) end-to-end test suite with CI pipeline. 42 tasks. Specced, ready for implementation.
 
 ### Planned Changes
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **reservation-system** | Soft-hold for bed placement (configurable duration, auto-expiry, Redis acceleration) | Not started |
 | **surge-mode** | White Flag / emergency activation, CoC-admin triggered, broadcast to outreach workers | Not started |
 | **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Not started |
-| **e2e-test-automation** | Playwright (UI) + Karate (API) end-to-end test suite | Not started |
 | **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not started |
 | **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not started |
 | **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not started |
