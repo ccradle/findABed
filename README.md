@@ -77,19 +77,26 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 openspec/
 ├── config.yaml                          # OpenSpec configuration
 ├── specs/                               # Main project specifications (synced from changes)
-│   ├── auth-and-roles/                  # 10 capabilities across platform
+│   ├── auth-and-roles/
 │   ├── bed-availability-query/
+│   ├── bed-reservation/
+│   ├── reservation-expiry/
 │   ├── shelter-availability-update/
 │   ├── shelter-profile/
+│   ├── deployment-profiles/
 │   ├── observability/
 │   ├── webhook-subscriptions/
 │   └── ...
 └── changes/
-    ├── reservation-system/              # Active (implemented, pending archive)
-    ├── e2e-test-automation/             # Active (specced, ready for implementation)
+    ├── e2e-test-automation/             # Active (42/42 implemented, pending archive)
+    ├── e2e-test-automation-hardening/   # Active (specced, 27 tasks)
+    ├── operational-monitoring/          # Active (specced, 12 tasks)
     └── archive/
         ├── 2026-03-20-platform-foundation/
-        └── 2026-03-20-bed-availability/
+        ├── 2026-03-20-bed-availability/
+        ├── 2026-03-20-reservation-system/
+        ├── 2026-03-21-asyncapi-contract-hardening/
+        └── 2026-03-21-infra-security-hardening/
 ```
 
 ### Available Commands
@@ -108,21 +115,25 @@ openspec/
 
 - **[platform-foundation](openspec/changes/archive/2026-03-20-platform-foundation/)** — Modular monolith backend, multi-tenant auth, shelter profiles, data import, observability, PWA, CI/CD, Terraform. 130/131 tasks. Archived 2026-03-20.
 - **[bed-availability](openspec/changes/archive/2026-03-20-bed-availability/)** — Real-time bed availability with append-only snapshots, ranked bed search, coordinator update flow, data freshness. 40/40 tasks. Archived 2026-03-20.
+- **[reservation-system](openspec/changes/archive/2026-03-20-reservation-system/)** — Soft-hold bed reservations with auto-expiry, availability integration, countdown UI. 44/44 tasks. Archived 2026-03-20.
+- **[asyncapi-contract-hardening](openspec/changes/archive/2026-03-21-asyncapi-contract-hardening/)** — DV security annotations (x-security), surge payload enrichment. 10/10 tasks. Archived 2026-03-21.
+- **[infra-security-hardening](openspec/changes/archive/2026-03-21-infra-security-hardening/)** — DynamoDB protection, OWASP CVE gate, Terraform security posture. 10/10 tasks. Archived 2026-03-21.
 
 ### Active Changes
 
-- **[reservation-system](openspec/changes/reservation-system/)** — Soft-hold bed reservations with auto-expiry, availability integration, countdown UI. 44/44 tasks complete. Pending archive.
-- **[e2e-test-automation](openspec/changes/e2e-test-automation/)** — Playwright (UI) + Karate (API) end-to-end test suite with CI pipeline. 42 tasks. Specced, ready for implementation.
+- **[e2e-test-automation](openspec/changes/e2e-test-automation/)** — Playwright (17 UI) + Karate (19 API) end-to-end test suite with CI pipeline. 42/42 tasks complete. Pending archive.
+- **[e2e-test-automation-hardening](openspec/changes/e2e-test-automation-hardening/)** — DV canary gate, reservation tests, offline queue, Gatling perf suite. 27 tasks. Specced, blocked on e2e-test-automation archive.
+- **[operational-monitoring](openspec/changes/operational-monitoring/)** — CloudWatch alarms (stale data, DV canary, temp/surge gap), ALB logging, runbook. 12 tasks. Specced.
 
 ### Planned Changes
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **surge-mode** | White Flag / emergency activation, CoC-admin triggered, broadcast to outreach workers | Not started |
-| **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Not started |
-| **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not started |
-| **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not started |
-| **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not started |
+| **surge-mode** | White Flag / emergency activation, CoC-admin triggered, broadcast to outreach workers | Not specced |
+| **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Not specced |
+| **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not specced |
+| **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not specced |
+| **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not specced |
 
 ### How to Contribute a Change
 
