@@ -33,6 +33,11 @@ The system SHALL provide a bed availability search endpoint at POST `/api/v1/que
 - **THEN** shelters with `dv_shelter = true` are excluded from results via row-level security
 - **AND** the excluded shelters are not visible in `total_count`
 
+#### Scenario: Search results include held bed count
+- **WHEN** an outreach worker sends POST `/api/v1/queries/beds` and a shelter has 5 beds available with 2 currently held
+- **THEN** the result for that shelter includes `bedsHeld: 2` alongside `bedsAvailable: 3` (which already accounts for holds via beds_on_hold)
+- **AND** the outreach worker can assess contention before initiating transport
+
 ### Requirement: bed-search-ranking
 The system SHALL rank bed search results to surface the most actionable placements first. Shelters with available beds appear before full shelters. Among shelters with equal availability status, those with fewer barriers (fewer true constraint flags) rank higher. Among shelters with equal barrier levels, those with more `beds_available` rank higher.
 

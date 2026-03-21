@@ -30,6 +30,12 @@ The system SHALL allow shelter coordinators to submit availability updates via P
 - **THEN** the system publishes an `availability.updated` event to the EventBus after cache invalidation
 - **AND** the event includes `shelter_id`, `tenant_id`, `population_type`, `beds_available`, `beds_available_previous`, `shelter_name`, `coc_id`, `snapshot_ts`, and `schema_version`
 
+#### Scenario: Reservation creates availability snapshot
+- **WHEN** a reservation is created, confirmed, cancelled, or expired
+- **THEN** the system creates a new availability snapshot via AvailabilityService.createSnapshot() with the adjusted `beds_on_hold` and `beds_occupied` values
+- **AND** the snapshot's `updated_by` field records the system actor (e.g., "reservation:create", "reservation:expire")
+- **AND** cache invalidation and event publishing follow the same synchronous flow as coordinator updates
+
 ### Requirement: availability-snapshot-immutability
 The system SHALL enforce append-only semantics on the `bed_availability` table. Snapshots are never updated or deleted through the application layer. Each new availability update creates a new row. The latest snapshot for a given shelter and population type is retrieved via `DISTINCT ON (shelter_id, population_type) ... ORDER BY snapshot_ts DESC`.
 
