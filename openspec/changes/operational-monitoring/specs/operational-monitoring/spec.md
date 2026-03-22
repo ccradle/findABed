@@ -1,55 +1,34 @@
 ## ADDED Requirements
 
 ### Requirement: stale-shelter-monitor
-The system SHALL detect shelters that have not published an availability snapshot in more than 8 hours and alert the onboarding team via CloudWatch alarm + SNS (non-paging, business hours).
+The system SHALL detect shelters that have not published an availability snapshot in more than 8 hours via an in-app @Scheduled task. The monitor publishes a `fabt.shelter.stale.count` Micrometer gauge and logs WARNING-level structured JSON for each stale shelter. No external dependencies required (no CloudWatch, no Lambda).
 
-#### Scenario: Stale shelter triggers alarm
-- **WHEN** an active shelter has no availability snapshot with snapshot_ts within the last 8 hours
-- **THEN** a custom CloudWatch metric `fabt/shelter_stale_count` increments
-- **AND** when the metric exceeds 0, the CloudWatch alarm transitions to ALARM state
-- **AND** an SNS notification is sent to the onboarding team
+#### Scenario: Stale shelter detected
+- **WHEN** the scheduled monitor runs and finds a shelter with no snapshot in 8+ hours
+- **THEN** the `fabt.shelter.stale.count` gauge reflects the count
+- **AND** a WARNING-level structured log entry is emitted with shelter ID and last update time
 
 ### Requirement: dv-canary-monitor
-The system SHALL run a post-deploy Lambda canary that asserts zero DV shelters appear in public query results. Failure triggers a PAGING CloudWatch alarm immediately.
+The system SHALL run a periodic DV canary check that queries the bed search API as a non-DV user and asserts zero DV shelters appear. The monitor publishes a `fabt.dv.canary.pass` Micrometer gauge (1=pass, 0=fail) and logs CRITICAL-level on failure.
 
 #### Scenario: DV canary passes
-- **WHEN** the Lambda queries POST `/api/v1/queries/beds` as a non-DV user
-- **THEN** no shelter with `dv_shelter = true` appears in results
-- **AND** the canary publishes `fabt/dv_canary_pass = 1` metric
+- **WHEN** the scheduled canary queries POST /api/v1/queries/beds as a non-DV user
+- **THEN** no DV shelter appears in results and `fabt.dv.canary.pass` is 1
 
 #### Scenario: DV canary fails
-- **WHEN** a DV shelter appears in public query results
-- **THEN** the canary publishes `fabt/dv_canary_pass = 0` metric
-- **AND** the CloudWatch alarm transitions to ALARM state immediately
-- **AND** a PAGING notification is sent via SNS
+- **WHEN** a DV shelter appears in the canary query results
+- **THEN** `fabt.dv.canary.pass` is 0 and a CRITICAL-level log is emitted
 
 ### Requirement: temperature-surge-gap-monitor
-The system SHALL detect when ambient temperature at the pilot city drops below 32F and no active surge event exists. Alert via SNS (non-paging, hourly check). This monitor is stubbed until `surge-mode` is implemented.
+The system SHALL detect when ambient temperature at the pilot city drops below 32°F and no active surge event exists. Uses NOAA API with Resilience4J circuit breaker. Logs WARNING on mismatch.
 
-#### Scenario: Cold weather without surge triggers alert
-- **WHEN** NOAA API reports temperature below 32F for the pilot city
-- **AND** no active surge event exists in the database
-- **THEN** an SNS notification is sent to the CoC admin contact
-
-#### Scenario: Cold weather with active surge does not trigger
-- **WHEN** NOAA API reports temperature below 32F
-- **AND** an active surge event exists
-- **THEN** no alert is sent
-
-### Requirement: alb-access-logging
-The ALB SHALL log all access requests to an S3 bucket with 90-day lifecycle retention.
-
-#### Scenario: ALB logs are written
-- **WHEN** any request reaches the ALB
-- **THEN** the request is logged to S3 with source IP, timestamp, path, status code
-
-#### Scenario: Old logs are expired
-- **WHEN** ALB log objects are older than 90 days
-- **THEN** the S3 lifecycle policy automatically deletes them
+#### Scenario: Cold weather without surge
+- **WHEN** NOAA reports temperature below 32°F and no active surge exists
+- **THEN** a WARNING-level log is emitted suggesting surge activation
 
 ### Requirement: operational-runbook
-An operational runbook (`docs/runbook.md`) SHALL document all three alert types: what they mean, how to investigate, and what action to take.
+An operational runbook (`docs/runbook.md`) SHALL document all monitor types, what they mean, how to investigate, and what action to take.
 
-#### Scenario: Runbook covers all alerts
-- **WHEN** an operator receives a stale-data, dv-canary, or temperature-surge alert
-- **THEN** the runbook provides step-by-step investigation and response procedures
+#### Scenario: Runbook covers all monitors
+- **WHEN** an operator sees a stale-data, dv-canary, or temperature-surge log entry
+- **THEN** the runbook provides investigation and response procedures
