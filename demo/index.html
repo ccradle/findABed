@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finding A Bed Tonight — Demo Walkthrough</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    header { background: linear-gradient(135deg, #0c1929 0%, #1a3a5c 50%, #0f2940 100%); padding: 48px 24px; text-align: center; border-bottom: 3px solid #1a56db; }
+    header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    header p { font-size: 16px; color: #94b8d8; max-width: 600px; margin: 0 auto; }
+    header .badge { display: inline-block; background: #1a56db; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-top: 12px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+    .card { background: #1e293b; border-radius: 12px; overflow: hidden; margin-bottom: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+    .card-number { background: #1a56db; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .card-title { font-size: 18px; font-weight: 700; }
+    .card-role { font-size: 12px; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 8px; margin-left: auto; }
+    .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
+    .card img { width: 100%; display: block; }
+    footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
+    footer a { color: #60a5fa; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .section-divider { text-align: center; padding: 24px 0 8px; font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; }
+    @media (max-width: 640px) {
+      header h1 { font-size: 24px; }
+      .card-title { font-size: 15px; }
+      .card-header { flex-wrap: wrap; }
+      .card-role { margin-left: 0; margin-top: 4px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Finding A Bed Tonight</h1>
+  <p>Open-source shelter bed availability platform for Continuums of Care. Real-time bed search, soft-hold reservations, DV privacy enforcement, and operational monitoring.</p>
+  <span class="badge">Demo Walkthrough</span>
+</header>
+
+<div class="container">
+
+  <div class="section-divider">Outreach Worker Experience</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">1</span>
+      <span class="card-title">Login</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Tenant-scoped login with email and password. Each Continuum of Care is an isolated tenant with its own shelters, users, and configuration.</div>
+    <img src="screenshots/01-login.png" alt="Login page">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">2</span>
+      <span class="card-title">Bed Search</span>
+      <span class="card-role">Outreach Worker</span>
+    </div>
+    <div class="card-caption">Outreach workers search for available beds by population type. Results are ranked by availability, barriers, and data freshness. DV shelters are filtered by Row Level Security.</div>
+    <img src="screenshots/02-outreach-search.png" alt="Outreach search page">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">3</span>
+      <span class="card-title">Search Results</span>
+      <span class="card-role">Outreach Worker</span>
+    </div>
+    <div class="card-caption">Bed search results show shelter name, availability by population type, data freshness indicators (green/yellow/red), and constraint filters (pets, wheelchair, sobriety).</div>
+    <img src="screenshots/03-bed-results.png" alt="Bed search results">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">4</span>
+      <span class="card-title">Reservation Hold</span>
+      <span class="card-role">Outreach Worker</span>
+    </div>
+    <div class="card-caption">Outreach workers can soft-hold a bed for up to 45 minutes (configurable per tenant). The hold prevents double-booking while the worker transports the client to the shelter.</div>
+    <img src="screenshots/04-reservation-hold.png" alt="Reservation hold">
+  </div>
+
+  <div class="section-divider">Coordinator Experience</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">5</span>
+      <span class="card-title">Coordinator Dashboard</span>
+      <span class="card-role">CoC Admin</span>
+    </div>
+    <div class="card-caption">Shelter coordinators update bed availability with a 3-tap flow. The dashboard shows all shelters with current occupancy, hold counts, and data age indicators.</div>
+    <img src="screenshots/05-coordinator-dashboard.png" alt="Coordinator dashboard">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">5b</span>
+      <span class="card-title">Availability Update</span>
+      <span class="card-role">Coordinator</span>
+    </div>
+    <div class="card-caption">Expanded shelter card showing the bed count update form. Coordinators adjust occupied and on-hold counts with +/- steppers per population type. Active holds from outreach workers are displayed. Changes create an append-only availability snapshot.</div>
+    <img src="screenshots/05b-coordinator-update.png" alt="Coordinator availability update">
+  </div>
+
+  <div class="section-divider">Administration</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">6</span>
+      <span class="card-title">User Management</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">Admins manage users with role-based access: Platform Admin, CoC Admin, Coordinator, Outreach Worker. DV access is a separate toggle for domestic violence shelter visibility.</div>
+    <img src="screenshots/06-admin-users.png" alt="Admin users tab">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">7</span>
+      <span class="card-title">Shelter Management</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">Shelter profiles with address, constraints, capacity by population type. Supports HSDS 3.0 import and 211 CSV import for bulk onboarding.</div>
+    <img src="screenshots/07-admin-shelters.png" alt="Admin shelters tab">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">8</span>
+      <span class="card-title">Surge Mode</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">White Flag emergency surge activation during extreme weather. Enables overflow beds, broadcasts to all shelters, and flags search results with surge status.</div>
+    <img src="screenshots/08-admin-surge.png" alt="Admin surge tab">
+  </div>
+
+  <div class="section-divider">Forms & Detail Views</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">10</span>
+      <span class="card-title">Create User Form</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">New user creation with email, display name, password, role selection (multi-select), and DV access toggle. Users are scoped to their tenant.</div>
+    <img src="screenshots/10-create-user.png" alt="Create user form">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">11</span>
+      <span class="card-title">Add Shelter Form</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">New shelter creation with name, address, phone, coordinates, constraints (pets, wheelchair, sobriety, ID, referral), and capacity by population type.</div>
+    <img src="screenshots/11-add-shelter.png" alt="Add shelter form">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">12</span>
+      <span class="card-title">Shelter Detail (Admin)</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">Detailed shelter view from the admin panel showing profile, constraints, capacity, and current availability status.</div>
+    <img src="screenshots/12-shelter-detail.png" alt="Shelter detail from admin">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">13</span>
+      <span class="card-title">Shelter Detail (Search)</span>
+      <span class="card-role">Outreach Worker</span>
+    </div>
+    <div class="card-caption">Shelter detail viewed from bed search results. Shows availability by population type, data freshness, and action buttons for holding a bed.</div>
+    <img src="screenshots/13-search-shelter-detail.png" alt="Shelter detail from search">
+  </div>
+
+  <div class="section-divider">Internationalization</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">14</span>
+      <span class="card-title">Spanish Language</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Full Spanish localization (react-intl). All UI labels, error messages, and navigation switch instantly via the language selector. Supports EN and ES out of the box.</div>
+    <img src="screenshots/14-spanish.png" alt="Spanish language view">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">9</span>
+      <span class="card-title">Observability Settings</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">Runtime configuration for metrics, tracing, and monitors. Live temperature display from NOAA with configurable surge activation threshold. Toggle Prometheus and OpenTelemetry tracing without restart.</div>
+    <img src="screenshots/09-admin-observability.png" alt="Admin observability tab">
+  </div>
+
+  <div class="section-divider">Observability Stack (Optional)</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">15</span>
+      <span class="card-title">Grafana Dashboard</span>
+      <span class="card-role">Operations</span>
+    </div>
+    <div class="card-caption">FABT Operations dashboard with 10 panels: bed search rate, latency, availability updates, reservation lifecycle, stale shelter count, DV canary status, surge active, temperature gap, webhook delivery, circuit breaker state.</div>
+    <img src="screenshots/15-grafana-dashboard.png" alt="Grafana FABT Operations dashboard">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">16</span>
+      <span class="card-title">Distributed Tracing</span>
+      <span class="card-role">Operations</span>
+    </div>
+    <div class="card-caption">Jaeger trace visualization showing OpenTelemetry spans for API requests. Traces include service name, operation, duration, and status. Enabled at runtime via the Observability tab.</div>
+    <img src="screenshots/16-jaeger-traces.png" alt="Jaeger traces">
+  </div>
+
+</div>
+
+<footer>
+  <p>Finding A Bed Tonight — Open-source shelter bed availability platform</p>
+  <p><a href="https://github.com/ccradle/finding-a-bed-tonight">github.com/ccradle/finding-a-bed-tonight</a> · <a href="https://github.com/ccradle/findABed">github.com/ccradle/findABed</a></p>
+  <p style="margin-top: 8px;">Screenshots captured via Playwright. Regenerate with <code>./demo/capture.sh</code></p>
+</footer>
+
+</body>
+</html>

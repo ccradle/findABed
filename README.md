@@ -4,6 +4,8 @@
 
 Open-source emergency shelter bed availability platform — project documentation, specifications, and planning artifacts.
 
+**[View the Demo Walkthrough](demo/index.html)** — 17 annotated screenshots covering login, bed search, reservations, coordinator dashboard, admin panel, observability, Grafana, and Jaeger. Opens offline in any browser — no server required. Regenerate with `./demo/capture.sh`.
+
 ---
 
 ## Problem Statement & Business Value
@@ -165,6 +167,10 @@ findABed/                                        # Docs repo root
 ├── finding-a-bed-tonight-proposal.docx          # Business case and solution overview
 ├── city-adoption-playbook.docx                  # Guide for cities adopting the platform
 ├── shelter-onboarding-workflow.docx             # 7-day shelter onboarding process
+├── demo/                                        # Offline demo walkthrough
+│   ├── index.html                               # Browsable walkthrough (open in any browser)
+│   ├── capture.sh                               # Regenerate screenshots via Playwright
+│   └── screenshots/                             # 11 captured views (login → Jaeger)
 ├── openspec/                                    # OpenSpec artifacts
 │   ├── config.yaml                              # OpenSpec configuration
 │   ├── specs/                                   # Main specs (synced from changes)
