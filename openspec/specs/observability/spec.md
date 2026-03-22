@@ -46,6 +46,15 @@ The system SHALL expose Micrometer metrics for operational monitoring.
 - **WHEN** a request is sent to GET `/actuator/prometheus`
 - **THEN** the system returns all metrics in Prometheus exposition format
 
+#### Scenario: Metrics endpoint requires authentication
+- **WHEN** an unauthenticated request is sent to GET `/actuator/prometheus` on the application port
+- **THEN** the system returns 401 Unauthorized (FABT handles DV shelter data — metrics must not be publicly exposed)
+
+#### Scenario: Management port allows unauthenticated scraping
+- **WHEN** `management.server.port` is configured (dev --observability mode)
+- **THEN** actuator endpoints on the management port are accessible without authentication
+- **AND** the application API on the main port remains fully secured
+
 ### Requirement: data-age-tracking
 The system SHALL track and expose the age of data to callers so that stale data is identifiable. Applies to shelter list, shelter detail, and bed availability query endpoints -- these are the responses where data freshness matters for outreach workers making real-time decisions. When availability snapshots exist, `data_age_seconds` is computed from `bed_availability.snapshot_ts` (the most recent snapshot for the shelter or population type), not from `shelter.updated_at`. The `shelter.updated_at` timestamp reflects profile edits (name, address, constraints), while `snapshot_ts` reflects the actual availability data freshness that outreach workers depend on.
 

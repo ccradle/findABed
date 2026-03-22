@@ -10,3 +10,11 @@ The system SHALL include example Grafana dashboards as provisioned JSON files in
 #### Scenario: Application works without Grafana
 - **WHEN** the stack is started normally without the observability profile
 - **THEN** the application functions normally with metrics available only via /actuator/prometheus
+
+### Requirement: grafana-volume-wiring
+The Grafana service in `docker-compose.yml` SHALL explicitly mount dashboard JSON files and provisioning configs into the container via volume mounts. Dashboard JSON files alone are insufficient — without volume wiring, dashboards silently fail to load (portfolio Lesson 10: payments-kafka-streams wiring gap).
+
+#### Scenario: Grafana loads provisioned dashboards via volume mounts
+- **WHEN** the observability profile is started
+- **THEN** Grafana auto-loads the FABT operations dashboard from the mounted provisioning directory
+- **AND** no manual dashboard import is required

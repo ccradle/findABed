@@ -129,13 +129,13 @@ openspec/
 
 ### Active Changes
 
-- **[operational-monitoring](openspec/changes/operational-monitoring/)** — CloudWatch alarms (stale data, DV canary, temp/surge gap), ALB logging, runbook. 12 tasks. Specced, ready for apply.
+- **[operational-monitoring](openspec/changes/operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Implemented, ready for archive.
 
 ### Planned Changes
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Not specced |
+| **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Specced (27 tasks) |
 | **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not specced |
 | **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not specced |
 | **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not specced |
