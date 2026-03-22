@@ -126,10 +126,11 @@ openspec/
 - **[e2e-test-automation](openspec/changes/archive/2026-03-21-e2e-test-automation/)** — Playwright UI + Karate API end-to-end test suite with CI pipeline. 42/42 tasks. Archived 2026-03-21.
 - **[e2e-test-automation-hardening](openspec/changes/archive/2026-03-21-e2e-test-automation-hardening/)** — RLS enforcement, DV canary gate, reservation E2E, offline queue, Gatling perf suite. 35/35 tasks. Archived 2026-03-21.
 - **[surge-mode](openspec/changes/archive/2026-03-21-surge-mode/)** — White Flag emergency activation, overflow capacity, surge broadcast, bed search integration. 34/34 tasks. Archived 2026-03-21.
+- **[operational-monitoring](openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Archived 2026-03-22.
 
 ### Active Changes
 
-- **[operational-monitoring](openspec/changes/operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Implemented, ready for archive.
+- **[oauth2-redirect-flow](openspec/changes/oauth2-redirect-flow/)** — Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration. 27 tasks. Specced, ready for apply.
 
 ### Planned Changes
 
