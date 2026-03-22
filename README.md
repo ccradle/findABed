@@ -76,27 +76,32 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 ```
 openspec/
 ├── config.yaml                          # OpenSpec configuration
-├── specs/                               # Main project specifications (synced from changes)
+├── specs/                               # Main project specifications (30+ capabilities)
 │   ├── auth-and-roles/
 │   ├── bed-availability-query/
 │   ├── bed-reservation/
 │   ├── reservation-expiry/
+│   ├── rls-enforcement/
+│   ├── surge-lifecycle/
+│   ├── surge-broadcast/
+│   ├── surge-overflow/
 │   ├── shelter-availability-update/
 │   ├── shelter-profile/
 │   ├── deployment-profiles/
 │   ├── observability/
 │   ├── webhook-subscriptions/
-│   └── ...
+│   └── ... (20+ more)
 └── changes/
-    ├── e2e-test-automation/             # Active (42/42 implemented, pending archive)
-    ├── e2e-test-automation-hardening/   # Active (specced, 27 tasks)
     ├── operational-monitoring/          # Active (specced, 12 tasks)
     └── archive/
         ├── 2026-03-20-platform-foundation/
         ├── 2026-03-20-bed-availability/
         ├── 2026-03-20-reservation-system/
         ├── 2026-03-21-asyncapi-contract-hardening/
-        └── 2026-03-21-infra-security-hardening/
+        ├── 2026-03-21-infra-security-hardening/
+        ├── 2026-03-21-e2e-test-automation/
+        ├── 2026-03-21-e2e-test-automation-hardening/
+        └── 2026-03-21-surge-mode/
 ```
 
 ### Available Commands
@@ -118,18 +123,18 @@ openspec/
 - **[reservation-system](openspec/changes/archive/2026-03-20-reservation-system/)** — Soft-hold bed reservations with auto-expiry, availability integration, countdown UI. 44/44 tasks. Archived 2026-03-20.
 - **[asyncapi-contract-hardening](openspec/changes/archive/2026-03-21-asyncapi-contract-hardening/)** — DV security annotations (x-security), surge payload enrichment. 10/10 tasks. Archived 2026-03-21.
 - **[infra-security-hardening](openspec/changes/archive/2026-03-21-infra-security-hardening/)** — DynamoDB protection, OWASP CVE gate, Terraform security posture. 10/10 tasks. Archived 2026-03-21.
+- **[e2e-test-automation](openspec/changes/archive/2026-03-21-e2e-test-automation/)** — Playwright UI + Karate API end-to-end test suite with CI pipeline. 42/42 tasks. Archived 2026-03-21.
+- **[e2e-test-automation-hardening](openspec/changes/archive/2026-03-21-e2e-test-automation-hardening/)** — RLS enforcement, DV canary gate, reservation E2E, offline queue, Gatling perf suite. 35/35 tasks. Archived 2026-03-21.
+- **[surge-mode](openspec/changes/archive/2026-03-21-surge-mode/)** — White Flag emergency activation, overflow capacity, surge broadcast, bed search integration. 34/34 tasks. Archived 2026-03-21.
 
 ### Active Changes
 
-- **[e2e-test-automation](openspec/changes/e2e-test-automation/)** — Playwright (17 UI) + Karate (19 API) end-to-end test suite with CI pipeline. 42/42 tasks complete. Pending archive.
-- **[e2e-test-automation-hardening](openspec/changes/e2e-test-automation-hardening/)** — DV canary gate, reservation tests, offline queue, Gatling perf suite. 27 tasks. Specced, blocked on e2e-test-automation archive.
-- **[operational-monitoring](openspec/changes/operational-monitoring/)** — CloudWatch alarms (stale data, DV canary, temp/surge gap), ALB logging, runbook. 12 tasks. Specced.
+- **[operational-monitoring](openspec/changes/operational-monitoring/)** — CloudWatch alarms (stale data, DV canary, temp/surge gap), ALB logging, runbook. 12 tasks. Specced, ready for apply.
 
 ### Planned Changes
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **surge-mode** | White Flag / emergency activation, CoC-admin triggered, broadcast to outreach workers | Not specced |
 | **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Not specced |
 | **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not specced |
 | **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not specced |
