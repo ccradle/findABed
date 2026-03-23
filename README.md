@@ -132,13 +132,12 @@ openspec/
 
 ### Active Changes
 
-- **[oauth2-redirect-flow](openspec/changes/oauth2-redirect-flow/)** — Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration. 27 tasks. Specced, ready for apply.
+- **[oauth2-redirect-flow](openspec/changes/oauth2-redirect-flow/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Implemented, ready for archive.
 
 ### Planned Changes
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **oauth2-redirect-flow** | Browser OAuth2 redirect/callback with Keycloak, dynamic provider registration | Specced (27 tasks) |
 | **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not specced |
 | **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not specced |
 | **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not specced |

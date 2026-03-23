@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Browser-based OAuth2 login via authorization code grant with PKCE. Dynamic per-tenant provider loading, closed registration (link-or-reject), branded SSO buttons on login page.
+
+## Requirements
 
 ### Requirement: oauth2-authorization-code-flow
 The system SHALL support browser-based OAuth2 login via the authorization code grant with PKCE. Tenant-specific provider configuration is loaded dynamically from the database. Supported providers: Google (OpenID Connect) and Microsoft Entra ID (OpenID Connect).
@@ -17,18 +21,20 @@ The system SHALL support browser-based OAuth2 login via the authorization code g
 - **WHEN** a user attempts OAuth2 login with a provider that is disabled or does not exist for the tenant
 - **THEN** the system returns an error and does not redirect to any IdP
 
-### Requirement: oauth2-auto-provisioning
-The system SHALL auto-provision users on their first OAuth2 login. If a user with the same email exists in the tenant, the OAuth2 identity is linked to the existing account. If no user exists, a new account is created with default role OUTREACH_WORKER and dvAccess=false.
+### Requirement: oauth2-closed-registration
+The system SHALL use a closed registration model for OAuth2 login. If a user with the same email exists in the tenant, the OAuth2 identity is linked to the existing account. If no user exists, the login is rejected with a clear error message directing the user to contact their CoC administrator. The system SHALL NOT auto-provision user accounts — this prevents unauthorized access to shelter data.
 
-#### Scenario: First-time OAuth2 login creates user
-- **WHEN** a user authenticates via Google for the first time and no account exists with their email
-- **THEN** the system creates a new user with role OUTREACH_WORKER, dvAccess=false, and links the Google subject ID
-- **AND** a FABT JWT is issued for the new user
-
-#### Scenario: OAuth2 login links to existing account
-- **WHEN** a user authenticates via Google and an account with their email already exists in the tenant
-- **THEN** the system links the Google subject ID to the existing account without creating a duplicate
+#### Scenario: First-time OAuth2 login with pre-provisioned account
+- **WHEN** a user authenticates via Google for the first time and an account with their email exists in the tenant
+- **THEN** the system links the Google subject ID to the existing account
 - **AND** the existing user's roles and dvAccess are preserved
+- **AND** a FABT JWT is issued
+
+#### Scenario: First-time OAuth2 login without account is rejected
+- **WHEN** a user authenticates via Google for the first time and no account exists with their email
+- **THEN** the system returns an error: "No account found for this email. Contact your CoC administrator to be added."
+- **AND** no user account is created
+- **AND** no user_oauth2_link record is created
 
 #### Scenario: Subsequent OAuth2 logins use existing link
 - **WHEN** a user authenticates via Google and a user_oauth2_link already exists
