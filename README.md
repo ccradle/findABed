@@ -4,7 +4,9 @@
 
 Open-source emergency shelter bed availability platform — project documentation, specifications, and planning artifacts.
 
-**[View the Demo Walkthrough](https://ccradle.github.io/findABed/demo/index.html)** — 17 annotated screenshots covering login, bed search, reservations, coordinator dashboard, admin panel, observability, Grafana, and Jaeger. Also works offline: clone the repo and open `demo/index.html`. Regenerate with `./demo/capture.sh`.
+**[View the Demo Walkthrough](https://ccradle.github.io/findABed/demo/index.html)** — 18 annotated screenshots covering login, bed search, reservations, coordinator dashboard, admin panel, observability, Grafana, and Jaeger. Also works offline: clone the repo and open `demo/index.html`. Regenerate with `./demo/capture.sh`.
+
+**[DV Opaque Referral Walkthrough](https://ccradle.github.io/findABed/demo/dvindex.html)** — 7 screenshots showing the VAWA-compliant privacy-preserving referral flow for domestic violence shelters.
 
 ---
 
