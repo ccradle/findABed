@@ -94,7 +94,7 @@ openspec/
 │   ├── webhook-subscriptions/
 │   └── ... (20+ more)
 └── changes/
-    ├── operational-monitoring/          # Active (specced, 12 tasks)
+    ├── bed-availability-calculation-hardening/  # Active (pending archive)
     └── archive/
         ├── 2026-03-20-platform-foundation/
         ├── 2026-03-20-bed-availability/
@@ -103,7 +103,8 @@ openspec/
         ├── 2026-03-21-infra-security-hardening/
         ├── 2026-03-21-e2e-test-automation/
         ├── 2026-03-21-e2e-test-automation-hardening/
-        └── 2026-03-21-surge-mode/
+        ├── 2026-03-21-surge-mode/
+        └── 2026-03-22-operational-monitoring/
 ```
 
 ### Available Commands
@@ -128,11 +129,13 @@ openspec/
 - **[e2e-test-automation](openspec/changes/archive/2026-03-21-e2e-test-automation/)** — Playwright UI + Karate API end-to-end test suite with CI pipeline. 42/42 tasks. Archived 2026-03-21.
 - **[e2e-test-automation-hardening](openspec/changes/archive/2026-03-21-e2e-test-automation-hardening/)** — RLS enforcement, DV canary gate, reservation E2E, offline queue, Gatling perf suite. 35/35 tasks. Archived 2026-03-21.
 - **[surge-mode](openspec/changes/archive/2026-03-21-surge-mode/)** — White Flag emergency activation, overflow capacity, surge broadcast, bed search integration. 34/34 tasks. Archived 2026-03-21.
-- **[operational-monitoring](openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Archived 2026-03-22.
+- **[operational-monitoring](openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Tagged v0.8.0. Archived 2026-03-22.
+- **[oauth2-redirect-flow](openspec/changes/archive/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Tagged v0.9.0. Archived 2026-03-22.
+- **[security-dependency-upgrade](openspec/changes/archive/)** — Spring Boot 3.4.4→3.4.13, springdoc 2.8.6→2.8.16, 16 CVEs resolved. 35/35 tasks. Tagged v0.9.1. Archived 2026-03-22.
 
 ### Active Changes
 
-- **[oauth2-redirect-flow](openspec/changes/oauth2-redirect-flow/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Implemented, ready for archive.
+- **[bed-availability-calculation-hardening](openspec/changes/bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 115/117 tasks. Implemented, pending tag + archive.
 
 ### Planned Changes
 
