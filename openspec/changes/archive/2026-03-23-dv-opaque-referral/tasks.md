@@ -65,7 +65,7 @@
 - [x] 7.4 `GET /api/v1/dv-referrals/pending?shelterId={id}`: lists PENDING tokens for coordinator screening
 - [x] 7.5 `PATCH /api/v1/dv-referrals/{id}/accept`: accepts token, returns shelter phone for warm handoff
 - [x] 7.6 `PATCH /api/v1/dv-referrals/{id}/reject`: rejects with reason via `RejectReferralRequest`
-- [ ] 7.7 `GET /api/v1/analytics/dv-referrals?from={date}&to={date}`: aggregate analytics — requires COC_ADMIN/PLATFORM_ADMIN. Returns counts from Micrometer/Prometheus counters, no PII.
+- [x] 7.7 `GET /api/v1/dv-referrals/analytics`: aggregate counts from Micrometer counters (requested/accepted/rejected/expired + avg response time). No PII.
 - [x] 7.8 Added `/api/v1/dv-referrals/**` to `SecurityConfig.java` as authenticated, fine-grained via @PreAuthorize
 - [x] 7.9 All endpoints have OpenAPI @Operation annotations emphasizing zero-PII design
 
@@ -92,7 +92,7 @@
 ## 9b. Grafana DV Referral Dashboard (D15)
 
 - [x] 9b.1 Added `fabt_dv_referral_response_seconds` Timer to `ReferralTokenService` — records duration from creation to accept/reject
-- [ ] 9b.2 Add `fabt_dv_referral_pending` Gauge to `ReferralTokenService` — backed by global count query (deferred to test phase)
+- [x] 9b.2 Added `fabt_dv_referral_pending` Gauge — backed by `countAllPending()` lambda, queried on each Prometheus scrape
 - [x] 9b.3 Created `grafana/dashboards/fabt-dv-referrals.json` — 6 panels: request rate, acceptance %, response time, rejection rate, expired rate, totals by status
 - [x] 9b.4 Dashboard auto-loads via existing `dashboard-provider.yaml` (loads all JSON from dashboards/)
 - [x] 9b.5 Updated runbook: DV referral dashboard section with panel descriptions, investigation guide for high expiry rate
@@ -109,7 +109,7 @@
 - [x] 10.7 tc_accepted_includesPhone_notAddress — warm handoff phone included, address excluded
 - [x] 10.8 Same as 10.7 — verified in both accept response and /mine list
 - [x] 10.9 tc_purge_hardDeletes — verify row count goes to 0 after purge
-- [ ] 10.10 Analytics endpoint test (deferred with task 7.7 — requires Prometheus integration)
+- [x] 10.10 tc_analytics_returnsAggregateCounts_noPII — verifies counts present, no PII fields
 - [x] 10.11 tc_coordinatorSeesOnlyAssignedShelters — pending list by shelterId
 - [x] 10.12 tc_expiredToken_cannotAccept — expired token returns 4xx on accept
 - [x] 10.13 tc_referralDoesNotAffectAvailability — beds_on_hold unchanged after referral create+accept
@@ -157,8 +157,8 @@
 - [x] 15.2 Playwright: 70 tests, 0 failures (7 DV referral tests with beforeAll reset)
 - [x] 15.3 Karate: 40 tests, 0 failures (4 DV referral scenarios with reset helper)
 - [x] 15.4 Gatling: 3 simulations, 0 KO, 100% under 800ms
-- [ ] 15.5 Commit all changes on `feature/dv-opaque-referral` branch
-- [ ] 15.6 Push branch, create PR to main
-- [ ] 15.7 Merge PR to main
-- [ ] 15.8 Delete feature branch
-- [ ] 15.9 Tag release (v0.10.0)
+- [x] 15.5 Committed: 38 files changed, 2801 insertions, 67 deletions
+- [x] 15.6 Pushed branch, created PR #6
+- [x] 15.7 Merged PR #6 to main (2026-03-23T21:20:19Z)
+- [x] 15.8 Deleted feature branch (local + origin)
+- [x] 15.9 Tagged v0.10.0, pushed to origin
