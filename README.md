@@ -96,7 +96,6 @@ openspec/
 │   ├── webhook-subscriptions/
 │   └── ... (20+ more)
 └── changes/
-    ├── bed-availability-calculation-hardening/  # Active (pending archive)
     └── archive/
         ├── 2026-03-20-platform-foundation/
         ├── 2026-03-20-bed-availability/
@@ -106,7 +105,9 @@ openspec/
         ├── 2026-03-21-e2e-test-automation/
         ├── 2026-03-21-e2e-test-automation-hardening/
         ├── 2026-03-21-surge-mode/
-        └── 2026-03-22-operational-monitoring/
+        ├── 2026-03-22-operational-monitoring/
+        ├── 2026-03-23-bed-availability-calculation-hardening/
+        └── 2026-03-23-dv-opaque-referral/
 ```
 
 ### Available Commands
@@ -134,16 +135,18 @@ openspec/
 - **[operational-monitoring](openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Tagged v0.8.0. Archived 2026-03-22.
 - **[oauth2-redirect-flow](openspec/changes/archive/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Tagged v0.9.0. Archived 2026-03-22.
 - **[security-dependency-upgrade](openspec/changes/archive/)** — Spring Boot 3.4.4→3.4.13, springdoc 2.8.6→2.8.16, 16 CVEs resolved. 35/35 tasks. Tagged v0.9.1. Archived 2026-03-22.
+- **[bed-availability-calculation-hardening](openspec/changes/archive/2026-03-23-bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 117/117 tasks. Tagged v0.9.2. Archived 2026-03-23.
+- **[dv-opaque-referral](openspec/changes/archive/2026-03-23-dv-opaque-referral/)** — VAWA-compliant zero-PII referral tokens, warm handoff, defense-in-depth RLS (SET ROLE + dvAccess check), DV Grafana dashboard, FVPSA address redaction. 114/114 tasks. Tagged v0.10.0. Archived 2026-03-23.
 
 ### Active Changes
 
-- **[bed-availability-calculation-hardening](openspec/changes/bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 115/117 tasks. Implemented, pending tag + archive.
+(none)
 
 ### Planned Changes
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **dv-opaque-referral** | Privacy-preserving DV shelter referral with human-in-the-loop confirmation | Not specced |
+| **dv-address-redaction** | Role-based address redaction in GET /shelters/{id} for outreach workers | Identified |
 | **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not specced |
 | **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not specced |
 
