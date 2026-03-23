@@ -42,13 +42,13 @@ An open-source platform that matches homeless individuals and families to availa
                              │ OpenSpec workflow drives implementation
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Code Repo (finding-a-bed-tonight)              │
+│                    Code Repo (finding-a-bed-tonight)             │
 │  Backend (Spring Boot) · Frontend (React PWA) · Infra (Terraform)│
 └────────────────────────────┬─────────────────────────────────────┘
                              │ Deploy
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                    Deployed Platform                              │
+│                    Deployed Platform                             │
 │  Lite (PostgreSQL only) · Standard (+Redis) · Full (+Kafka)      │
 └──────────────────────────────────────────────────────────────────┘
 ```
