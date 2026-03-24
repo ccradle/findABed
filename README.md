@@ -241,3 +241,5 @@ findABed/                                        # Docs repo root
 ## License
 
 [Apache License 2.0](finding-a-bed-tonight/LICENSE)
+
+> Finding A Bed Tonight is provided as-is, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions. This platform is not a guarantee of shelter availability. See the [Apache 2.0 License](finding-a-bed-tonight/LICENSE) for full warranty disclaimer and limitation of liability terms.
