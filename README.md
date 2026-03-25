@@ -110,7 +110,8 @@ openspec/
         ├── 2026-03-22-operational-monitoring/
         ├── 2026-03-23-bed-availability-calculation-hardening/
         ├── 2026-03-23-dv-opaque-referral/
-        └── 2026-03-24-dv-address-redaction/
+        ├── 2026-03-24-dv-address-redaction/
+        └── 2026-03-25-hmis-bridge/
 ```
 
 ### Available Commands
@@ -141,6 +142,7 @@ openspec/
 - **[bed-availability-calculation-hardening](openspec/changes/archive/2026-03-23-bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 117/117 tasks. Tagged v0.9.2. Archived 2026-03-23.
 - **[dv-opaque-referral](openspec/changes/archive/2026-03-23-dv-opaque-referral/)** — VAWA-compliant zero-PII referral tokens, warm handoff, defense-in-depth RLS (SET ROLE + dvAccess check), DV Grafana dashboard, FVPSA address redaction. 114/114 tasks. Tagged v0.10.0. Archived 2026-03-23.
 - **[dv-address-redaction](openspec/changes/archive/2026-03-24-dv-address-redaction/)** — Configurable tenant policy for DV shelter address visibility (ADMIN_AND_ASSIGNED/ADMIN_ONLY/ALL_DV_ACCESS/NONE), API-level redaction, secured policy change endpoint. 40/40 tasks. Tagged v0.10.1. Archived 2026-03-24.
+- **[hmis-bridge](openspec/changes/archive/2026-03-25-hmis-bridge/)** — Async push of bed inventory (HMIS Element 2.07) to vendors (Clarity/WellSky/ClientTrack), outbox pattern, DV aggregation, Admin UI export tab, Grafana dashboard. 85/85 tasks. Tagged v0.11.0. Archived 2026-03-25.
 
 ### Active Changes
 
@@ -150,7 +152,6 @@ openspec/
 
 | Change | Description | Status |
 |--------|-------------|--------|
-| **hmis-bridge** | Async push adapter to HMIS vendors, circuit breaker isolated | Not specced |
 | **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not specced |
 
 ### How to Contribute a Change
