@@ -8,6 +8,8 @@ Open-source emergency shelter bed availability platform — project documentatio
 
 **[DV Opaque Referral Walkthrough](https://ccradle.github.io/findABed/demo/dvindex.html)** — 7 screenshots showing the VAWA-compliant privacy-preserving referral flow for domestic violence shelters.
 
+**[HMIS Bridge Walkthrough](https://ccradle.github.io/findABed/demo/hmisindex.html)** — 4 screenshots showing async push of bed inventory to HMIS vendors with DV aggregation and Grafana monitoring.
+
 ---
 
 ## Problem Statement & Business Value

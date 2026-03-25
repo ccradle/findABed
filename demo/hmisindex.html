@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HMIS Bridge — Export Walkthrough</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    header { background: linear-gradient(135deg, #0c2d48 0%, #145374 50%, #1a6fa0 100%); padding: 48px 24px; text-align: center; border-bottom: 3px solid #2196f3; }
+    header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    header p { font-size: 16px; color: #90caf9; max-width: 700px; margin: 0 auto; }
+    header .badge { display: inline-block; background: #2196f3; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-top: 12px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+    .card { background: #1e293b; border-radius: 12px; overflow: hidden; margin-bottom: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+    .card-number { background: #2196f3; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .card-title { font-size: 18px; font-weight: 700; }
+    .card-role { font-size: 12px; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 8px; margin-left: auto; }
+    .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
+    .card img { width: 100%; display: block; }
+    .callout { background: #0d2137; border: 1px solid #1565c0; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; }
+    .callout h3 { color: #64b5f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .callout p { color: #90caf9; font-size: 14px; }
+    footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
+    footer a { color: #64b5f6; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .section-divider { text-align: center; padding: 24px 0 8px; font-size: 13px; font-weight: 600; color: #2196f3; text-transform: uppercase; letter-spacing: 0.1em; }
+    @media (max-width: 640px) {
+      header h1 { font-size: 24px; }
+      .card-title { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>HMIS Bridge</h1>
+  <p>Async push of bed inventory data to HMIS vendors. No client PII. DV shelters aggregated. Outbox pattern with retry and dead letter handling.</p>
+  <span class="badge">Export Walkthrough &middot; 4 Screenshots</span>
+</header>
+
+<div class="container">
+
+  <div class="callout">
+    <h3>No Client PII</h3>
+    <p>FABT pushes <strong>project-level bed inventory</strong> (HMIS Element 2.07) — beds total, beds occupied, population type, utilization rate. This is project descriptor data, not client-level PII. <strong>No client consent is required.</strong> DV shelter data is aggregated across all DV shelters before push — individual DV shelter occupancy is never sent.</p>
+  </div>
+
+  <div class="section-divider">Admin HMIS Export Tab</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">1</span>
+      <span class="card-title">HMIS Export Overview</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">The HMIS Export tab in the Admin panel shows export status (configured vendors, push schedule), a Push Now button for manual triggers, a data preview table with utilization percentages, and export history. DV shelters appear as a single aggregated row at the bottom — never individual shelter data.</div>
+    <img src="screenshots/hmis-01-export-tab.png" alt="HMIS Export tab overview">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">2</span>
+      <span class="card-title">DV Aggregation in Preview</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">The data preview supports filtering: All, Non-DV, or DV (Aggregated). When DV is selected, only the aggregated row appears — showing total DV beds and occupancy across all DV shelters without revealing individual shelter data. This prevents small-n inference that could identify survivors.</div>
+    <img src="screenshots/hmis-02-dv-aggregation.png" alt="DV aggregation filter">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">3</span>
+      <span class="card-title">Push Controls</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">The Push Now button triggers an immediate push to all enabled HMIS vendors. The export status section shows configured vendors with their type, enabled/disabled state, and push interval. Dead letter entries (failed pushes after 3 retries) are highlighted for manual retry.</div>
+    <img src="screenshots/hmis-03-push-controls.png" alt="Push controls and vendor status">
+  </div>
+
+  <div class="section-divider">Operational Monitoring (Optional)</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">4</span>
+      <span class="card-title">Grafana HMIS Bridge Dashboard</span>
+      <span class="card-role">Operations</span>
+    </div>
+    <div class="card-caption">The HMIS Bridge Grafana dashboard provides operational visibility: push rate per vendor, failure rate, push latency (p99), circuit breaker state, dead letter queue size, and total records pushed. Available only when the observability stack is active (--observability).</div>
+    <img src="screenshots/hmis-04-grafana-dashboard.png" alt="Grafana HMIS Bridge dashboard">
+  </div>
+
+  <div class="callout">
+    <h3>Vendor Adapters</h3>
+    <p>FABT supports multiple HMIS vendors per tenant via a strategy pattern: <strong>Bitfocus Clarity</strong> (REST API), <strong>WellSky</strong> (HMIS CSV), and <strong>Eccovia ClientTrack</strong> (REST API). The outbox pattern ensures pushes survive application restarts. Failed pushes retry 3 times, then move to a dead letter queue for manual intervention.</p>
+  </div>
+
+</div>
+
+<footer>
+  <p>Finding A Bed Tonight — HMIS Bridge</p>
+  <p><a href="index.html">Main Demo Walkthrough</a> &middot; <a href="dvindex.html">DV Opaque Referral Walkthrough</a> &middot; <a href="https://github.com/ccradle/finding-a-bed-tonight">github.com/ccradle/finding-a-bed-tonight</a></p>
+  <p style="margin-top: 8px;">Screenshots captured via Playwright. Regenerate with <code>npx playwright test tests/capture-hmis-screenshots.spec.ts</code></p>
+  <p style="margin-top: 12px; font-size: 11px; color: #64748b;">Finding A Bed Tonight is provided as-is under the Apache 2.0 License, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions.</p>
+</footer>
+
+</body>
+</html>
