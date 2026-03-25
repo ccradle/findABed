@@ -146,13 +146,11 @@ openspec/
 
 ### Active Changes
 
-(none)
+- **[coc-analytics](openspec/changes/coc-analytics/)** — Aggregate analytics dashboard, HIC/PIT exports, unmet demand tracking, Spring Batch job management, pre-aggregation, separate connection pools. 9 requirements, 36 scenarios, 115 tasks. Specced, ready for implementation.
 
 ### Planned Changes
 
-| Change | Description | Status |
-|--------|-------------|--------|
-| **coc-analytics** | Aggregate anonymized metrics, unmet demand reporting, HUD grant support | Not specced |
+(none — Phase 1 complete after coc-analytics)
 
 ### How to Contribute a Change
 
