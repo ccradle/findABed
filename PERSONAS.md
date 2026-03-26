@@ -126,7 +126,7 @@ How many taps? What does success look like?"
 2. What happens to active holds if the system goes down?
 3. Who do we call if something breaks at 2am?
 4. What if an outreach worker holds a bed but the client never shows?
-   (The 45-minute auto-expiry must actually work and she must be able to trust it)
+   (The 90-minute auto-expiry must actually work and she must be able to trust it)
 
 **Accessibility considerations:**
 - Desktop use: standard keyboard navigation must work
@@ -308,7 +308,7 @@ constraints that field outreach workers don't face.
 
 **What makes him different from Darius:**
 - Cannot install apps on hospital devices — needs browser-only PWA
-- 45-minute hold duration is insufficient — discharge takes 2-3 hours minimum
+- Default 90-minute hold may be insufficient — discharge takes 2-3 hours (configurable to 180-240 min via Admin UI)
 - Has HIPAA obligations that field workers don't
 - Client is present in the room, not in a parking lot
 

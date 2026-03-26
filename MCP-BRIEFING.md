@@ -72,8 +72,8 @@ find_available_beds(lat, lng, radius_miles, population_type, constraints[])
 update_bed_count(shelter_id, population_type, available_count)
   → UpdateConfirmation
 
-place_reservation(shelter_id, population_type, held_by, hold_duration_minutes)
-  → ReservationToken
+place_reservation(shelter_id, population_type, held_by)
+  → ReservationToken  // hold_duration_minutes read from tenant config (default 90, configurable via Admin UI)
 
 activate_surge(coc_id, bounding_box, reason)
   → SurgeEvent

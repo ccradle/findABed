@@ -145,7 +145,7 @@ prevent double-booking while an outreach worker transports a guest.
 | `population_type` | PopulationType | Which bed type is held |
 | `held_by` | string | Outreach worker identifier (non-PII — org + worker ID) |
 | `held_at` | ISO 8601 datetime | When hold was created |
-| `hold_expires_at` | ISO 8601 datetime | Auto-release time (default: 2 hours) |
+| `hold_expires_at` | ISO 8601 datetime | Auto-release time (default: 90 minutes, configurable per tenant) |
 | `status` | enum | `ACTIVE`, `CONFIRMED`, `CANCELLED`, `EXPIRED` |
 | `confirmation_notes` | string (optional) | Shelter staff can add intake notes |
 

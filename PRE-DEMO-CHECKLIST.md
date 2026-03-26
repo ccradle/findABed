@@ -173,13 +173,10 @@ broader adoption or replication.
 
 ### CODE / ARCHITECTURE
 
-- [ ] **Configure hold duration for hospital use case (2-3 hours)**
-  The default 45-minute hold is insufficient for hospital discharge workflows.
-  Hold duration is already configurable per tenant — this is a documentation
-  and onboarding task, not a code change. Add a hospital/institutional
-  deployment note to the tenant configuration documentation.
-  **Owner:** Engineering / Documentation
-  **Source:** Dr. James Whitfield (focus group)
+- [x] **Configure hold duration for hospital use case (2-3 hours)**
+  Default changed from 45 to 90 minutes (v0.13.1). Admin UI now exposes
+  hold duration configuration (5-480 min range). Hospital deployments can
+  set 180-240 minutes via Admin panel. Documentation updated across both repos.
 
 - [ ] **Verify app functions in locked-down hospital Chrome**
   Beyond the Playwright test (Tier 1), verify through manual testing on an
