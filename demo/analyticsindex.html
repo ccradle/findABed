@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoC Analytics — Dashboard Walkthrough</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    header { background: linear-gradient(135deg, #0c2d48 0%, #145374 50%, #1a6fa0 100%); padding: 48px 24px; text-align: center; border-bottom: 3px solid #2196f3; }
+    header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    header p { font-size: 16px; color: #90caf9; max-width: 700px; margin: 0 auto; }
+    header .badge { display: inline-block; background: #2196f3; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-top: 12px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+    .card { background: #1e293b; border-radius: 12px; overflow: hidden; margin-bottom: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+    .card-number { background: #2196f3; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .card-title { font-size: 18px; font-weight: 700; }
+    .card-role { font-size: 12px; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 8px; margin-left: auto; }
+    .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
+    .card img { width: 100%; display: block; }
+    .callout { background: #0d2137; border: 1px solid #1565c0; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; }
+    .callout h3 { color: #64b5f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .callout p { color: #90caf9; font-size: 14px; }
+    footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
+    footer a { color: #64b5f6; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .section-divider { text-align: center; padding: 24px 0 8px; font-size: 13px; font-weight: 600; color: #2196f3; text-transform: uppercase; letter-spacing: 0.1em; }
+    @media (max-width: 640px) {
+      header h1 { font-size: 24px; }
+      .card-title { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CoC Analytics Dashboard</h1>
+  <p>Aggregate analytics, HUD reporting, unmet demand tracking, and Spring Batch job management &mdash; all from the Admin panel.</p>
+  <span class="badge">v0.12.0 &mdash; Phase 1 Complete</span>
+</header>
+
+<div class="container">
+
+  <div class="callout">
+    <h3>What This Shows</h3>
+    <p>CoC administrators can analyze utilization trends, track unmet demand through zero-result bed searches, generate HIC/PIT exports for HUD, and manage Spring Batch jobs &mdash; all without client PII. DV shelter data is aggregated with small-cell suppression (minimum 3 shelters, 5 beds). Analytics queries run on a separate connection pool so OLTP bed search performance is never impacted.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-number">1</div>
+      <div class="card-title">Executive Summary</div>
+      <span class="card-role">COC_ADMIN</span>
+    </div>
+    <div class="card-caption">System utilization rate with RAG indicators (65-105% thresholds), total searches, zero-result searches (unmet demand signal), reservation conversion rate, and expiry rate.</div>
+    <img src="screenshots/analytics-01-executive-summary.png" alt="Analytics executive summary with utilization metrics">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-number">2</div>
+      <div class="card-title">Utilization Trends</div>
+      <span class="card-role">COC_ADMIN</span>
+    </div>
+    <div class="card-caption">Time-series chart showing daily utilization rates from pre-aggregated summary data. Powered by Recharts, lazy-loaded so outreach workers never download the ~200KB chart bundle.</div>
+    <img src="screenshots/analytics-02-utilization-trends.png" alt="Utilization trends line chart">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-number">3</div>
+      <div class="card-title">Demand Signals</div>
+      <span class="card-role">COC_ADMIN</span>
+    </div>
+    <div class="card-caption">Reservation conversion/expiry rates and zero-result search counts. Zero-result searches are the strongest unmet demand signal: "47 searches for SINGLE_ADULT beds with zero results last Tuesday night."</div>
+    <img src="screenshots/analytics-03-demand-signals.png" alt="Demand signals metrics">
+  </div>
+
+  <div class="section-divider">Spring Batch Job Management</div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-number">4</div>
+      <div class="card-title">Batch Jobs Management</div>
+      <span class="card-role">PLATFORM_ADMIN</span>
+    </div>
+    <div class="card-caption">View all batch jobs (daily aggregation, HMIS push, HIC/PIT export) with schedules, enable/disable toggle, execution history with step-level detail, and restart failed jobs. Cron schedules editable from the UI.</div>
+    <img src="screenshots/analytics-04-batch-jobs.png" alt="Batch jobs management panel">
+  </div>
+
+  <div class="section-divider">HUD Reporting</div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-number">5</div>
+      <div class="card-title">HIC/PIT Export</div>
+      <span class="card-role">COC_ADMIN</span>
+    </div>
+    <div class="card-caption">One-click generation of Housing Inventory Count and sheltered Point-in-Time count data in HUD-compatible CSV format. DV shelters aggregated with small-cell suppression per Design D18.</div>
+    <img src="screenshots/analytics-05-hic-pit-export.png" alt="HIC/PIT export section with download buttons">
+  </div>
+
+  <div class="section-divider">Operational Monitoring</div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-number">6</div>
+      <div class="card-title">Grafana CoC Analytics Dashboard</div>
+      <span class="card-role">OBSERVABILITY</span>
+    </div>
+    <div class="card-caption">Operational monitoring: system utilization gauge (65-105% thresholds), zero-result search rate, reservation conversion rate, bed capacity trend, demand vs capacity overlay, stale shelter count. Spring Batch job success/failure rate and duration trends. Only available when the observability stack is active.</div>
+    <img src="screenshots/analytics-06-grafana-dashboard.png" alt="Grafana CoC Analytics dashboard with 8 panels">
+  </div>
+
+  <div class="callout">
+    <h3>Privacy &amp; Compliance</h3>
+    <p>All analytics are aggregate &mdash; no client PII. DV shelter data uses dual-threshold suppression: aggregate is only shown when 3+ distinct DV shelters AND 5+ beds exist, preventing re-identification of individual shelters. Geographic view excludes DV shelters entirely. Analytics queries run on a separate HikariCP connection pool (3 connections, read-only, 30s timeout) so they can never starve OLTP bed search queries.</p>
+  </div>
+
+</div>
+
+<footer>
+  <p>Finding A Bed Tonight &mdash; Open-Source Emergency Shelter Platform</p>
+  <p style="margin-top: 8px">
+    <a href="index.html">Main Walkthrough</a> &middot;
+    <a href="dvindex.html">DV Referral Walkthrough</a> &middot;
+    <a href="hmisindex.html">HMIS Bridge Walkthrough</a> &middot;
+    <a href="https://github.com/ccradle/findABed">GitHub</a>
+  </p>
+  <p style="margin-top: 16px; font-size: 11px; color: #334155;">This software is provided as-is under the Apache License 2.0. It is designed to support VAWA/FVPSA compliance requirements but does not constitute legal compliance certification. Availability data is supplied by shelter operators and may not reflect current conditions.</p>
+</footer>
+
+</body>
+</html>

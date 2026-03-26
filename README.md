@@ -6,9 +6,11 @@ Open-source emergency shelter bed availability platform — project documentatio
 
 **[View the Demo Walkthrough](https://ccradle.github.io/findABed/demo/index.html)** — 18 annotated screenshots covering login, bed search, reservations, coordinator dashboard, admin panel, observability, Grafana, and Jaeger. Also works offline: clone the repo and open `demo/index.html`. Regenerate with `./demo/capture.sh`.
 
-**[DV Opaque Referral Walkthrough](https://ccradle.github.io/findABed/demo/dvindex.html)** — 7 screenshots showing the VAWA-compliant privacy-preserving referral flow for domestic violence shelters.
+**[DV Opaque Referral Walkthrough](https://ccradle.github.io/findABed/demo/dvindex.html)** — 7 screenshots showing the privacy-preserving referral flow for domestic violence shelters (designed to support VAWA/FVPSA requirements).
 
 **[HMIS Bridge Walkthrough](https://ccradle.github.io/findABed/demo/hmisindex.html)** — 4 screenshots showing async push of bed inventory to HMIS vendors with DV aggregation and Grafana monitoring.
+
+**[CoC Analytics Walkthrough](https://ccradle.github.io/findABed/demo/analyticsindex.html)** — 6 screenshots showing the analytics dashboard: executive summary, utilization trends, demand signals, batch job management, HIC/PIT export, Grafana CoC Analytics.
 
 ---
 
@@ -82,7 +84,7 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 ```
 openspec/
 ├── config.yaml                          # OpenSpec configuration
-├── specs/                               # Main project specifications (30+ capabilities)
+├── specs/                               # Main project specifications (41 capabilities)
 │   ├── auth-and-roles/
 │   ├── bed-availability-query/
 │   ├── bed-reservation/
@@ -137,20 +139,25 @@ openspec/
 - **[e2e-test-automation-hardening](openspec/changes/archive/2026-03-21-e2e-test-automation-hardening/)** — RLS enforcement, DV canary gate, reservation E2E, offline queue, Gatling perf suite. 35/35 tasks. Archived 2026-03-21.
 - **[surge-mode](openspec/changes/archive/2026-03-21-surge-mode/)** — White Flag emergency activation, overflow capacity, surge broadcast, bed search integration. 34/34 tasks. Archived 2026-03-21.
 - **[operational-monitoring](openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Tagged v0.8.0. Archived 2026-03-22.
-- **[oauth2-redirect-flow](openspec/changes/archive/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Tagged v0.9.0. Archived 2026-03-22.
-- **[security-dependency-upgrade](openspec/changes/archive/)** — Spring Boot 3.4.4→3.4.13, springdoc 2.8.6→2.8.16, 16 CVEs resolved. 35/35 tasks. Tagged v0.9.1. Archived 2026-03-22.
+- **[oauth2-redirect-flow](openspec/changes/archive/2026-03-22-oauth2-redirect-flow/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Tagged v0.9.0. Archived 2026-03-22.
+- **[offline-demo-capture](openspec/changes/archive/2026-03-22-offline-demo-capture/)** — Demo screenshot capture and walkthrough. Archived 2026-03-22.
+- **[security-dependency-upgrade](openspec/changes/archive/2026-03-24-security-dependency-upgrade/)** — Spring Boot 3.4.4→3.4.13, springdoc 2.8.6→2.8.16, 16 CVEs resolved. 35/35 tasks. Tagged v0.9.1. Archived 2026-03-24.
+- **[legal-language-corrections](openspec/changes/archive/2026-03-24-legal-language-corrections/)** — Qualify compliance claims, add disclaimers, consent reasoning, PII risk notes. 15/15 tasks. Archived 2026-03-24.
 - **[bed-availability-calculation-hardening](openspec/changes/archive/2026-03-23-bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 117/117 tasks. Tagged v0.9.2. Archived 2026-03-23.
-- **[dv-opaque-referral](openspec/changes/archive/2026-03-23-dv-opaque-referral/)** — VAWA-compliant zero-PII referral tokens, warm handoff, defense-in-depth RLS (SET ROLE + dvAccess check), DV Grafana dashboard, FVPSA address redaction. 114/114 tasks. Tagged v0.10.0. Archived 2026-03-23.
+- **[dv-opaque-referral](openspec/changes/archive/2026-03-23-dv-opaque-referral/)** — Zero-PII referral tokens (designed to support VAWA/FVPSA), warm handoff, defense-in-depth RLS (SET ROLE + dvAccess check), DV Grafana dashboard, address redaction. 114/114 tasks. Tagged v0.10.0. Archived 2026-03-23.
 - **[dv-address-redaction](openspec/changes/archive/2026-03-24-dv-address-redaction/)** — Configurable tenant policy for DV shelter address visibility (ADMIN_AND_ASSIGNED/ADMIN_ONLY/ALL_DV_ACCESS/NONE), API-level redaction, secured policy change endpoint. 40/40 tasks. Tagged v0.10.1. Archived 2026-03-24.
 - **[hmis-bridge](openspec/changes/archive/2026-03-25-hmis-bridge/)** — Async push of bed inventory (HMIS Element 2.07) to vendors (Clarity/WellSky/ClientTrack), outbox pattern, DV aggregation, Admin UI export tab, Grafana dashboard. 85/85 tasks. Tagged v0.11.0. Archived 2026-03-25.
+- **[coc-analytics](openspec/changes/archive/2026-03-25-coc-analytics/)** — Aggregate analytics dashboard, HIC/PIT exports, unmet demand tracking, Spring Batch job management, pre-aggregation, DV small-cell suppression (D18). 122/122 tasks. Tagged v0.12.0. Archived 2026-03-25.
+- **[demo-seed-data](openspec/changes/archive/2026-03-25-demo-seed-data/)** — Realistic 28-day activity data, exception logging hardening (22 catch blocks), bed search query optimization (Little's Law + V25 index). 43/43 tasks. Tagged v0.12.1. Archived 2026-03-25.
+- **[wcag-accessibility-audit](openspec/changes/archive/2026-03-26-wcag-accessibility-audit/)** — WCAG 2.1 AA: axe-core CI gate (zero violations), focus management, color independence, touch targets, ARIA remediation, session timeout warning (alertdialog), ACR document (VPAT 2.5), virtual screen reader tests, legal language review. 50/59 tasks. Tagged v0.13.0. Archived 2026-03-26.
 
 ### Active Changes
 
-- **[coc-analytics](openspec/changes/coc-analytics/)** — Aggregate analytics dashboard, HIC/PIT exports, unmet demand tracking, Spring Batch job management, pre-aggregation, separate connection pools. 9 requirements, 36 scenarios, 115 tasks. Specced, ready for implementation.
+(none)
 
 ### Planned Changes
 
-(none — Phase 1 complete after coc-analytics)
+(none — Phase 1 complete)
 
 ### How to Contribute a Change
 
@@ -176,15 +183,21 @@ findABed/                                        # Docs repo root
 ├── finding-a-bed-tonight-proposal.docx          # Business case and solution overview
 ├── city-adoption-playbook.docx                  # Guide for cities adopting the platform
 ├── shelter-onboarding-workflow.docx             # 7-day shelter onboarding process
-├── demo/                                        # Offline demo walkthrough
-│   ├── index.html                               # Browsable walkthrough (open in any browser)
+├── PERSONAS.md                                  # User and team personas for UX, QA, accessibility
+├── PRE-DEMO-CHECKLIST.md                        # Pre-demo gap tracking (tiered: blocking, important, future)
+├── demo/                                        # Offline demo walkthroughs
+│   ├── index.html                               # Main walkthrough (18 screenshots)
+│   ├── dvindex.html                             # DV opaque referral walkthrough (7 screenshots)
+│   ├── hmisindex.html                           # HMIS bridge walkthrough (4 screenshots)
+│   ├── analyticsindex.html                      # CoC analytics walkthrough (6 screenshots)
 │   ├── capture.sh                               # Regenerate screenshots via Playwright
-│   └── screenshots/                             # 11 captured views (login → Jaeger)
+│   └── screenshots/                             # 35 captured views across 4 walkthroughs
 ├── openspec/                                    # OpenSpec artifacts
 │   ├── config.yaml                              # OpenSpec configuration
-│   ├── specs/                                   # Main specs (synced from changes)
+│   ├── specs/                                   # Main specs (41 capabilities, synced from changes)
 │   └── changes/
-│       └── platform-foundation/                 # Active change (see OpenSpec section)
+│       ├── coc-analytics/                       # Active change (see OpenSpec section)
+│       └── archive/                             # 17 archived changes
 └── finding-a-bed-tonight/                       # Code monorepo (Git submodule)
 ```
 
@@ -235,6 +248,14 @@ findABed/                                        # Docs repo root
 **Coordinator** — Shelter staff responsible for updating bed counts and managing shelter profile.
 
 **Opaque Referral** — Privacy-preserving DV shelter referral that does not reveal the shelter's location or existence to unauthorized users.
+
+**HMIS (Homeless Management Information System)** — HUD-mandated database for tracking homeless services. FABT pushes bed inventory (Element 2.07) to HMIS vendors via the HMIS Bridge.
+
+**HIC (Housing Inventory Count)** — Annual HUD report of all beds and units dedicated to homeless populations in a CoC. FABT generates HIC CSV exports from bed availability snapshots.
+
+**SPM (System Performance Measures)** — Seven HUD-mandated metrics for CoC performance evaluation. FABT provides complementary project-level data (utilization, capacity, demand) but does not replicate client-level SPMs (which require HMIS enrollment data).
+
+**Spring Batch** — Framework for chunk-oriented job processing. Used in FABT for daily pre-aggregation, HMIS push, and HIC/PIT export with execution history, retry, and restart from failure.
 
 **MCP (Model Context Protocol)** — Open standard by Anthropic for AI agent integration. Platform is MCP-ready for Phase 2 natural language interface.
 
