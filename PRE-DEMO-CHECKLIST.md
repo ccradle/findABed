@@ -84,22 +84,14 @@ Teresa Nguyen (City Housing Official) personas.
   HikariCP pool, BRIN index, Grafana dashboard. 13 integration tests, 7
   Playwright, 19 Karate scenarios, Gatling mixed-load test.
 
-- [ ] **SPM methodology mapping before CoC Analytics begins**
-  HUD's System Performance Measures have specific rules about bed-nights,
-  project types, and date ranges. Write a mapping document (one day of work)
-  that maps each planned FABT CoC Analytics metric to its precise HUD SPM
-  definition. A custom aggregation that's close but not precisely aligned
-  creates a permanent discrepancy between FABT reports and HUD submissions.
-  **Owner:** Alex Chen (with Kenji Watanabe advisory input)
-  **Source:** Dr. Kenji Watanabe (focus group)
-  **Deliverable:** `docs/coc-analytics-spm-mapping.md` in code repo
+- [x] **SPM methodology mapping**
+  Completed: `docs/coc-analytics-spm-mapping.md`. FABT metrics complement
+  SPMs (system capacity vs individual outcomes). No conflict. AI-generated,
+  flagged for SME review.
 
-- [ ] **HMIS Data Standards version pinned in documentation**
-  HUD updates HMIS Data Standards annually. The HMIS Bridge implementation
-  must specify which version it targets (2024.1 or later). This must appear
-  in the HMIS Bridge documentation and be maintained with each HUD update.
-  **Owner:** Alex Chen
-  **Source:** Dr. Kenji Watanabe (focus group)
+- [x] **HMIS Data Standards version pinned in documentation**
+  Pinned to FY 2026 HMIS Data Standards (effective October 1, 2025) in
+  SPM mapping document. Element 2.07 alignment confirmed.
 
 ---
 
@@ -114,67 +106,40 @@ Teresa Nguyen (City Housing Official) personas.
 
 ### LEGAL / DOCUMENTATION
 
-- [ ] **Government adoption guide**
-  The document a city attorney needs before any formal adoption conversation.
-  Must cover: data ownership in self-hosted deployments, support model
-  (including the honest "best-effort" answer), procurement path for Apache 2.0
-  software, indemnification posture, and what happens to data on platform exit.
-  **Owner:** Casey Drummond
-  **Source:** Teresa Nguyen (focus group), Casey's deferred list
-  **Format:** Single document, plain English, city-attorney audience
-  **Note:** Can be written as one source with three audience-specific versions:
-  city attorney, CoC board, faith community board
+- [x] **Government adoption guide**
+  Completed: `docs/government-adoption-guide.md`. Covers data ownership,
+  Apache 2.0 procurement, security posture, support model, data portability,
+  DV liability, FAQ. AI-generated, flagged for legal review.
 
-- [ ] **Hospital privacy one-pager**
-  A one-page document for hospital privacy officers stating explicitly:
-  "No patient-identifying information is stored in this system." Lists what
-  is stored (household size, population type, urgency, worker callback number)
-  and what is never stored (name, DOB, SSN, address, medical information).
-  References the DV-OPAQUE-REFERRAL.md for full technical detail.
-  **Owner:** Casey Drummond
-  **Source:** Dr. James Whitfield (focus group)
+- [x] **Hospital privacy one-pager**
+  Completed: `docs/hospital-privacy-summary.md`. Zero PHI stored, no BAA
+  required, all 18 HIPAA identifiers listed as "Never stored", social worker
+  workflow described. AI-generated, flagged for privacy officer review.
 
-- [ ] **"What does free mean" plain-language document**
-  Written for faith community board members and volunteer shelter operators
-  who have never encountered open-source software. Explains: free to use the
-  software, the CoC or city pays for hosting (Lite tier: $15-30/month),
-  no per-seat licensing, no vendor lock-in, data stays with you.
-  **Owner:** Maria Torres (with Casey Drummond review)
-  **Source:** Reverend Alicia Monroe (focus group)
+- [x] **"What does free mean" plain-language document**
+  Completed: `docs/what-does-free-mean.md`. $15-30/month breakdown, Netflix
+  comparison, partial participation, seasonal shelter FAQ. AI-generated,
+  flagged for project team review.
 
-- [ ] **Support model description**
-  The honest answer to "who do you call at 2am?" Frames the current reality
-  (open-source, best-effort, GitHub issues) and the path to something more
-  formal for cities that need an SLA. This is a trust-building document,
-  not a liability document. Honesty is better than silence here.
-  **Owner:** Maria Torres + Casey Drummond
-  **Source:** Sandra Kim, Teresa Nguyen, Reverend Monroe (focus group)
+- [x] **Support model description**
+  Completed: `docs/support-model.md`. Honest "best-effort" answer, path to
+  SLA via systems integrator, comparison table (PostgreSQL, Metabase, Signal,
+  CKAN). AI-generated, flagged for project team review.
 
-- [ ] **Theory of change — measure or qualify the 2hr→20min claim**
-  "Reduce time from crisis to placement from 2 hours to 20 minutes" is the
-  project's headline metric. It is a grant claim and a demo claim. Has it
-  been measured, even in a simulated environment? If not, it must be qualified:
-  "estimated based on [methodology]" or "target outcome for pilot measurement."
-  Funders (Priya Anand) will ask. City officials (Teresa Nguyen) will ask.
-  **Owner:** Maria Torres
-  **Source:** Priya Anand (focus group)
-  **Action:** Either time a simulated placement end-to-end, or add qualifying
-  language to the README and proposal documents
+- [x] **Theory of change — qualify the 2hr→20min claim**
+  Completed: `docs/theory-of-change.md`. Claim qualified as "target outcome
+  for pilot measurement" with workflow analysis table. Recommended grant
+  language provided. AI-generated, flagged for project team review.
 
-- [ ] **Sustainability narrative**
-  A paragraph or section in project documentation addressing: what keeps this
-  project alive in year 3? Options to address: fiscal sponsor, nonprofit host,
-  consortium of CoCs sharing maintenance costs, city-funded deployment.
-  Required before any foundation grant conversation.
-  **Owner:** Maria Torres + Priya Anand (advisory)
-  **Source:** Priya Anand (focus group)
+- [x] **Sustainability narrative**
+  Completed: `docs/sustainability-narrative.md`. 4-stage path: community →
+  fiscal sponsor → shared consortium → institutional host. Funding
+  opportunities listed. AI-generated, flagged for advisor review.
 
-- [ ] **Partial participation guide**
-  Documentation for shelter operators who want to use only the availability
-  update feature — no reservations, no DV referrals, no surge. Covers: how to
-  configure a minimal deployment, what features can be disabled or hidden,
-  and how a volunteer-run seasonal shelter participates without committing
-  to the full platform. Reverend Monroe's use case.
+- [x] **Partial participation guide**
+  Completed: `docs/partial-participation-guide.md`. Level 1/2/3
+  participation, seasonal shelter FAQ, 30-second update workflow.
+  AI-generated, flagged for project team review.
   **Owner:** Maria Torres
   **Source:** Reverend Alicia Monroe (focus group)
 
@@ -385,10 +350,10 @@ Move items here when completed — do not delete them.*
 | Tier | Total | Open | Closed |
 |---|---|---|---|
 | Tier 1 — Blocking | 5 | 1 | 4 |
-| Tier 2 — Important | 11 | 8 | 3 |
+| Tier 2 — Important | 11 | 2 | 9 |
 | Tier 3 — Future | 10 | 10 | 0 |
 | Closed | 12 | — | 12 |
-| **Total** | **38** | **19** | **19** |
+| **Total** | **38** | **13** | **25** |
 
 ---
 
