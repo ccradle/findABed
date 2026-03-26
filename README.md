@@ -150,6 +150,7 @@ openspec/
 - **[coc-analytics](openspec/changes/archive/2026-03-25-coc-analytics/)** — Aggregate analytics dashboard, HIC/PIT exports, unmet demand tracking, Spring Batch job management, pre-aggregation, DV small-cell suppression (D18). 122/122 tasks. Tagged v0.12.0. Archived 2026-03-25.
 - **[demo-seed-data](openspec/changes/archive/2026-03-25-demo-seed-data/)** — Realistic 28-day activity data, exception logging hardening (22 catch blocks), bed search query optimization (Little's Law + V25 index). 43/43 tasks. Tagged v0.12.1. Archived 2026-03-25.
 - **[wcag-accessibility-audit](openspec/changes/archive/2026-03-26-wcag-accessibility-audit/)** — WCAG 2.1 AA: axe-core CI gate (zero violations), focus management, color independence, touch targets, ARIA remediation, session timeout warning (alertdialog), ACR document (VPAT 2.5), virtual screen reader tests, legal language review. 50/59 tasks. Tagged v0.13.0. Archived 2026-03-26.
+- **[hold-duration-admin-config](openspec/changes/archive/2026-03-26-hold-duration-admin-config/)** — Admin UI for hold duration configuration (default 45→90 min), tenant config GET+merge+PUT, Swagger 401 fix (web.ignoring), observability null-safety, clean-room validation. 96/97 tasks. Tagged v0.13.1–v0.13.3. Archived 2026-03-26.
 
 ### Active Changes
 
@@ -196,8 +197,7 @@ findABed/                                        # Docs repo root
 │   ├── config.yaml                              # OpenSpec configuration
 │   ├── specs/                                   # Main specs (41 capabilities, synced from changes)
 │   └── changes/
-│       ├── coc-analytics/                       # Active change (see OpenSpec section)
-│       └── archive/                             # 17 archived changes
+│       └── archive/                             # 21 archived changes
 └── finding-a-bed-tonight/                       # Code monorepo (Git submodule)
 ```
 
