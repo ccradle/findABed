@@ -26,7 +26,7 @@ The system SHALL automatically expire reservations that exceed their hold durati
 - **AND** only one availability snapshot is created
 
 ### Requirement: reservation-hold-duration-config
-The system SHALL allow tenant-level configuration of hold duration. The default hold duration is 45 minutes. CoC admins can adjust this via tenant configuration.
+The system SHALL allow tenant-level configuration of hold duration. The default hold duration is 90 minutes. CoC admins can adjust this via tenant configuration via the Admin UI (range: 5–480 minutes).
 
 #### Scenario: Tenant configures hold duration
 - **WHEN** a CoC admin sets the hold duration to 60 minutes in tenant config
@@ -35,4 +35,4 @@ The system SHALL allow tenant-level configuration of hold duration. The default 
 
 #### Scenario: Default hold duration used when not configured
 - **WHEN** a tenant has no hold duration configuration
-- **THEN** new reservations use the default hold duration of 45 minutes
+- **THEN** new reservations use the default hold duration of 90 minutes

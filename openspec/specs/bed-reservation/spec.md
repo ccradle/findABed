@@ -5,7 +5,7 @@ Soft-hold bed reservation lifecycle. Prevents double-booking during outreach tra
 ## Requirements
 
 ### Requirement: reservation-lifecycle
-The system SHALL allow outreach workers to create, confirm, and cancel soft-hold bed reservations. A reservation temporarily claims one bed for a specific population type at a shelter. The reservation lifecycle is: HELD → CONFIRMED (client arrived), CANCELLED (worker released), or EXPIRED (timed out). Creating a reservation increments `beds_on_hold` via a new availability snapshot. Confirming converts to `beds_occupied`. Cancelling or expiring decrements `beds_on_hold`. Only the reservation creator (or COC_ADMIN/PLATFORM_ADMIN) can confirm or cancel. Hold duration is configurable per tenant (default 45 minutes).
+The system SHALL allow outreach workers to create, confirm, and cancel soft-hold bed reservations. A reservation temporarily claims one bed for a specific population type at a shelter. The reservation lifecycle is: HELD → CONFIRMED (client arrived), CANCELLED (worker released), or EXPIRED (timed out). Creating a reservation increments `beds_on_hold` via a new availability snapshot. Confirming converts to `beds_occupied`. Cancelling or expiring decrements `beds_on_hold`. Only the reservation creator (or COC_ADMIN/PLATFORM_ADMIN) can confirm or cancel. Hold duration is configurable per tenant (default 90 minutes).
 
 #### Scenario: Create a reservation
 - **WHEN** an outreach worker sends POST `/api/v1/reservations` with `{"shelterId": "<uuid>", "populationType": "SINGLE_ADULT", "notes": "Family en route, ETA 20 min"}`
