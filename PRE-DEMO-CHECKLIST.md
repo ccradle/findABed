@@ -22,62 +22,40 @@ anyone at Oak City Cares, Street Reach, or Wake County.
 
 ### CODE / ARCHITECTURE
 
-- [ ] **HMIS small-cell suppression in DV aggregation**
-  `HmisTransformer.java` aggregates individual DV shelter occupancy into a
-  combined count before pushing to HMIS. If a CoC has only one DV shelter,
-  the aggregate count *is* the identifying information. HUD's small-cell
-  suppression guidance requires a minimum threshold (n≥3 or n≥5). This is a
-  compliance defect, not a feature request.
-  **Owner:** Alex Chen / Engineering
-  **Source:** Dr. Kenji Watanabe (focus group), Casey Drummond (legal review)
-  **OpenSpec change:** `hmis-dv-cell-suppression` (new, not yet created)
+- [x] **HMIS small-cell suppression in DV aggregation**
+  Fixed in v0.12.0 (Design D18). Dual threshold: suppress DV aggregate when
+  fewer than 3 distinct DV shelters OR fewer than 5 beds. Applied to
+  HmisTransformer, AnalyticsService, HIC/PIT exports. 5 integration tests.
 
-- [ ] **Verify `security-remediation-2026-03-20.md` is deleted**
-  File appears in the root-level repo listing across multiple reads despite
-  Jordan confirming deletion at commit `297fb21`. Verify it is actually gone
-  and not reintroduced by a later commit.
-  **Owner:** Jordan Reyes
-  **Source:** Jordan's ACTION-1, flagged in multiple status checks
-  **Action:** `git log --all --full-history -- security-remediation-2026-03-20.md`
+- [x] **Verify `security-remediation-2026-03-20.md` is deleted**
+  Confirmed via `git log --all --full-history` — file does not exist in any
+  branch or commit. Closed 2026-03-25.
 
 ---
 
 ### TESTING
 
-- [ ] **WCAG 2.1 AA accessibility audit**
-  No systematic accessibility audit has been conducted on the frontend.
-  City procurement (Teresa Nguyen) requires WCAG 2.1 AA compliance.
-  Darius uses the app one-handed in low light. Sandra uses it on interrupted
-  desktop sessions. An audit using the running application is required.
-  **Owner:** Alex Chen + Riley Cho (Claude Code with running instance)
-  **Source:** Teresa Nguyen (focus group), Alex Chen (team review)
-  **Approach:** Run axe-core / Playwright accessibility snapshots against
-  live dev stack. Produce findings report with persona-mapped severity ratings
-  per the guide in PERSONAS.md. Fix Critical and High findings before demo.
+- [x] **WCAG 2.1 AA accessibility audit**
+  Completed in v0.13.0. axe-core CI gate (8 pages, zero violations), focus
+  management, color independence, touch targets (44px), ARIA remediation,
+  session timeout warning (alertdialog), self-assessed ACR (VPAT 2.5 WCAG),
+  virtual screen reader tests (6 automated). See docs/WCAG-ACR.md.
 
-- [ ] **Hospital PWA test — service worker blocked by IT policy**
-  Current offline behavior tests use `page.context().setOffline()` which
-  tests the service worker path. A separate test is needed for the scenario
-  where service worker registration is blocked by hospital IT policy
-  (Dr. James Whitfield's use case). Does the app function — at minimum for
-  bed search and hold — when the service worker cannot register?
-  **Owner:** Riley Cho
-  **Source:** Dr. James Whitfield (focus group)
-  **Karate/Playwright:** New test in `offline-behavior.spec.ts`
+- [x] **Hospital PWA test — service worker blocked by IT policy**
+  Playwright test added in `offline-behavior.spec.ts`. Unregisters all SWs,
+  blocks future registration, then verifies search results load, filters
+  work, and hold bed functions. Core flow works without service worker.
+  Closed 2026-03-26.
 
 ---
 
 ### LEGAL / DOCUMENTATION
 
-- [ ] **Legal language corrections applied and live**
-  Seven corrections identified by Casey Drummond in the `legal-language-corrections`
-  OpenSpec change. Commits `e61e41d` (findABed) and `04c72cc` (finding-a-bed-tonight)
-  confirmed applied. **Verify these are live on the GitHub Pages site** — earlier
-  reads showed the Pages site serving cached pre-correction content.
-  **Owner:** Corey Cradle
-  **Source:** Casey Drummond (legal review)
-  **Verify:** Load `ccradle.github.io/findABed/demo/dvindex.html` and confirm
-  "Designed to support VAWA/FVPSA compliance requirements" (not "VAWA/FVPSA compliant")
+- [x] **Legal language corrections applied and live**
+  Verified live on GitHub Pages 2026-03-26. dvindex.html shows "Designed to
+  support VAWA/FVPSA compliance requirements" (correct). As-is disclaimer
+  present in footer. Additional legal language review in v0.13.0 found and
+  fixed 6 more "compliant" instances across both READMEs.
 
 - [ ] **Sit with a person of lived experience before first demo**
   Before any external demo — even an informal outreach worker conversation —
@@ -100,16 +78,11 @@ Teresa Nguyen (City Housing Official) personas.
 
 ### CODE / ARCHITECTURE
 
-- [ ] **CoC Analytics implementation (115 tasks)**
-  The last Phase 1 feature. Marcus Okafor's hard question — "Can I generate
-  HUD-compliant HIC and PIT reports right now?" — cannot be answered yes
-  until CoC Analytics ships. Do not have the formal CoC adoption conversation
-  without this complete.
-  **Owner:** Engineering
-  **Source:** Marcus Okafor (focus group), findABed README (active change)
-  **OpenSpec:** `coc-analytics` — specced, 115 tasks, ready for implementation
-  **Note:** Before starting implementation, complete the SPM methodology mapping
-  task below.
+- [x] **CoC Analytics implementation (122 tasks)**
+  Completed in v0.12.0. Analytics dashboard, Spring Batch jobs, HIC/PIT CSV
+  export, unmet demand tracking, DV small-cell suppression (D18), separate
+  HikariCP pool, BRIN index, Grafana dashboard. 13 integration tests, 7
+  Playwright, 19 Karate scenarios, Gatling mixed-load test.
 
 - [ ] **SPM methodology mapping before CoC Analytics begins**
   HUD's System Performance Measures have specific rules about bed-nights,
@@ -132,12 +105,10 @@ Teresa Nguyen (City Housing Official) personas.
 
 ### TESTING
 
-- [ ] **CoC Analytics test coverage**
-  When CoC Analytics ships, it needs full integration test coverage including
-  HIC/PIT export format validation against HUD field definitions, and
-  unmet demand tracking accuracy tests.
-  **Owner:** Riley Cho
-  **Source:** Standard QA practice + Kenji Watanabe's SPM alignment concern
+- [x] **CoC Analytics test coverage**
+  Shipped with v0.12.0: 13 backend integration tests, 7 Playwright UI tests,
+  19 Karate API scenarios, Gatling mixed-load (bed search p99 152ms under
+  concurrent analytics). HIC/PIT CSV format validated. DV suppression tested.
 
 ---
 
@@ -388,17 +359,36 @@ Move items here when completed — do not delete them.*
   82 Playwright, 54 Karate, 3 Gatling. DV canary blocking CI gate.
   RLS enforcement tests. Worker fixture. Offline queue tests. v0.5.0/v0.6.0.
 
+- [x] **HMIS small-cell suppression (D18)**
+  Dual threshold: ≥3 shelters AND ≥5 beds. Applied to HmisTransformer,
+  AnalyticsService, HIC/PIT exports. 5 integration tests. v0.12.0.
+
+- [x] **security-remediation-2026-03-20.md deleted**
+  Confirmed via git log --all --full-history. File does not exist.
+
+- [x] **WCAG 2.1 AA accessibility audit**
+  axe-core CI gate (8 pages, zero violations), ARIA, focus management,
+  color independence, session timeout, ACR document (VPAT 2.5), virtual
+  screen reader tests. 113 Playwright tests. v0.13.0.
+
+- [x] **CoC Analytics**
+  Dashboard, Spring Batch, HIC/PIT export, demand tracking, DV suppression.
+  122 tasks, 13 integration + 7 Playwright + 19 Karate. v0.12.0.
+
+- [x] **CoC Analytics test coverage**
+  Full coverage shipped with v0.12.0. Gatling mixed-load verified.
+
 ---
 
 ## Summary Counts
 
 | Tier | Total | Open | Closed |
 |---|---|---|---|
-| Tier 1 — Blocking | 5 | 5 | 0 |
-| Tier 2 — Important | 11 | 11 | 0 |
+| Tier 1 — Blocking | 5 | 1 | 4 |
+| Tier 2 — Important | 11 | 8 | 3 |
 | Tier 3 — Future | 10 | 10 | 0 |
 | Closed | 12 | — | 12 |
-| **Total** | **38** | **26** | **12** |
+| **Total** | **38** | **19** | **19** |
 
 ---
 
