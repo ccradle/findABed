@@ -10,8 +10,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- Shutdown reliability improvements for development environments
-- Fixed stale Docker configuration after Java 25 migration
+*(Nothing yet)*
+
+---
+
+## [v0.14.1] — 2026-03-27 — Reliability + Release Notes
+
+### Added
+- Release notes and changelog for all versions (v0.1.0 through v0.14.0)
+- README now has a table of contents and a section describing all five Grafana dashboards
+- Policy documents (government adoption, hospital privacy, etc.) moved to a more prominent location in README
+
+### Fixed
+- Development environment starts and stops reliably — shutdown now completes in ~1 second instead of hanging
+- Docker configuration updated for Java 25
 
 ---
 
