@@ -90,36 +90,46 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 ```
 openspec/
 ├── config.yaml                          # OpenSpec configuration
-├── specs/                               # Main project specifications (49 capabilities)
-│   ├── auth-and-roles/
-│   ├── bed-availability-query/
-│   ├── bed-reservation/
-│   ├── reservation-expiry/
-│   ├── rls-enforcement/
-│   ├── surge-lifecycle/
-│   ├── surge-broadcast/
-│   ├── surge-overflow/
-│   ├── shelter-availability-update/
-│   ├── shelter-profile/
-│   ├── deployment-profiles/
-│   ├── observability/
-│   ├── webhook-subscriptions/
-│   └── ... (20+ more)
+├── specs/                               # Main project specifications (56 capabilities)
+│   ├── auth-and-roles/                  # JWT auth, OAuth2 SSO, RBAC, API keys, DV access control
+│   ├── auth-rate-limiting/              # bucket4j brute force protection on login endpoints
+│   ├── bed-availability-query/          # Real-time bed search with ranked results
+│   ├── bed-reservation/                 # Soft-hold reservations with auto-expiry
+│   ├── cross-tenant-isolation-test/     # Concurrent virtual thread multi-tenant verification
+│   ├── jwt-startup-validation/          # @PostConstruct secret strength assertion
+│   ├── rls-enforcement/                 # PostgreSQL RLS + connection pool dvAccess reset
+│   ├── security-headers/                # X-Content-Type-Options, X-Frame-Options, Referrer-Policy
+│   ├── security-scan-baseline/          # OWASP ZAP scan documentation
+│   ├── typography-system/               # Global CSS, design tokens, system font stack
+│   ├── typography-playwright-tests/     # Font consistency + WCAG 1.4.12 text spacing tests
+│   ├── wcag-accessibility-compliance/   # WCAG 2.1 AA: axe-core, focus, color, touch targets, text spacing
+│   └── ... (44 more capabilities)       # Shelters, surge, HMIS, analytics, observability, etc.
 └── changes/
-    └── archive/
-        ├── 2026-03-20-platform-foundation/
-        ├── 2026-03-20-bed-availability/
-        ├── 2026-03-20-reservation-system/
-        ├── 2026-03-21-asyncapi-contract-hardening/
-        ├── 2026-03-21-infra-security-hardening/
-        ├── 2026-03-21-e2e-test-automation/
-        ├── 2026-03-21-e2e-test-automation-hardening/
-        ├── 2026-03-21-surge-mode/
-        ├── 2026-03-22-operational-monitoring/
-        ├── 2026-03-23-bed-availability-calculation-hardening/
-        ├── 2026-03-23-dv-opaque-referral/
-        ├── 2026-03-24-dv-address-redaction/
-        └── 2026-03-25-hmis-bridge/
+    ├── mcp-agent-integration/           # Active: MCP server + reference agent (specced, not yet implemented)
+    └── archive/                         # 23 completed changes
+        ├── 2026-03-20-platform-foundation/           # v0.1.0 — backend, auth, shelter, PWA
+        ├── 2026-03-20-bed-availability/              # v0.2.0 — snapshots, search, freshness
+        ├── 2026-03-20-reservation-system/            # v0.3.0 — holds, countdown, auto-expiry
+        ├── 2026-03-21-asyncapi-contract-hardening/   # DV security annotations
+        ├── 2026-03-21-infra-security-hardening/      # OWASP gate, Terraform posture
+        ├── 2026-03-21-e2e-test-automation/           # v0.5.0 — Playwright, Karate, Gatling
+        ├── 2026-03-21-e2e-test-automation-hardening/ # v0.6.0 — RLS enforcement, DV canary
+        ├── 2026-03-21-surge-mode/                    # v0.7.0 — White Flag, overflow capacity
+        ├── 2026-03-22-operational-monitoring/         # v0.8.0 — Micrometer, OTel, Grafana
+        ├── 2026-03-22-oauth2-redirect-flow/          # v0.9.0 — PKCE, Keycloak, SSO buttons
+        ├── 2026-03-22-offline-demo-capture/          # Demo screenshots + walkthroughs
+        ├── 2026-03-24-security-dependency-upgrade/   # v0.9.1 — 16 CVEs resolved
+        ├── 2026-03-24-legal-language-corrections/    # "designed to support" framing
+        ├── 2026-03-23-bed-availability-calculation-hardening/ # v0.9.2 — 9 invariants
+        ├── 2026-03-23-dv-opaque-referral/            # v0.10.0 — VAWA zero-PII tokens
+        ├── 2026-03-24-dv-address-redaction/          # v0.10.1 — configurable address policy
+        ├── 2026-03-25-hmis-bridge/                   # v0.11.0 — async HMIS push, DV aggregation
+        ├── 2026-03-25-coc-analytics/                 # v0.12.0 — Spring Batch, HIC/PIT export
+        ├── 2026-03-25-demo-seed-data/                # v0.12.1 — 28-day activity data
+        ├── 2026-03-26-wcag-accessibility-audit/      # v0.13.0 — axe-core, ARIA, ACR
+        ├── 2026-03-26-hold-duration-admin-config/    # v0.13.1 — 45→90 min, Admin UI
+        ├── 2026-03-27-security-hardening-pre-pilot/  # v0.15.0 — JWT, rate limit, ZAP scan
+        └── 2026-03-27-font-consistency-audit/        # v0.15.1 — typography system, lint cleanup
 ```
 
 ### Available Commands
