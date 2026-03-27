@@ -90,7 +90,7 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 ```
 openspec/
 ├── config.yaml                          # OpenSpec configuration
-├── specs/                               # Main project specifications (56 capabilities)
+├── specs/                               # Main project specifications (57 capabilities)
 │   ├── auth-and-roles/                  # JWT auth, OAuth2 SSO, RBAC, API keys, DV access control
 │   ├── auth-rate-limiting/              # bucket4j brute force protection on login endpoints
 │   ├── bed-availability-query/          # Real-time bed search with ranked results
@@ -103,7 +103,7 @@ openspec/
 │   ├── typography-system/               # Global CSS, design tokens, system font stack
 │   ├── typography-playwright-tests/     # Font consistency + WCAG 1.4.12 text spacing tests
 │   ├── wcag-accessibility-compliance/   # WCAG 2.1 AA: axe-core, focus, color, touch targets, text spacing
-│   └── ... (44 more capabilities)       # Shelters, surge, HMIS, analytics, observability, etc.
+│   └── ... (45 more capabilities)       # Shelters, surge, HMIS, analytics, observability, etc.
 └── changes/
     ├── mcp-agent-integration/           # Active: MCP server + reference agent (specced, not yet implemented)
     └── archive/                         # 23 completed changes
@@ -214,9 +214,9 @@ findABed/                                        # Docs repo root
 │   └── screenshots/                             # 35 captured views across 4 walkthroughs
 ├── openspec/                                    # OpenSpec artifacts
 │   ├── config.yaml                              # OpenSpec configuration
-│   ├── specs/                                   # Main specs (56 capabilities, synced from changes)
+│   ├── specs/                                   # Main specs (57 capabilities, synced from changes)
 │   └── changes/
-│       └���─ archive/                             # 23 archived changes
+│       └���─ archive/                             # 24 archived changes
 └── finding-a-bed-tonight/                       # Code monorepo (Git submodule)
 ```
 
