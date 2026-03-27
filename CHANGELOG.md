@@ -14,6 +14,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.15.0] — 2026-03-27 — Security Hardening
+
+The platform has undergone a security review and hardening pass before pilot deployment.
+
+### Added
+- Login and password reset endpoints are now protected against brute force attacks (rate limiting)
+- The platform now returns proper security headers on all responses (required by automated security scans)
+- If your organization's single sign-on provider goes down, password-authenticated users continue working without interruption
+- An OWASP ZAP security scan has been run against the application with zero high-severity findings (local development environment — infrastructure scanning will be completed on deployed environment)
+- Operational runbook updated with rate limiting configuration and SSO outage procedures
+- Government adoption guide updated with security scan results and SSO resilience documentation
+
+### Security
+- Application startup now validates JWT secret strength — refuses to start with missing, weak, or default development secrets in production
+- No error responses expose internal implementation details (stack traces, class names, server version)
+- Multi-tenant data isolation verified under concurrent load (100 simultaneous requests)
+- DV shelter data isolation verified under concurrent load with connection pool recycling — DV shelter names and IDs never leak to unauthorized users
+
+---
+
 ## [v0.14.1] — 2026-03-27 — Reliability + Release Notes
 
 ### Added
