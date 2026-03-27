@@ -1,8 +1,4 @@
-## Purpose
-
-In-app @Scheduled operational monitors for failure mode detection (stale data, DV privacy leaks, temperature/surge gaps), with temperature status API and admin UI display.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: stale-shelter-monitor
 The system SHALL detect shelters that have not published an availability snapshot in more than 8 hours via an in-app @Scheduled task. The monitor SHALL fan out per-tenant checks concurrently on virtual threads using semaphore-bounded fan-out, rather than iterating tenants sequentially. The monitor publishes a `fabt.shelter.stale.count` Micrometer gauge and logs WARNING-level structured JSON for each stale shelter. No external dependencies required (no CloudWatch, no Lambda).
@@ -53,36 +49,3 @@ The system SHALL detect when ambient temperature at the pilot city drops below a
 - **WHEN** NOAA returns a temperature below threshold and 4 tenants have different surge states
 - **THEN** each tenant's surge state check executes on its own virtual thread
 - **AND** total evaluation time is bounded by the slowest tenant query
-
-### Requirement: temperature-status-api
-The system SHALL expose a `GET /api/v1/monitoring/temperature` endpoint that returns the cached NOAA temperature reading, station ID, configured threshold, surge active state, gap detected state, and last check timestamp. This endpoint requires authentication (any role) and does not trigger an additional NOAA API call.
-
-#### Scenario: Temperature status returned
-- **WHEN** an authenticated user calls `GET /api/v1/monitoring/temperature`
-- **THEN** the response includes `temperatureF`, `stationId`, `thresholdF`, `surgeActive`, `gapDetected`, `lastChecked`
-
-#### Scenario: NOAA unavailable
-- **WHEN** the NOAA circuit breaker is open and no cached temperature exists
-- **THEN** the endpoint returns `temperatureF: null` with `lastChecked: null`
-
-### Requirement: temperature-admin-ui-display
-The Admin UI Observability tab SHALL display the current station temperature, NOAA station ID, configured threshold, and a visual warning indicator when the temperature is below threshold with no active surge. The temperature threshold and polling frequency SHALL be editable in the Admin UI.
-
-#### Scenario: Admin sees temperature status
-- **WHEN** a PLATFORM_ADMIN views the Observability tab
-- **THEN** the current temperature, station ID, and threshold are displayed
-
-#### Scenario: Warning indicator shown when gap detected
-- **WHEN** the temperature is below threshold and no surge is active
-- **THEN** an amber/red warning banner is displayed with the temperature, threshold, and suggestion to activate surge
-
-#### Scenario: Admin changes temperature threshold
-- **WHEN** the admin changes the threshold from 32°F to 40°F and saves
-- **THEN** the config is persisted and the monitor uses the new threshold on its next check
-
-### Requirement: operational-runbook
-An operational runbook (`docs/runbook.md`) SHALL document all monitor types, what they mean, how to investigate, and what action to take.
-
-#### Scenario: Runbook covers all monitors
-- **WHEN** an operator sees a stale-data, dv-canary, or temperature-surge log entry
-- **THEN** the runbook provides investigation and response procedures

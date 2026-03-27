@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: batch-job-execution
-The system SHALL use Spring Batch for complex scheduled jobs (pre-aggregation, HMIS push, HIC/PIT export) with full execution history, chunk processing, retry/skip, and restart from failure. Available in all deployment tiers (Lite, Standard, Full).
+The system SHALL use Spring Batch for complex scheduled jobs (pre-aggregation, HMIS push, HIC/PIT export) with full execution history, chunk processing, retry/skip, and restart from failure. Available in all deployment tiers (Lite, Standard, Full). The HMIS push job's outbox processing step SHALL dispatch vendor REST calls in parallel using virtual threads, bounded by vendor rate limits via Resilience4j.
 
 #### Scenario: Daily aggregation job processes snapshots in chunks
 - **WHEN** the daily aggregation job runs
@@ -23,8 +23,14 @@ The system SHALL use Spring Batch for complex scheduled jobs (pre-aggregation, H
 - **WHEN** a HIC export job runs with the same reportDate parameter twice
 - **THEN** the second attempt is rejected as an already-completed JobInstance
 
+#### Scenario: HMIS outbox entries processed in parallel
+- **WHEN** the HMIS push job's processOutbox step executes with 10 pending outbox entries across 2 vendors
+- **THEN** outbox entries are dispatched to virtual threads for concurrent vendor REST calls
+- **AND** concurrency per vendor is bounded by Resilience4j rate limiter configuration
+- **AND** all entries are marked as SENT or FAILED upon completion
+
 ### Requirement: batch-job-scheduling-management
-The system SHALL allow PLATFORM_ADMIN users to manage batch job schedules from the Admin UI. Cron expressions are stored in tenant config JSONB.
+The system SHALL allow PLATFORM_ADMIN users to manage batch job schedules from the Admin UI. Cron expressions are stored in tenant config JSONB. The `BatchJobScheduler` SHALL use a virtual thread-backed `TaskScheduler`, ensuring cron-triggered job launches execute on virtual threads and never block each other or other `@Scheduled` tasks.
 
 #### Scenario: Admin views job list with schedules
 - **WHEN** a COC_ADMIN or PLATFORM_ADMIN views the batch jobs section
@@ -47,6 +53,10 @@ The system SHALL allow PLATFORM_ADMIN users to manage batch job schedules from t
 #### Scenario: COC_ADMIN cannot modify schedules
 - **WHEN** a COC_ADMIN views the batch jobs section
 - **THEN** they can see job status and history but cannot edit schedules, trigger runs, or restart jobs
+
+#### Scenario: Concurrent cron jobs do not block each other
+- **WHEN** the daily aggregation job (potentially running for minutes) is executing and the HMIS push job's cron fires
+- **THEN** the HMIS push job starts on its own virtual thread without waiting for the aggregation job to complete
 
 ### Requirement: batch-job-execution-history
 The system SHALL provide queryable execution history for all batch jobs, viewable in the Admin UI.
