@@ -36,6 +36,12 @@ An open-source platform that matches homeless individuals and families to availa
 | **City/county governments** | Data-driven resource allocation, HUD reporting |
 | **Foundations/funders** | Measurable impact metrics, cost-effective open-source model |
 
+### Related Repositories
+
+| Repository | Description |
+|---|---|
+| [finding-a-bed-tonight](https://github.com/ccradle/finding-a-bed-tonight) | Code monorepo — Spring Boot backend, React PWA frontend, Terraform infrastructure |
+
 ### How It Fits Together
 
 ```
@@ -203,14 +209,6 @@ findABed/                                        # Docs repo root
 │       └���─ archive/                             # 23 archived changes
 └── finding-a-bed-tonight/                       # Code monorepo (Git submodule)
 ```
-
----
-
-## Related Repositories
-
-| Repository | Description |
-|---|---|
-| [finding-a-bed-tonight](https://github.com/ccradle/finding-a-bed-tonight) | Code monorepo — Spring Boot backend, React PWA frontend, Terraform infrastructure |
 
 ---
 
