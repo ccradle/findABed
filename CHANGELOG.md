@@ -14,6 +14,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.15.1] — 2026-03-27 — Typography System
+
+### Added
+- The platform now uses a consistent system font across all views and all platforms (Windows, macOS, Linux, Android, iOS)
+- Form elements (input fields, buttons, dropdowns) now match the rest of the interface — no more mismatched browser default fonts
+- Automated tests verify font consistency and detect regressions
+
+### Changed
+- Accessibility Conformance Report updated: text spacing and resize criteria now reference the typography system and automated Playwright verification
+- Government adoption guide updated: design token system noted in WCAG posture
+
+### Fixed
+- Inconsistent serif vs sans-serif rendering across views has been resolved
+- All code quality warnings resolved (zero ESLint errors)
+
+---
+
 ## [v0.15.0] — 2026-03-27 — Security Hardening
 
 The platform has undergone a security review and hardening pass before pilot deployment.
