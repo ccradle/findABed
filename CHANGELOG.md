@@ -54,14 +54,14 @@ Shelter bed holds now last 90 minutes by default (up from 45), giving outreach w
 
 ## [v0.13.0] — 2026-03-26 — WCAG 2.1 AA Accessibility
 
-The platform now meets WCAG 2.1 Level AA — the accessibility standard required by the ADA for government web content.
+The platform is designed to support WCAG 2.1 Level AA — the accessibility standard adopted under ADA Title II for state and local government web content (DOJ Final Rule, April 2024).
 
 ### Added
 - Automated accessibility testing blocks any release with violations
 - Session timeout warning gives users time to extend their session
 - Screen reader support verified with automated virtual screen reader tests
 - All charts now have a table view toggle for non-visual access
-- Accessibility Conformance Report documenting compliance
+- Accessibility Conformance Report documenting self-assessed conformance status
 
 ### Changed
 - All buttons and controls meet 44x44px minimum touch target (outdoor one-handed use)
@@ -71,11 +71,11 @@ The platform now meets WCAG 2.1 Level AA — the accessibility standard required
 
 ## [v0.12.0] — 2026-03-25 — CoC Analytics + Search Optimization
 
-Community administrators can now view utilization trends, demand signals, and export HUD-required HIC/PIT reports directly from the platform.
+Community administrators can now view utilization trends, demand signals, and export data designed to support HUD-required HIC/PIT submissions directly from the platform.
 
 ### Added
 - Analytics dashboard with utilization trends, demand signals, and shelter performance
-- One-click HIC/PIT export in HUD-required CSV format
+- One-click HIC/PIT export in CSV format designed to align with HUD specifications
 - Batch job management: scheduling, history, manual trigger
 - Unmet demand tracking — the system now logs when searches return no results
 - 28 days of demo activity data for realistic dashboard previews
@@ -122,7 +122,7 @@ A privacy-preserving referral system for domestic violence shelters, designed to
 - DV shelter staff screen every referral before accepting (human-in-the-loop)
 - Shelter address is shared verbally during a phone call — never displayed in the system
 - All referral data is permanently deleted within 24 hours
-- No client personally identifiable information is stored at any point
+- The system is designed so that no client personally identifiable information is persisted to any data store
 
 ---
 
@@ -158,7 +158,7 @@ A privacy-preserving referral system for domestic violence shelters, designed to
 
 ### Added
 - Database-level security: restricted role prevents unauthorized data access
-- DV shelter data isolation enforced at the database layer, not just the application
+- DV shelter data isolation implemented at the database layer via Row Level Security, in addition to application-layer controls
 - Automated DV safety check blocks deployments if DV data could leak
 
 ---
