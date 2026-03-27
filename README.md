@@ -151,6 +151,9 @@ openspec/
 - **[demo-seed-data](openspec/changes/archive/2026-03-25-demo-seed-data/)** — Realistic 28-day activity data, exception logging hardening (22 catch blocks), bed search query optimization (Little's Law + V25 index). 54/56 tasks. Tagged v0.12.1. Archived 2026-03-25.
 - **[wcag-accessibility-audit](openspec/changes/archive/2026-03-26-wcag-accessibility-audit/)** — WCAG 2.1 AA: axe-core CI gate (zero violations), focus management, color independence, touch targets, ARIA remediation, session timeout warning (alertdialog), ACR document (VPAT 2.5), virtual screen reader tests, legal language review. 63/70 tasks. Tagged v0.13.0. Archived 2026-03-26.
 - **[hold-duration-admin-config](openspec/changes/archive/2026-03-26-hold-duration-admin-config/)** — Admin UI for hold duration configuration (default 45→90 min), tenant config GET+merge+PUT, Swagger 401 fix (web.ignoring), observability null-safety, clean-room validation. 58/58 tasks. Tagged v0.13.1–v0.13.3. Archived 2026-03-26.
+- **[java25-boot4-virtual-threads](openspec/changes/archive/2026-03-26-java25-boot4-virtual-threads/)** — Java 21→25 LTS, Spring Boot 3.4→4.0, virtual threads (ScopedValue tenant context), Spring Batch 5→6, Karate 2.0, ConnectionPoolMonitor, BoundedFanOut utility. Tagged v0.14.0. Archived 2026-03-26.
+- **[security-hardening-pre-pilot](openspec/changes/archive/2026-03-27-security-hardening-pre-pilot/)** — JWT startup validation, universal exception handler with Micrometer metrics, security headers (Spring DSL + nginx), bucket4j auth rate limiting, cross-tenant isolation tests (CountDownLatch + DB-level), DV concurrent isolation tests, OWASP ZAP scan baseline, JWKS degradation review. 36/36 tasks. Tagged v0.15.0. Archived 2026-03-27.
+- **[font-consistency-audit](openspec/changes/archive/2026-03-27-font-consistency-audit/)** — Global CSS with system font stack, CSS custom properties design tokens, all 13 components migrated to var() tokens, 16 ESLint errors resolved, WCAG text spacing audit, 4 Playwright typography tests. 28/28 tasks. Tagged v0.15.1. Archived 2026-03-27.
 
 ### Active Changes
 
@@ -195,9 +198,9 @@ findABed/                                        # Docs repo root
 │   └── screenshots/                             # 35 captured views across 4 walkthroughs
 ├── openspec/                                    # OpenSpec artifacts
 │   ├── config.yaml                              # OpenSpec configuration
-│   ├── specs/                                   # Main specs (49 capabilities, synced from changes)
+│   ├── specs/                                   # Main specs (56 capabilities, synced from changes)
 │   └── changes/
-│       └── archive/                             # 21 archived changes
+│       └���─ archive/                             # 23 archived changes
 └── finding-a-bed-tonight/                       # Code monorepo (Git submodule)
 ```
 
