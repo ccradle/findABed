@@ -1,6 +1,6 @@
 # Finding A Bed Tonight — Project Documentation
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](finding-a-bed-tonight/LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE)
 
 Open-source emergency shelter bed availability platform — project documentation, specifications, and planning artifacts.
 
@@ -146,34 +146,34 @@ openspec/
 
 ### Archived Changes
 
-- **[platform-foundation](openspec/changes/archive/2026-03-20-platform-foundation/)** — Modular monolith backend, multi-tenant auth, shelter profiles, data import, observability, PWA, CI/CD, Terraform. 130/131 tasks. Archived 2026-03-20.
-- **[bed-availability](openspec/changes/archive/2026-03-20-bed-availability/)** — Real-time bed availability with append-only snapshots, ranked bed search, coordinator update flow, data freshness. 40/40 tasks. Archived 2026-03-20.
-- **[reservation-system](openspec/changes/archive/2026-03-20-reservation-system/)** — Soft-hold bed reservations with auto-expiry, availability integration, countdown UI. 44/44 tasks. Archived 2026-03-20.
-- **[asyncapi-contract-hardening](openspec/changes/archive/2026-03-21-asyncapi-contract-hardening/)** — DV security annotations (x-security), surge payload enrichment. 10/10 tasks. Archived 2026-03-21.
-- **[infra-security-hardening](openspec/changes/archive/2026-03-21-infra-security-hardening/)** — DynamoDB protection, OWASP CVE gate, Terraform security posture. 10/10 tasks. Archived 2026-03-21.
-- **[e2e-test-automation](openspec/changes/archive/2026-03-21-e2e-test-automation/)** — Playwright UI + Karate API end-to-end test suite with CI pipeline. 49/49 tasks. Archived 2026-03-21.
-- **[e2e-test-automation-hardening](openspec/changes/archive/2026-03-21-e2e-test-automation-hardening/)** — RLS enforcement, DV canary gate, reservation E2E, offline queue, Gatling perf suite. 35/35 tasks. Archived 2026-03-21.
-- **[surge-mode](openspec/changes/archive/2026-03-21-surge-mode/)** — White Flag emergency activation, overflow capacity, surge broadcast, bed search integration. 37/37 tasks. Archived 2026-03-21.
-- **[operational-monitoring](openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Tagged v0.8.0. Archived 2026-03-22.
-- **[oauth2-redirect-flow](openspec/changes/archive/2026-03-22-oauth2-redirect-flow/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Tagged v0.9.0. Archived 2026-03-22.
-- **[offline-demo-capture](openspec/changes/archive/2026-03-22-offline-demo-capture/)** — Demo screenshot capture and walkthrough. 15/15 tasks. Archived 2026-03-22.
-- **[security-dependency-upgrade](openspec/changes/archive/2026-03-24-security-dependency-upgrade/)** — Spring Boot 3.4.4→3.4.13, springdoc 2.8.6→2.8.16, 16 CVEs resolved. 35/35 tasks. Tagged v0.9.1. Archived 2026-03-24.
-- **[legal-language-corrections](openspec/changes/archive/2026-03-24-legal-language-corrections/)** — Qualify compliance claims, add disclaimers, consent reasoning, PII risk notes. 17/17 tasks. Archived 2026-03-24.
-- **[bed-availability-calculation-hardening](openspec/changes/archive/2026-03-23-bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 117/117 tasks. Tagged v0.9.2. Archived 2026-03-23.
-- **[dv-opaque-referral](openspec/changes/archive/2026-03-23-dv-opaque-referral/)** — Zero-PII referral tokens (designed to support VAWA/FVPSA), warm handoff, defense-in-depth RLS (SET ROLE + dvAccess check), DV Grafana dashboard, address redaction. 114/114 tasks. Tagged v0.10.0. Archived 2026-03-23.
-- **[dv-address-redaction](openspec/changes/archive/2026-03-24-dv-address-redaction/)** — Configurable tenant policy for DV shelter address visibility (ADMIN_AND_ASSIGNED/ADMIN_ONLY/ALL_DV_ACCESS/NONE), API-level redaction, secured policy change endpoint. 46/46 tasks. Tagged v0.10.1. Archived 2026-03-24.
-- **[hmis-bridge](openspec/changes/archive/2026-03-25-hmis-bridge/)** — Async push of bed inventory (HMIS Element 2.07) to vendors (Clarity/WellSky/ClientTrack), outbox pattern, DV aggregation, Admin UI export tab, Grafana dashboard. 85/85 tasks. Tagged v0.11.0. Archived 2026-03-25.
-- **[coc-analytics](openspec/changes/archive/2026-03-25-coc-analytics/)** — Aggregate analytics dashboard, HIC/PIT exports, unmet demand tracking, Spring Batch job management, pre-aggregation, DV small-cell suppression (D18). 137/142 tasks. Tagged v0.12.0. Archived 2026-03-25.
-- **[demo-seed-data](openspec/changes/archive/2026-03-25-demo-seed-data/)** — Realistic 28-day activity data, exception logging hardening (22 catch blocks), bed search query optimization (Little's Law + V25 index). 54/56 tasks. Tagged v0.12.1. Archived 2026-03-25.
-- **[wcag-accessibility-audit](openspec/changes/archive/2026-03-26-wcag-accessibility-audit/)** — WCAG 2.1 AA: axe-core CI gate (zero violations), focus management, color independence, touch targets, ARIA remediation, session timeout warning (alertdialog), ACR document (VPAT 2.5), virtual screen reader tests, legal language review. 63/70 tasks. Tagged v0.13.0. Archived 2026-03-26.
-- **[hold-duration-admin-config](openspec/changes/archive/2026-03-26-hold-duration-admin-config/)** — Admin UI for hold duration configuration (default 45→90 min), tenant config GET+merge+PUT, Swagger 401 fix (web.ignoring), observability null-safety, clean-room validation. 58/58 tasks. Tagged v0.13.1–v0.13.3. Archived 2026-03-26.
-- **[java25-boot4-virtual-threads](openspec/changes/archive/2026-03-26-java25-boot4-virtual-threads/)** — Java 21→25 LTS, Spring Boot 3.4→4.0, virtual threads (ScopedValue tenant context), Spring Batch 5→6, Karate 2.0, ConnectionPoolMonitor, BoundedFanOut utility. Tagged v0.14.0. Archived 2026-03-26.
-- **[security-hardening-pre-pilot](openspec/changes/archive/2026-03-27-security-hardening-pre-pilot/)** — JWT startup validation, universal exception handler with Micrometer metrics, security headers (Spring DSL + nginx), bucket4j auth rate limiting, cross-tenant isolation tests (CountDownLatch + DB-level), DV concurrent isolation tests, OWASP ZAP scan baseline, JWKS degradation review. 36/36 tasks. Tagged v0.15.0. Archived 2026-03-27.
-- **[font-consistency-audit](openspec/changes/archive/2026-03-27-font-consistency-audit/)** — Global CSS with system font stack, CSS custom properties design tokens, all 13 components migrated to var() tokens, 16 ESLint errors resolved, WCAG text spacing audit, 4 Playwright typography tests. 28/28 tasks. Tagged v0.15.1. Archived 2026-03-27.
+- **[platform-foundation](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-20-platform-foundation/)** — Modular monolith backend, multi-tenant auth, shelter profiles, data import, observability, PWA, CI/CD, Terraform. 130/131 tasks. Archived 2026-03-20.
+- **[bed-availability](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-20-bed-availability/)** — Real-time bed availability with append-only snapshots, ranked bed search, coordinator update flow, data freshness. 40/40 tasks. Archived 2026-03-20.
+- **[reservation-system](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-20-reservation-system/)** — Soft-hold bed reservations with auto-expiry, availability integration, countdown UI. 44/44 tasks. Archived 2026-03-20.
+- **[asyncapi-contract-hardening](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-21-asyncapi-contract-hardening/)** — DV security annotations (x-security), surge payload enrichment. 10/10 tasks. Archived 2026-03-21.
+- **[infra-security-hardening](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-21-infra-security-hardening/)** — DynamoDB protection, OWASP CVE gate, Terraform security posture. 10/10 tasks. Archived 2026-03-21.
+- **[e2e-test-automation](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-21-e2e-test-automation/)** — Playwright UI + Karate API end-to-end test suite with CI pipeline. 49/49 tasks. Archived 2026-03-21.
+- **[e2e-test-automation-hardening](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-21-e2e-test-automation-hardening/)** — RLS enforcement, DV canary gate, reservation E2E, offline queue, Gatling perf suite. 35/35 tasks. Archived 2026-03-21.
+- **[surge-mode](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-21-surge-mode/)** — White Flag emergency activation, overflow capacity, surge broadcast, bed search integration. 37/37 tasks. Archived 2026-03-21.
+- **[operational-monitoring](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-22-operational-monitoring/)** — Cloud-agnostic Micrometer metrics, OTel tracing, @Scheduled monitors (stale shelter, DV canary, temperature/surge gap), Grafana dashboards, Admin UI observability tab, management port security. 68/68 tasks. Tagged v0.8.0. Archived 2026-03-22.
+- **[oauth2-redirect-flow](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-22-oauth2-redirect-flow/)** — OAuth2 authorization code + PKCE, dynamic client registration, closed registration, Keycloak dev profile, JWKS circuit breaker, Admin UI provider management. 69/69 tasks. Tagged v0.9.0. Archived 2026-03-22.
+- **[offline-demo-capture](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-22-offline-demo-capture/)** — Demo screenshot capture and walkthrough. 15/15 tasks. Archived 2026-03-22.
+- **[security-dependency-upgrade](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-24-security-dependency-upgrade/)** — Spring Boot 3.4.4→3.4.13, springdoc 2.8.6→2.8.16, 16 CVEs resolved. 35/35 tasks. Tagged v0.9.1. Archived 2026-03-24.
+- **[legal-language-corrections](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-24-legal-language-corrections/)** — Qualify compliance claims, add disclaimers, consent reasoning, PII risk notes. 17/17 tasks. Archived 2026-03-24.
+- **[bed-availability-calculation-hardening](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-23-bed-availability-calculation-hardening/)** — Single source of truth for `beds_total` (eliminated `shelter_capacity` table), 9-invariant server-side enforcement, concurrent hold safety, unified coordinator UI with `data-testid` locators. 117/117 tasks. Tagged v0.9.2. Archived 2026-03-23.
+- **[dv-opaque-referral](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-23-dv-opaque-referral/)** — Zero-PII referral tokens (designed to support VAWA/FVPSA), warm handoff, defense-in-depth RLS (SET ROLE + dvAccess check), DV Grafana dashboard, address redaction. 114/114 tasks. Tagged v0.10.0. Archived 2026-03-23.
+- **[dv-address-redaction](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-24-dv-address-redaction/)** — Configurable tenant policy for DV shelter address visibility (ADMIN_AND_ASSIGNED/ADMIN_ONLY/ALL_DV_ACCESS/NONE), API-level redaction, secured policy change endpoint. 46/46 tasks. Tagged v0.10.1. Archived 2026-03-24.
+- **[hmis-bridge](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-25-hmis-bridge/)** — Async push of bed inventory (HMIS Element 2.07) to vendors (Clarity/WellSky/ClientTrack), outbox pattern, DV aggregation, Admin UI export tab, Grafana dashboard. 85/85 tasks. Tagged v0.11.0. Archived 2026-03-25.
+- **[coc-analytics](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-25-coc-analytics/)** — Aggregate analytics dashboard, HIC/PIT exports, unmet demand tracking, Spring Batch job management, pre-aggregation, DV small-cell suppression (D18). 137/142 tasks. Tagged v0.12.0. Archived 2026-03-25.
+- **[demo-seed-data](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-25-demo-seed-data/)** — Realistic 28-day activity data, exception logging hardening (22 catch blocks), bed search query optimization (Little's Law + V25 index). 54/56 tasks. Tagged v0.12.1. Archived 2026-03-25.
+- **[wcag-accessibility-audit](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-26-wcag-accessibility-audit/)** — WCAG 2.1 AA: axe-core CI gate (zero violations), focus management, color independence, touch targets, ARIA remediation, session timeout warning (alertdialog), ACR document (VPAT 2.5), virtual screen reader tests, legal language review. 63/70 tasks. Tagged v0.13.0. Archived 2026-03-26.
+- **[hold-duration-admin-config](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-26-hold-duration-admin-config/)** — Admin UI for hold duration configuration (default 45→90 min), tenant config GET+merge+PUT, Swagger 401 fix (web.ignoring), observability null-safety, clean-room validation. 58/58 tasks. Tagged v0.13.1–v0.13.3. Archived 2026-03-26.
+- **[java25-boot4-virtual-threads](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-26-java25-boot4-virtual-threads/)** — Java 21→25 LTS, Spring Boot 3.4→4.0, virtual threads (ScopedValue tenant context), Spring Batch 5→6, Karate 2.0, ConnectionPoolMonitor, BoundedFanOut utility. Tagged v0.14.0. Archived 2026-03-26.
+- **[security-hardening-pre-pilot](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-27-security-hardening-pre-pilot/)** — JWT startup validation, universal exception handler with Micrometer metrics, security headers (Spring DSL + nginx), bucket4j auth rate limiting, cross-tenant isolation tests (CountDownLatch + DB-level), DV concurrent isolation tests, OWASP ZAP scan baseline, JWKS degradation review. 36/36 tasks. Tagged v0.15.0. Archived 2026-03-27.
+- **[font-consistency-audit](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-27-font-consistency-audit/)** — Global CSS with system font stack, CSS custom properties design tokens, all 13 components migrated to var() tokens, 16 ESLint errors resolved, WCAG text spacing audit, 4 Playwright typography tests. 28/28 tasks. Tagged v0.15.1. Archived 2026-03-27.
 
 ### Active Changes
 
-- **[mcp-agent-integration](openspec/changes/mcp-agent-integration/)** — Spring AI MCP server (28 tools, Streamable HTTP), reference agent (4 scenarios: natural language bed search, proactive alerting, conversational CoC reporting, coordinator voice updates), DV guardrails, OAuth 2.1 auth.
+- **[mcp-agent-integration](https://github.com/ccradle/findABed/tree/main/openspec/changes/mcp-agent-integration/)** — Spring AI MCP server (28 tools, Streamable HTTP), reference agent (4 scenarios: natural language bed search, proactive alerting, conversational CoC reporting, coordinator voice updates), DV guardrails, OAuth 2.1 auth.
 
 ### Planned Changes
 
@@ -226,13 +226,13 @@ findABed/                                        # Docs repo root
 
 | Document | Description |
 |---|---|
-| [finding-a-bed-tonight-proposal.docx](finding-a-bed-tonight-proposal.docx) | Business case, target users, solution overview |
-| [fabt-hsds-extension-spec.md](fabt-hsds-extension-spec.md) | HSDS 3.0 bed availability extension specification |
-| [fabt-openspec-proposal.md](fabt-openspec-proposal.md) | Original OpenSpec proposal for the project |
-| [city-adoption-playbook.docx](city-adoption-playbook.docx) | Step-by-step guide for cities adopting the platform |
-| [shelter-onboarding-workflow.docx](shelter-onboarding-workflow.docx) | 7-day shelter onboarding process |
-| [MCP-BRIEFING.md](MCP-BRIEFING.md) | MCP server decision record — Phase 1 hold with MCP-ready design requirements |
-| [CLAUDE-CODE-BRIEF.md](CLAUDE-CODE-BRIEF.md) | AI coding session primer with project context and rules |
+| [finding-a-bed-tonight-proposal.docx](https://github.com/ccradle/findABed/blob/main/finding-a-bed-tonight-proposal.docx) | Business case, target users, solution overview |
+| [fabt-hsds-extension-spec.md](https://github.com/ccradle/findABed/blob/main/fabt-hsds-extension-spec.md) | HSDS 3.0 bed availability extension specification |
+| [fabt-openspec-proposal.md](https://github.com/ccradle/findABed/blob/main/fabt-openspec-proposal.md) | Original OpenSpec proposal for the project |
+| [city-adoption-playbook.docx](https://github.com/ccradle/findABed/blob/main/city-adoption-playbook.docx) | Step-by-step guide for cities adopting the platform |
+| [shelter-onboarding-workflow.docx](https://github.com/ccradle/findABed/blob/main/shelter-onboarding-workflow.docx) | 7-day shelter onboarding process |
+| [MCP-BRIEFING.md](https://github.com/ccradle/findABed/blob/main/MCP-BRIEFING.md) | MCP server decision record — Phase 1 hold with MCP-ready design requirements |
+| [CLAUDE-CODE-BRIEF.md](https://github.com/ccradle/findABed/blob/main/CLAUDE-CODE-BRIEF.md) | AI coding session primer with project context and rules |
 
 ---
 
@@ -288,6 +288,6 @@ findABed/                                        # Docs repo root
 
 ## License
 
-[Apache License 2.0](finding-a-bed-tonight/LICENSE)
+[Apache License 2.0](https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE)
 
-> Finding A Bed Tonight is provided as-is, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions. This platform is not a guarantee of shelter availability. See the [Apache 2.0 License](finding-a-bed-tonight/LICENSE) for full warranty disclaimer and limitation of liability terms.
+> Finding A Bed Tonight is provided as-is, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions. This platform is not a guarantee of shelter availability. See the [Apache 2.0 License](https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE) for full warranty disclaimer and limitation of liability terms.
