@@ -159,3 +159,28 @@ The system SHALL enforce DV shelter data access at the PostgreSQL Row Level Secu
 - **WHEN** a request is processed with `dvAccess=true`
 - **THEN** the system executes `SET LOCAL app.dv_access = 'true'` before any data query
 - **AND** the setting is automatically cleared on transaction commit or rollback
+
+### Requirement: error-response-security
+The system SHALL suppress all implementation details from error responses and audit all permitAll() paths.
+
+- REQ-AUTH-ERR-1: `GlobalExceptionHandler` MUST include a catch-all `@ExceptionHandler(Exception.class)` that returns structured `ErrorResponse` with generic message
+- REQ-AUTH-ERR-2: No exception response MUST contain Java class names, stack traces, or Spring Boot version information
+- REQ-AUTH-ERR-3: `server.error.include-stacktrace` MUST be set to `never` in all profiles
+- REQ-AUTH-ERR-4: `server.error.include-message` MUST be set to `never` in all profiles
+- REQ-AUTH-ERR-5: Unhandled exceptions MUST be logged at ERROR level server-side with full stack trace
+- REQ-AUTH-ERR-6: The `/error` fallback endpoint MUST NOT expose implementation details
+- REQ-AUTH-PERMIT-1: Every `permitAll()` path in SecurityConfig MUST be documented with justification and verified to not disclose sensitive information when accessed with a cleared security context
+
+#### Scenario: Unhandled exception returns generic error
+- **WHEN** an endpoint throws an unexpected NullPointerException
+- **THEN** the status is 500
+- **AND** the body contains "An unexpected error occurred"
+- **AND** the body does not contain "NullPointerException" or "at org.fabt" or "at java."
+
+#### Scenario: Malformed JSON does not expose stack trace
+- **WHEN** a client POSTs invalid JSON to /api/v1/auth/login
+- **THEN** the body does not contain "Exception" or "stack"
+
+#### Scenario: Swagger disabled in prod profile
+- **WHEN** the application is running with the prod profile active
+- **THEN** GET /api/v1/docs returns 404

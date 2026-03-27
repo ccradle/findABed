@@ -42,3 +42,17 @@ The system SHALL connect to PostgreSQL using a restricted `fabt_app` role (NOSUP
 - **THEN** the PostgreSQL init script creates the `fabt_app` user
 - **AND** the application connects as `fabt_app`
 - **AND** DV canary tests pass (DV shelters hidden from non-dvAccess users)
+
+### Requirement: connection-pool-dvaccess-reset
+The system SHALL correctly reset `app.dv_access` on every pooled connection checkout, preventing stale DV access state from leaking between requests.
+
+- REQ-RLS-POOL-1: `applyRlsContext()` MUST overwrite any stale `app.dv_access` value from a previous request on the same pooled connection
+- REQ-RLS-POOL-2: A test MUST verify that a dvAccess=true request followed by a dvAccess=false request on the same connection does not leak DV shelter visibility
+- REQ-RLS-POOL-3: The test MUST run the sequence at least 100 times to detect intermittent race conditions
+
+#### Scenario: Pooled connection resets dvAccess between requests
+- **WHEN** request 1 executes with dvAccess=true and sees DV shelters
+- **AND** request 1 completes and returns its connection to the pool
+- **WHEN** request 2 executes with dvAccess=false on the same connection
+- **THEN** request 2 does not see DV shelters
+- **AND** this holds for 100 consecutive iterations
