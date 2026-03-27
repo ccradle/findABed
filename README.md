@@ -154,7 +154,7 @@ openspec/
 
 ### Active Changes
 
-(none)
+- **[mcp-agent-integration](openspec/changes/mcp-agent-integration/)** — Spring AI MCP server (28 tools, Streamable HTTP), reference agent (4 scenarios: natural language bed search, proactive alerting, conversational CoC reporting, coordinator voice updates), DV guardrails, OAuth 2.1 auth.
 
 ### Planned Changes
 
