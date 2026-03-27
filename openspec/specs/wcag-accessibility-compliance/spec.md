@@ -107,3 +107,25 @@ The system SHALL not overclaim compliance in any project documentation.
 - **WHEN** all project documents are scanned
 - **THEN** no document uses "compliant", "certified", or "ensures compliance" without qualification
 - **AND** all compliance references use "designed to support" or "self-assessed" language
+
+### Requirement: typography-text-spacing
+The system SHALL support WCAG text spacing overrides without content loss, use consistent typography via design tokens, and ensure text resizes correctly.
+
+- REQ-WCAG-TYP-1: All text MUST have `line-height` of at least 1.5 (WCAG 1.4.12 Text Spacing)
+- REQ-WCAG-TYP-2: No text container MUST use fixed `height`/`max-height` that would clip text when users apply WCAG 1.4.12 spacing overrides
+- REQ-WCAG-TYP-3: No text container MUST use `overflow: hidden` or `-webkit-line-clamp` on text content blocks
+- REQ-WCAG-TYP-4: All `line-height` values MUST use unitless ratios (e.g., `1.5`), not fixed pixel values (e.g., `18px`)
+- REQ-WCAG-TYP-5: Text MUST remain readable at 200% browser zoom (WCAG 1.4.4 Resize Text)
+- REQ-WCAG-TYP-6: The font stack MUST not rely on a single specific font — fallbacks MUST be provided (WCAG 1.4.8 Visual Presentation)
+
+#### Scenario: Text spacing override causes no content loss
+- **WHEN** a user applies text spacing overrides (line-height 1.5x, letter-spacing 0.12em, word-spacing 0.16em)
+- **THEN** no text content is lost, clipped, or overlaps other content
+
+#### Scenario: 200% zoom preserves readability
+- **WHEN** the browser zoom is set to 200%
+- **THEN** all text remains readable and shelter cards reflow appropriately
+
+#### Scenario: No fixed-pixel line heights
+- **WHEN** searching all component files for lineHeight values
+- **THEN** all values are unitless ratios, not pixel values
