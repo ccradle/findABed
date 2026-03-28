@@ -23,7 +23,7 @@
 ### Outreach One-Pager
 
 - [x] T-8: Built `demo/outreach-one-pager.html` — print styles, story-first, DV section, dark mode — printable A4/Letter with `@media print` styles (hide nav, 12pt font, show URLs after links, @page margins). Story-first sections for outreach workers and coordinators, cost, how to get started. Must fit on one printed page. Use `frontend-design` skill. (REQ-PAGER-1 through REQ-PAGER-6)
-- [ ] T-9: Test print layout — verify it fits on one page in Chrome print preview (requires manual Chrome print preview)
+- [x] T-9: Test print layout — verify it fits on one page in Chrome print preview (requires manual Chrome print preview)
 
 ### City Landing Page
 
@@ -39,5 +39,5 @@
 - [x] T-13: Verify all relative links work — test from both local file:// and deployed GitHub Pages URL
 - [x] T-14: Verify dark mode renders correctly on all new pages (test via browser dev tools)
 - [x] T-15: Verify accessibility — semantic HTML, heading hierarchy, contrast ratios in both light and dark mode, keyboard navigation
-- [ ] T-16: Commit and push to docs repo
-- [ ] T-17: Verify all pages render correctly on ccradle.github.io/findABed/ after deploy (allow 1-10 min for Pages to update)
+- [x] T-16: Commit and push to docs repo
+- [x] T-17: Verify all pages render correctly on ccradle.github.io/findABed/ after deploy (allow 1-10 min for Pages to update)
