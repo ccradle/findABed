@@ -479,6 +479,141 @@ Does the language, the flow, and the design center them or process them?
 
 ---
 
+### 🔒 Marcus Webb — Penetration Tester / Application Security Engineer
+
+**Real role:** External advisor — security review and penetration testing
+**Background:** 12 years application security, 6 years pen testing
+**Certifications:** OSCP, GWAPT
+**Experience:** City IT procurement reviews, civic tech AppSec, financial services
+
+**Who he is:**
+Marcus reviews platforms before municipal adoption. He is not adversarial —
+he is professionally skeptical on behalf of the people whose data the platform
+protects. He has done red team engagements for city IT departments and knows
+exactly what an automated security scan will flag. He is personally motivated
+by the mission but professionally obligated to be thorough.
+
+**What he reviews:**
+- Authentication and authorization attack surface
+- JWT implementation correctness (secret strength, empty-secret behavior,
+  exception handling — fails open vs. fails closed)
+- Multi-tenant data isolation — can Tenant A ever read Tenant B's data?
+- RLS bypass scenarios under virtual threads (ScopedValue binding scope)
+- API endpoint authorization gaps
+- Secrets management (env var defaults, startup validation)
+- Dependency vulnerability posture (OWASP gate, CVE resolution)
+- Information disclosure (error messages, stack traces, Swagger exposure)
+- Rate limiting and brute force protection on auth endpoints
+- Security headers (CSP, X-Frame-Options, X-Content-Type-Options)
+
+**His current findings (static review, not yet pen tested):**
+1. **JWT empty-secret behavior** — `${FABT_JWT_SECRET:}` defaults to empty
+   string. Application should fail to start, not silently accept unsigned
+   tokens. Alex confirms Nimbus throws on empty secret — add explicit
+   startup assertion to make this guaranteed rather than implementation-dependent.
+2. **Multi-tenant isolation under virtual threads** — ScopedValue binding
+   scope needs a concurrent integration test: two requests from different
+   tenants simultaneously, verify neither sees the other's data.
+3. **Swagger UI on demo environment** — unauthenticated access to API docs
+   including DV referral endpoint signatures. Not a vulnerability but will
+   appear as a finding in any city IT security scan. Document as intentional
+   or disable for city-facing deployments.
+4. **Rate limiting on `/auth/login`** — no brute force protection. Not
+   blocking for demo. Required before any production pilot with real accounts.
+5. **Security headers** — nginx.conf does not add X-Content-Type-Options,
+   X-Frame-Options, or Content-Security-Policy. HSTS is covered by Certbot.
+   Others will appear in automated scans. Easy to add.
+6. **GlobalExceptionHandler on unhandled exceptions** — verify unhandled
+   exceptions return the structured error format, not a Spring Boot default
+   page with stack trace detail.
+
+**What he confirmed as correct:**
+- RLS defense-in-depth (database-layer + service-layer dvAccess) is the
+  right pattern
+- `fabt_app` restricted role (NOSUPERUSER, DML-only) is correct
+- OWASP `failBuildOnCVSS=7` in CI is stronger than most projects
+- DV opaque referral zero-PII design is the right threat model
+- JWT secret strength (openssl rand -base64 64) is well above HS256 minimum
+
+**His lens for every feature:**
+"What's the worst thing that happens if this is wrong? Who does it affect?"
+For DV shelter data, the answer to that question is "a survivor's location
+is disclosed to an abuser." That drives the threat model priority.
+
+**His test for the platform before city IT engagement:**
+Run OWASP ZAP in active scan mode against the demo URL. Every finding
+in that report will appear in the city IT officer's own scan. Better to
+see it first.
+
+---
+
+### 📣 Simone Okafor — Brand Strategist & Communications Director
+
+**Real role:** External advisor — marketing, brand, and communications (volunteer)
+**Background:** 15 years nonprofit and civic tech communications
+**Notable work:** Code for America national campaigns, United Way rebrand,
+pro bono communications for three open-source public interest projects
+
+**Who she is:**
+Simone volunteers selectively — only for projects she believes in. She is
+enthusiastic about the FABT mission and professionally direct about what
+isn't working. She does not do vague encouragement. She has watched too
+many good civic tech projects fail because nobody told a compelling story
+about them.
+
+**Her expertise:**
+- Brand identity and naming — including whether "Finding A Bed Tonight"
+  is the right long-term name (she has concerns)
+- Messaging architecture — mission, vision, value proposition per audience
+- Audience-specific communications: funders, government officials,
+  shelter operators, outreach workers, faith communities
+- Plain-language writing for non-technical audiences
+- Grant narrative development (works closely with Priya Anand's lens)
+- Open-source project positioning and GitHub Pages storytelling
+- Press, media, and community building for civic tech
+
+**Her current concerns:**
+1. **The name "Finding A Bed Tonight"** — descriptive and human, but long,
+   doesn't abbreviate cleanly (FABT is not speakable), and doesn't scale
+   as the platform grows beyond emergency beds. Recommends a naming
+   exploration before serious outreach or print materials.
+2. **The opening story is the best asset and is underused.** "A family of
+   five is sitting in a parking lot at midnight" should be the first
+   10 seconds of every document, page, and pitch. It's currently below
+   CI badges in the README.
+3. **Three audiences, one README.** The README tries to serve developers,
+   city officials, and shelter operators simultaneously. Each audience
+   needs their own front door.
+4. **GitHub Pages demo site reads like technical documentation** rather
+   than a product story. City officials should feel the problem before
+   they see the coordinator dashboard.
+5. **Shelter operator plain-language materials are missing.** Reverend
+   Monroe's "what does free mean for my church board" question doesn't
+   have a one-page answer yet.
+6. **User-facing copy needs a communications review.** "Hold This Bed,"
+   population type labels, and error messages are brand touchpoints,
+   not just UX elements. (Connects to Keisha Thompson's dignity concern.)
+
+**Her 30-day recommendation:**
+1. Write a 500-word "About" page for GitHub Pages — problem, solution,
+   who it's for, what it costs, how to get started. No jargon.
+2. Create a one-page printable PDF for the first outreach conversation —
+   story-first, not feature-first.
+3. Naming and tagline exploration — commit to "Finding A Bed Tonight"
+   with conviction or find something stronger.
+4. Review all user-facing application copy through a communications lens.
+
+**Her ask from the team:**
+"Give me three sentences you'd say to a shelter coordinator in a CoC
+meeting hallway with 90 seconds. That's the brief. Everything flows from that."
+
+**Her lens for every communications decision:**
+Does this make the person in crisis more visible, or does it make the
+technology more visible? The technology should be invisible. The person
+should be everything.
+
+---
+
 ## Team Personas
 
 These are the advisors and builders. Reference when making architectural
@@ -614,7 +749,16 @@ when I go offline?"), Sandra's question ("how many taps?"), Marcus's question
 ("show me DV shelter protection in plain English"), and have honest answers to
 Teresa's questions — including the ones we can't fully answer yet.
 
-**For funding conversations:**
+**For communications and messaging:**
+Ask: "Would Simone approve this copy?" Specifically: does the opening
+sentence put the person in crisis first? Is this written for the right
+audience? Does the language make the technology invisible and the mission
+visible? Apply to every external-facing document, demo page, and
+user-facing string in the application.
+Ask: "What would Marcus flag here?" Before any city IT engagement, run
+through his six current findings. Before any new feature touches auth,
+multi-tenancy, or DV data handling, ask whether it introduces a new
+attack surface he hasn't seen yet.
 Ask: "Can Priya defend this to her foundation board? Is the theory of change
 measurable? Is there a named pilot partner?" These questions shape documentation
 priorities before any grant conversation.
@@ -653,6 +797,8 @@ Is the hold duration sufficient for discharge workflows?"
 | 🌐 Rev. Alicia Monroe | Faith Shelter | Zero training, partial participation, plain-language cost |
 | 📊 Dr. Kenji Watanabe | Policy Researcher | HMIS compliance, SPM alignment, small-cell suppression |
 | 🙋 Keisha Thompson | Lived Experience | Dignity, person-centered language, human impact |
+| 🔒 Marcus Webb | Pen Tester / AppSec | Auth surface, multi-tenant isolation, security headers |
+| 📣 Simone Okafor | Brand & Communications | Naming, messaging, audience-specific materials, copy review |
 | 🏗️ Alex Chen | Principal Engineer | Architecture, module boundaries, correctness |
 | 🤝 Maria Torres | Product Manager | User outcomes, adoption sequencing, outreach strategy |
 | 🔧 Jordan Reyes | SRE | Deployment, security posture, CI integrity |
