@@ -1,5 +1,9 @@
 # Finding A Bed Tonight — Project Documentation
 
+*A family of five is sitting in a parking lot at midnight. A social worker has 30 minutes. Right now, that social worker is making phone calls — to shelters that may be closed, full, or unable to serve that family's specific needs.*
+
+**No more midnight phone calls.**
+
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE)
 
 Open-source emergency shelter bed availability platform — project documentation, specifications, and planning artifacts.
