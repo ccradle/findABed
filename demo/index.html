@@ -43,7 +43,7 @@
 <header>
   <h1>Finding A Bed Tonight</h1>
   <p>Open-source shelter bed availability platform for Continuums of Care. Real-time bed search, soft-hold reservations, DV privacy enforcement, and operational monitoring.</p>
-  <span class="badge">Demo Walkthrough &middot; 18 Screenshots</span>
+  <span class="badge">Demo Walkthrough &middot; 19 Screenshots</span>
 </header>
 
 <div class="container">
@@ -144,7 +144,7 @@
       <span class="card-title">User Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Back at the office, the CoC administrator manages who has access. Each role sees only what they need — and DV shelter access is a separate, deliberate toggle.</div>
+    <div class="card-caption">Back at the office, the CoC administrator manages who has access. Each role sees only what they need — DV shelter access is a separate, deliberate toggle, and if someone's credentials are compromised, the admin resets their password in one click.</div>
     <img src="screenshots/09-admin-users.png" alt="Admin users tab">
   </div>
 
@@ -218,11 +218,23 @@
     <img src="screenshots/16-admin-oauth2-providers.png" alt="Admin OAuth2 providers tab">
   </div>
 
-  <div class="section-divider">Observability Stack (Optional)</div>
+  <div class="section-divider">Password Management</div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">17</span>
+      <span class="card-title">Change Password</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Darius can change his own password from any screen — one tap on "Password" in the header opens the modal. If his phone is lost, the CoC admin resets it from the Users tab. All existing sessions are invalidated immediately.</div>
+    <img src="screenshots/19-change-password.png" alt="Change password modal">
+  </div>
+
+  <div class="section-divider">Observability Stack (Optional)</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">18</span>
       <span class="card-title">Grafana Dashboard</span>
       <span class="card-role">Operations</span>
     </div>
@@ -232,7 +244,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">18</span>
+      <span class="card-number">19</span>
       <span class="card-title">Distributed Tracing</span>
       <span class="card-role">Operations</span>
     </div>
