@@ -10,6 +10,7 @@ Admin-initiated password reset for users in their tenant.
 - REQ-ARST-4: After admin reset, the user's existing JWT tokens MUST be invalidated
 - REQ-ARST-5: A "Reset Password" button MUST appear per user row in the Admin panel Users tab
 - REQ-ARST-6: The temporary password MUST be communicated out-of-band — not stored or displayed after the modal closes
+- REQ-ARST-7: The "Reset Password" button MUST be hidden for SSO-only users in the Admin panel
 
 ### Scenarios
 

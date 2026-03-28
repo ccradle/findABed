@@ -72,6 +72,16 @@ Three new Micrometer metrics:
 - Admin reset: 10 attempts per 15 minutes per admin IP (prevent mass reset with compromised admin credentials)
 - Login rate limit interaction: password change does NOT reset the login attempt counter (separate buckets)
 
+### SSO Users and Password Change
+
+Users who authenticate exclusively via SSO (Google, Microsoft, Keycloak) have no local password hash. The "Change Password" option MUST be hidden for SSO-only users. Detection: if `user.passwordHash` is null or the user's only authentication method is an OAuth2 provider, suppress the UI element. The backend endpoint should also return 409 Conflict if invoked for an SSO-only user ("Password is managed by your SSO provider").
+
+Admin reset follows the same rule — the "Reset Password" button is hidden for SSO-only users in the Admin panel.
+
+### Database Column Naming Convention
+
+The new column follows the existing snake_case convention: `password_changed_at` (matching `password_hash`, `dv_access`, `created_at`). The Java entity field is `passwordChangedAt` per standard JPA camelCase mapping.
+
 ### No Email-Based Forgot Password (Deferred)
 
 Email-based "forgot password" flow requires email infrastructure (SMTP, templates, secure token generation, rate limiting). This is deferred to a future change. The admin reset provides the immediate need.

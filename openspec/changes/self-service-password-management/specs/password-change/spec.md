@@ -12,6 +12,8 @@ Authenticated self-service password change with JWT invalidation.
 - REQ-PWD-6: Password change endpoint MUST be rate-limited (5 attempts per 15 minutes)
 - REQ-PWD-7: A "Change Password" UI MUST be accessible from the user profile area
 - REQ-PWD-8: On successful change, the user MUST be redirected to the login page with a clear message
+- REQ-PWD-9: The "Change Password" UI MUST be hidden for SSO-only users (no local password hash)
+- REQ-PWD-10: The backend MUST return 409 Conflict if an SSO-only user attempts password change
 
 ### Scenarios
 
@@ -39,4 +41,9 @@ Scenario: Token issued before password change is rejected
   Given a user changed their password at time T
   When a request uses a JWT issued before time T
   Then the response is 401
+
+Scenario: SSO-only user cannot change password
+  Given a user authenticated only via Google SSO (no local password hash)
+  When they attempt PUT /api/v1/auth/password
+  Then the response is 409 with "Password is managed by your SSO provider"
 ```
