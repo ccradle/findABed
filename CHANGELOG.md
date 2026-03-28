@@ -14,6 +14,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.17.0] — 2026-03-28 — Story-Aligned Demo + Observability
+
+### Added
+- The demo walkthrough now tells a coherent story: Darius searches for beds for a family of five, finds three shelters with fresh data, holds a bed, and Sandra updates counts on the other side
+- Demo environment expanded from 10 to 13 shelters — a realistic Wake County CoC network including 3 domestic violence shelters (required for privacy-preserving aggregate reporting)
+- Trust section at the end of the walkthrough: WCAG 2.1 AA, DV privacy design, Apache 2.0 license, deployment tiers, and links for funders, city officials, and developers
+- Developers can now reset seed data with one command (`./dev-start.sh --fresh`) when testing changes to shelter structure
+- Tests now clean up after themselves — no test-created users or shelters left behind in the database
+- Three new performance monitoring panels in the Grafana operations dashboard: query response time percentiles (p50/p95/p99), availability update latency, and database connection pool wait time
+
+### Changed
+- The walkthrough now leads with the bed search, not the login page — the person in crisis is visible from the first screenshot
+- Walkthrough streamlined from 19 to 15 screenshots — focused on the core story with administration in a separate section
+- All documentation now uses person-first language: "individuals experiencing homelessness" instead of "homeless individuals"
+- Analytics walkthrough captions updated to describe what the dashboard shows without claiming specific numbers
+- DV referral walkthrough corrected: the outreach worker must refresh to see acceptance status (there is no push notification mechanism yet)
+
+### Fixed
+- A green button in the shelter detail view did not meet WCAG 2.1 AA contrast requirements — darkened from 3.76:1 to 5.48:1
+
+---
+
 ## [v0.16.0] — 2026-03-28 — Password Management
 
 ### Added
