@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ccradle.github.io/findABed/sitemap.xml

@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DV Opaque Referral — Demo Walkthrough</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="Privacy-preserving DV shelter referral walkthrough. Zero client PII stored. Designed to support VAWA/FVPSA compliance requirements.">
+  <meta property="og:title" content="DV Opaque Referral — Finding A Bed Tonight">
+  <meta property="og:description" content="Privacy-preserving shelter referral for domestic violence survivors. Zero client PII. Human-in-the-loop screening. Warm handoff by phone.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/dv-01-search-referral-button.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/dvindex.html">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
@@ -20,7 +27,7 @@
     .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
     .card img { width: 100%; display: block; }
     .callout { background: #1e1b4b; border: 1px solid #4c1d95; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; }
-    .callout h3 { color: #a78bfa; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .callout h2 { color: #a78bfa; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
     .callout p { color: #c4b5fd; font-size: 14px; }
     footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
     footer a { color: #a78bfa; text-decoration: none; }
@@ -46,7 +53,7 @@
 <div class="container">
 
   <div class="callout">
-    <h3>Privacy Guarantee</h3>
+    <h2>Privacy Guarantee</h2>
     <p>The referral token contains <strong>zero client PII</strong>. Only operational data is stored: household size, population type, urgency, special needs, and the worker's callback number. The shelter address is shared <strong>verbally during a phone call</strong>, never through this system. All tokens are <strong>hard-deleted within 24 hours</strong>.</p>
   </div>
 
@@ -58,7 +65,7 @@
       <span class="card-title">DV Shelter in Search Results</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">DV shelters appear in search results only for users with dvAccess=true (enforced by PostgreSQL Row Level Security). Instead of "Hold This Bed," DV shelters show a purple "Request Referral" button — beds cannot be held directly.</div>
+    <div class="card-caption">A woman and her two children need a safe place tonight. Darius searches for beds — and because he has DV authorization, safety shelters appear in his results. Instead of "Hold This Bed," a purple "Request Referral" button appears. He doesn't know the shelter's address. That's by design.</div>
     <img src="screenshots/dv-01-search-referral-button.png" alt="DV shelter with Request Referral button">
   </div>
 
@@ -68,7 +75,7 @@
       <span class="card-title">Referral Request Form</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">The referral form captures only operational data: household size, urgency level (Standard/Urgent/Emergency), special needs (wheelchair, pets, medical — no names), and the worker's callback number. The banner states: "No client identifying information is stored."</div>
+    <div class="card-caption">Darius fills in only what the shelter needs to make a decision — household size, urgency, special needs. No names. No addresses. No client PII enters the system at any point.</div>
     <img src="screenshots/dv-02-referral-request-modal.png" alt="Referral request modal">
   </div>
 
@@ -78,7 +85,7 @@
       <span class="card-title">Pending Referral — Waiting for Response</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">After submission, the worker sees their referral in the "My DV Referrals" section with a countdown timer. The token expires after 4 hours (configurable per tenant). The worker waits for the shelter to accept or reject.</div>
+    <div class="card-caption">The referral is submitted. Now Darius waits — a countdown timer shows how long the shelter has to respond. He stays with the family.</div>
     <img src="screenshots/dv-03-my-referrals-pending.png" alt="My Referrals with pending token">
   </div>
 
@@ -90,7 +97,7 @@
       <span class="card-title">Safety Screening View</span>
       <span class="card-role">DV Coordinator</span>
     </div>
-    <div class="card-caption">DV shelter coordinators see pending referrals with a purple badge. The screening view shows only operational data: household size, population type, urgency, special needs, callback number, and time remaining. No client PII is visible. Accept or Reject buttons allow the coordinator to respond.</div>
+    <div class="card-caption">At the shelter, the coordinator sees the referral come in — household size, urgency, special needs. No names, no faces. She reviews what she needs to make a safe decision: can we serve this family tonight?</div>
     <img src="screenshots/dv-04-coordinator-screening.png" alt="Coordinator screening view">
   </div>
 
@@ -100,7 +107,7 @@
       <span class="card-title">Referral Accepted — Begin Warm Handoff</span>
       <span class="card-role">DV Coordinator</span>
     </div>
-    <div class="card-caption">When the coordinator accepts, the referral is removed from the pending list. The referring outreach worker is notified and receives the shelter's intake phone number for a warm handoff call. The shelter address is shared verbally during the call — never displayed in the system.</div>
+    <div class="card-caption">She accepts. Darius gets notified instantly and receives the shelter's intake phone number — but still not the address. That comes next, voice to voice.</div>
     <img src="screenshots/dv-05-referral-accepted.png" alt="Referral accepted">
   </div>
 
@@ -110,7 +117,7 @@
       <span class="card-title">Warm Handoff — Worker Sees Phone Number</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">The outreach worker's "My DV Referrals" section now shows the accepted referral with the shelter intake phone number: "Call shelter intake: 919-555-XXXX." The worker calls the shelter to arrange arrival. No shelter address appears anywhere in the system.</div>
+    <div class="card-caption">Darius calls the shelter intake line. The coordinator gives the address over the phone — the warm handoff. The address never appeared on a screen, never hit a database, never left a digital trace.</div>
     <img src="screenshots/dv-06-warm-handoff.png" alt="Warm handoff phone number">
   </div>
 
@@ -122,12 +129,12 @@
       <span class="card-title">Referral Rejected with Reason</span>
       <span class="card-role">DV Coordinator</span>
     </div>
-    <div class="card-caption">If the coordinator cannot accept (e.g., "No capacity for pets at this time"), they reject with a reason. An advisory reminds staff: "Do not include client identifying information." The worker sees the decline reason and can request a referral to a different shelter.</div>
+    <div class="card-caption">Sometimes the answer is no — "No capacity for pets at this time." The coordinator explains why without revealing anything about the client. Darius sees the reason and can request a referral to a different shelter immediately.</div>
     <img src="screenshots/dv-07-referral-reject-reason.png" alt="Referral rejection with reason">
   </div>
 
   <div class="callout">
-    <h3>What Happens After</h3>
+    <h2>What Happens After</h2>
     <p>All referral tokens — accepted, rejected, or expired — are <strong>hard-deleted within 24 hours</strong> by the purge service. No audit trail of individual referrals survives in the database. Only aggregate Micrometer counters (requested/accepted/rejected/expired) remain for HUD reporting, backed by Prometheus when the observability stack is active.</p>
   </div>
 

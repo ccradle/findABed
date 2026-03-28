@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Finding A Bed Tonight — Demo Walkthrough</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="Interactive screenshot walkthrough of Finding A Bed Tonight — bed search, reservations, coordinator dashboard, surge mode, and more.">
+  <meta property="og:title" content="Finding A Bed Tonight — Demo Walkthrough">
+  <meta property="og:description" content="See the platform in action: bed search, soft-hold reservations, coordinator dashboard, internationalization, surge mode, and observability.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/02-bed-search.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
@@ -49,7 +56,7 @@
       <span class="card-title">Login</span>
       <span class="card-role">All Roles</span>
     </div>
-    <div class="card-caption">Tenant-scoped login with email/password and OAuth2 SSO. Enter a tenant slug to see "Sign in with Google/Microsoft/Keycloak" buttons (loaded dynamically per tenant). Closed registration: admin must pre-provision user accounts.</div>
+    <div class="card-caption">It's 11:14 PM. Darius pulls up the app on his phone in a shelter parking lot. One tap, he's in — same credentials his CoC already issued.</div>
     <img src="screenshots/01-login.png" alt="Login page">
   </div>
 
@@ -61,7 +68,7 @@
       <span class="card-title">Bed Search</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">Outreach workers search for available beds by population type. Results are ranked by availability, barriers, and data freshness. DV shelters are filtered by Row Level Security.</div>
+    <div class="card-caption">He has a family of five and 30 minutes. He filters by population type — the app shows only shelters that can serve this family right now.</div>
     <img src="screenshots/02-bed-search.png" alt="Bed search page">
   </div>
 
@@ -71,7 +78,7 @@
       <span class="card-title">Search Results</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">Bed search results show shelter name, availability by population type, data freshness indicators (green/yellow/red), and constraint filters (pets, wheelchair, sobriety).</div>
+    <div class="card-caption">Three shelters have beds. Green badges mean the data was updated in the last hour — no more calling a shelter only to find out they filled up two hours ago.</div>
     <img src="screenshots/03-search-results.png" alt="Bed search results">
   </div>
 
@@ -81,7 +88,7 @@
       <span class="card-title">Shelter Detail</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">Shelter detail viewed from bed search results. Shows availability by population type, constraints, data freshness, and action buttons for holding a bed.</div>
+    <div class="card-caption">Darius taps a shelter to see the details — pets allowed, wheelchair accessible, updated 12 minutes ago. This one works.</div>
     <img src="screenshots/04-shelter-detail-search.png" alt="Shelter detail from search">
   </div>
 
@@ -91,7 +98,7 @@
       <span class="card-title">Reservation Hold</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">Outreach workers can soft-hold a bed for up to 90 minutes (configurable per tenant via Admin UI). The hold prevents double-booking while the worker transports the client to the shelter. Concurrent hold safety via PostgreSQL advisory locks.</div>
+    <div class="card-caption">One tap holds the bed for 90 minutes — enough time to drive the family across town safely. No one else can claim it while Darius is in transit.</div>
     <img src="screenshots/05-reservation-hold.png" alt="Reservation hold with countdown">
   </div>
 
@@ -103,7 +110,7 @@
       <span class="card-title">Coordinator Dashboard</span>
       <span class="card-role">CoC Admin</span>
     </div>
-    <div class="card-caption">Shelter coordinators update bed availability with a 3-tap flow. The dashboard shows all shelters with current occupancy, hold counts, and data age indicators.</div>
+    <div class="card-caption">Meanwhile, Sandra checks her dashboard between intake tasks. She can see every shelter's occupancy and how fresh the data is — one glance tells her where the gaps are.</div>
     <img src="screenshots/06-coordinator-dashboard.png" alt="Coordinator dashboard">
   </div>
 
@@ -113,7 +120,7 @@
       <span class="card-title">Bed Count Update</span>
       <span class="card-role">Coordinator</span>
     </div>
-    <div class="card-caption">Expanded shelter card showing the unified bed editing form. Coordinators adjust Total Beds, Occupied, and On Hold counts with +/- steppers per population type. On Hold is read-only (managed by the reservation system). Available is computed: total - occupied - onHold. Single save writes an availability snapshot.</div>
+    <div class="card-caption">Sandra updates her shelter's bed count in three taps — total, occupied, done. The system calculates available beds automatically. Every update refreshes the data for outreach workers like Darius in real time.</div>
     <img src="screenshots/07-coordinator-bed-update.png" alt="Coordinator bed count update">
   </div>
 
@@ -125,7 +132,7 @@
       <span class="card-title">Spanish Language</span>
       <span class="card-role">All Roles</span>
     </div>
-    <div class="card-caption">Full Spanish localization (react-intl). All UI labels, error messages, and navigation switch instantly via the language selector. Supports EN and ES out of the box.</div>
+    <div class="card-caption">Darius works with Spanish-speaking families too. One tap switches the entire interface — labels, errors, badges, everything — to Spanish. No page reload, no second app.</div>
     <img src="screenshots/08-spanish.png" alt="Spanish language view">
   </div>
 
@@ -137,7 +144,7 @@
       <span class="card-title">User Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Admins manage users with role-based access: Platform Admin, CoC Admin, Coordinator, Outreach Worker. DV access is a separate toggle for domestic violence shelter visibility.</div>
+    <div class="card-caption">Back at the office, the CoC administrator manages who has access. Each role sees only what they need — and DV shelter access is a separate, deliberate toggle.</div>
     <img src="screenshots/09-admin-users.png" alt="Admin users tab">
   </div>
 
@@ -147,7 +154,7 @@
       <span class="card-title">Create User Form</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">New user creation with email, display name, password, role selection (multi-select), and DV access toggle. Users are scoped to their tenant.</div>
+    <div class="card-caption">Adding a new outreach worker takes 30 seconds. Pick their roles, set DV access if authorized, and they're ready for the field tonight.</div>
     <img src="screenshots/10-admin-create-user.png" alt="Create user form">
   </div>
 
@@ -157,7 +164,7 @@
       <span class="card-title">Shelter Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Shelter profiles with address, constraints, capacity by population type. Supports HSDS 3.0 import and 211 CSV import for bulk onboarding.</div>
+    <div class="card-caption">Every shelter in the community is here — address, capacity, constraints. New shelters can be added one at a time or bulk-imported from an HSDS 3.0 or 211 CSV file.</div>
     <img src="screenshots/11-admin-shelters.png" alt="Admin shelters tab">
   </div>
 
@@ -167,7 +174,7 @@
       <span class="card-title">Add Shelter Form</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">New shelter creation with name, address, phone, coordinates, constraints (pets, wheelchair, sobriety, ID, referral), and initial bed capacity by population type.</div>
+    <div class="card-caption">A new transitional housing program opens downtown. The admin adds it with constraints — pets allowed, wheelchair accessible — and initial bed counts by population type.</div>
     <img src="screenshots/12-add-shelter.png" alt="Add shelter form">
   </div>
 
@@ -177,7 +184,7 @@
       <span class="card-title">Shelter Detail</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Detailed shelter view from the admin panel showing profile, constraints, and current availability status by population type.</div>
+    <div class="card-caption">The full shelter profile — everything an administrator needs to verify the data is correct before it goes live to outreach workers.</div>
     <img src="screenshots/13-admin-shelter-detail.png" alt="Shelter detail from admin">
   </div>
 
@@ -187,7 +194,7 @@
       <span class="card-title">Surge Mode</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">White Flag emergency surge activation during extreme weather. Enables overflow beds, broadcasts to all shelters, and flags search results with surge status.</div>
+    <div class="card-caption">Temperature drops below freezing tonight. The administrator activates surge mode — overflow beds become visible to every outreach worker immediately.</div>
     <img src="screenshots/14-admin-surge.png" alt="Admin surge tab">
   </div>
 
@@ -197,7 +204,7 @@
       <span class="card-title">Observability Settings</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Runtime configuration for metrics, tracing, and monitors. Live temperature display from NOAA with configurable surge activation threshold. Toggle Prometheus and OpenTelemetry tracing without restart.</div>
+    <div class="card-caption">The operations team configures monitoring thresholds — live temperature from NOAA, stale data alerts, DV safety canaries — all toggleable at runtime without a restart.</div>
     <img src="screenshots/15-admin-observability.png" alt="Admin observability tab">
   </div>
 
@@ -207,7 +214,7 @@
       <span class="card-title">OAuth2 Providers</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Admin OAuth2 provider management. Configure Google, Microsoft, or Keycloak SSO per tenant. Write-once client secret, OIDC test connection, delete confirmation. Closed registration: only pre-provisioned users can log in.</div>
+    <div class="card-caption">The CoC already uses Microsoft 365. The admin adds their SSO provider — staff sign in with existing credentials. No new passwords to manage.</div>
     <img src="screenshots/16-admin-oauth2-providers.png" alt="Admin OAuth2 providers tab">
   </div>
 
@@ -219,7 +226,7 @@
       <span class="card-title">Grafana Dashboard</span>
       <span class="card-role">Operations</span>
     </div>
-    <div class="card-caption">FABT Operations dashboard with 10 panels: bed search rate, latency, availability updates, reservation lifecycle, stale shelter count, DV canary status, surge active, temperature gap, webhook delivery, circuit breaker state.</div>
+    <div class="card-caption">For teams that want operational visibility — search volume, response times, stale shelters, DV safety canaries — all in one Grafana dashboard, deployed alongside the app.</div>
     <img src="screenshots/17-grafana-dashboard.png" alt="Grafana FABT Operations dashboard">
   </div>
 
@@ -229,7 +236,7 @@
       <span class="card-title">Distributed Tracing</span>
       <span class="card-role">Operations</span>
     </div>
-    <div class="card-caption">Jaeger trace visualization showing OpenTelemetry spans for API requests. Traces include service name, operation, duration, and status. Enabled at runtime via the Observability tab.</div>
+    <div class="card-caption">When something is slow, distributed tracing shows exactly where the time went — from API request to database query. Enabled at runtime, no redeployment needed.</div>
     <img src="screenshots/18-jaeger-traces.png" alt="Jaeger traces">
   </div>
 

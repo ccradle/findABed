@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HMIS Bridge — Export Walkthrough</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="HMIS Bridge walkthrough: automated bed inventory push to Clarity, WellSky, and ClientTrack. No client PII. DV shelters aggregated.">
+  <meta property="og:title" content="HMIS Bridge — Finding A Bed Tonight">
+  <meta property="og:description" content="Automated bed inventory push to HMIS vendors. No client PII. DV shelter data aggregated. Outbox pattern with retry and dead letter handling.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/hmis-01-export-tab.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/hmisindex.html">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
@@ -20,7 +27,7 @@
     .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
     .card img { width: 100%; display: block; }
     .callout { background: #0d2137; border: 1px solid #1565c0; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; }
-    .callout h3 { color: #64b5f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .callout h2 { color: #64b5f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
     .callout p { color: #90caf9; font-size: 14px; }
     footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
     footer a { color: #64b5f6; text-decoration: none; }
@@ -43,7 +50,7 @@
 <div class="container">
 
   <div class="callout">
-    <h3>No Client PII</h3>
+    <h2>No Client PII</h2>
     <p>FABT pushes <strong>project-level bed inventory</strong> (HMIS Element 2.07) — beds total, beds occupied, population type, utilization rate. This is project descriptor data, not client-level PII. <strong>No client consent is required.</strong> DV shelter data is aggregated across all DV shelters before push — individual DV shelter occupancy is never sent.</p>
   </div>
 
@@ -55,7 +62,7 @@
       <span class="card-title">HMIS Export Overview</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">The HMIS Export tab in the Admin panel shows export status (configured vendors, push schedule), a Push Now button for manual triggers, a data preview table with utilization percentages, and export history. DV shelters appear as a single aggregated row at the bottom — never individual shelter data.</div>
+    <div class="card-caption">HUD requires bed inventory data in HMIS. Instead of manual data entry, the administrator opens the HMIS Export tab — the data is already there, aggregated automatically from coordinator updates. DV shelters appear as a single aggregated row. No individual DV shelter data ever leaves the system.</div>
     <img src="screenshots/hmis-01-export-tab.png" alt="HMIS Export tab overview">
   </div>
 
@@ -65,7 +72,7 @@
       <span class="card-title">DV Aggregation in Preview</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">The data preview supports filtering: All, Non-DV, or DV (Aggregated). When DV is selected, only the aggregated row appears — showing total DV beds and occupancy across all DV shelters without revealing individual shelter data. This prevents small-n inference that could identify survivors.</div>
+    <div class="card-caption">The administrator previews exactly what will be sent. She filters to DV only — and sees a single aggregated row across all DV shelters. No way to infer which shelter has which occupancy. The privacy math is built in.</div>
     <img src="screenshots/hmis-02-dv-aggregation.png" alt="DV aggregation filter">
   </div>
 
@@ -75,7 +82,7 @@
       <span class="card-title">Push Controls</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">The Push Now button triggers an immediate push to all enabled HMIS vendors. The export status section shows configured vendors with their type, enabled/disabled state, and push interval. Dead letter entries (failed pushes after 3 retries) are highlighted for manual retry.</div>
+    <div class="card-caption">One click pushes bed inventory to Clarity, WellSky, or ClientTrack — whichever HMIS vendor the CoC uses. Failed pushes retry automatically; anything that fails three times lands in a dead letter queue for manual review.</div>
     <img src="screenshots/hmis-03-push-controls.png" alt="Push controls and vendor status">
   </div>
 
@@ -87,12 +94,12 @@
       <span class="card-title">Grafana HMIS Bridge Dashboard</span>
       <span class="card-role">Operations</span>
     </div>
-    <div class="card-caption">The HMIS Bridge Grafana dashboard provides operational visibility: push rate per vendor, failure rate, push latency (p99), circuit breaker state, dead letter queue size, and total records pushed. Available only when the observability stack is active (--observability).</div>
+    <div class="card-caption">For operations teams who want to know if the push pipeline is healthy — push rate, failure rate, latency, circuit breaker state — all in one Grafana dashboard.</div>
     <img src="screenshots/hmis-04-grafana-dashboard.png" alt="Grafana HMIS Bridge dashboard">
   </div>
 
   <div class="callout">
-    <h3>Vendor Adapters</h3>
+    <h2>Vendor Adapters</h2>
     <p>FABT supports multiple HMIS vendors per tenant via a strategy pattern: <strong>Bitfocus Clarity</strong> (REST API), <strong>WellSky</strong> (HMIS CSV), and <strong>Eccovia ClientTrack</strong> (REST API). The outbox pattern ensures pushes survive application restarts. Failed pushes retry 3 times, then move to a dead letter queue for manual intervention.</p>
   </div>
 

@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CoC Analytics — Dashboard Walkthrough</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="CoC Analytics dashboard walkthrough: utilization trends, demand signals, HIC/PIT export, and batch job management.">
+  <meta property="og:title" content="CoC Analytics — Finding A Bed Tonight">
+  <meta property="og:description" content="Aggregate analytics for Continuums of Care: utilization trends, unmet demand tracking, HIC/PIT export, and Spring Batch job management.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/analytics-01-executive-summary.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/analyticsindex.html">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
@@ -20,7 +27,7 @@
     .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
     .card img { width: 100%; display: block; }
     .callout { background: #0d2137; border: 1px solid #1565c0; border-radius: 12px; padding: 16px 20px; margin-bottom: 32px; }
-    .callout h3 { color: #64b5f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .callout h2 { color: #64b5f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
     .callout p { color: #90caf9; font-size: 14px; }
     footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
     footer a { color: #64b5f6; text-decoration: none; }
@@ -43,7 +50,7 @@
 <div class="container">
 
   <div class="callout">
-    <h3>What This Shows</h3>
+    <h2>What This Shows</h2>
     <p>CoC administrators can analyze utilization trends, track unmet demand through zero-result bed searches, generate HIC/PIT exports for HUD, and manage Spring Batch jobs &mdash; all without client PII. DV shelter data is aggregated with small-cell suppression (minimum 3 shelters, 5 beds). Analytics queries run on a separate connection pool so OLTP bed search performance is never impacted.</p>
   </div>
 
@@ -53,7 +60,7 @@
       <div class="card-title">Executive Summary</div>
       <span class="card-role">COC_ADMIN</span>
     </div>
-    <div class="card-caption">System utilization rate with RAG indicators (65-105% thresholds), total searches, zero-result searches (unmet demand signal), reservation conversion rate, and expiry rate.</div>
+    <div class="card-caption">The CoC administrator opens the analytics dashboard Monday morning. One glance tells her: system utilization is at 78%, 47 bed searches returned zero results last week, and reservation conversion is climbing. The numbers that used to take a week to compile are updated every night.</div>
     <img src="screenshots/analytics-01-executive-summary.png" alt="Analytics executive summary with utilization metrics">
   </div>
 
@@ -63,7 +70,7 @@
       <div class="card-title">Utilization Trends</div>
       <span class="card-role">COC_ADMIN</span>
     </div>
-    <div class="card-caption">Time-series chart showing daily utilization rates from pre-aggregated summary data. Powered by Recharts, lazy-loaded so outreach workers never download the ~200KB chart bundle.</div>
+    <div class="card-caption">She drills into the trend line — utilization has been climbing steadily for two weeks. That's the data she needs for Thursday's board meeting to request additional capacity.</div>
     <img src="screenshots/analytics-02-utilization-trends.png" alt="Utilization trends line chart">
   </div>
 
@@ -73,7 +80,7 @@
       <div class="card-title">Demand Signals</div>
       <span class="card-role">COC_ADMIN</span>
     </div>
-    <div class="card-caption">Reservation conversion/expiry rates and zero-result search counts. Zero-result searches are the strongest unmet demand signal: "47 searches for SINGLE_ADULT beds with zero results last Tuesday night."</div>
+    <div class="card-caption">Zero-result searches tell the story the numbers can't: 47 times last Tuesday night, an outreach worker searched for a bed and found nothing. That's 47 people the system couldn't help — the strongest signal for where to invest next.</div>
     <img src="screenshots/analytics-03-demand-signals.png" alt="Demand signals metrics">
   </div>
 
@@ -85,7 +92,7 @@
       <div class="card-title">Batch Jobs Management</div>
       <span class="card-role">PLATFORM_ADMIN</span>
     </div>
-    <div class="card-caption">View all batch jobs (daily aggregation, HMIS push, HIC/PIT export) with schedules, enable/disable toggle, execution history with step-level detail, and restart failed jobs. Cron schedules editable from the UI.</div>
+    <div class="card-caption">Behind the scenes, batch jobs aggregate the data every night — daily summaries, HMIS pushes, HIC/PIT exports. The administrator can see what ran, what failed, and restart anything that needs attention.</div>
     <img src="screenshots/analytics-04-batch-jobs.png" alt="Batch jobs management panel">
   </div>
 
@@ -97,7 +104,7 @@
       <div class="card-title">HIC/PIT Export</div>
       <span class="card-role">COC_ADMIN</span>
     </div>
-    <div class="card-caption">One-click generation of Housing Inventory Count and sheltered Point-in-Time count data in HUD-compatible CSV format. DV shelters aggregated with small-cell suppression per Design D18.</div>
+    <div class="card-caption">HUD reporting season used to mean weeks of spreadsheet wrangling. Now the administrator clicks one button and downloads HIC/PIT data in HUD-compatible CSV — DV shelters automatically aggregated to protect individual shelter identity.</div>
     <img src="screenshots/analytics-05-hic-pit-export.png" alt="HIC/PIT export section with download buttons">
   </div>
 
@@ -109,12 +116,12 @@
       <div class="card-title">Grafana CoC Analytics Dashboard</div>
       <span class="card-role">OBSERVABILITY</span>
     </div>
-    <div class="card-caption">Operational monitoring: system utilization gauge (65-105% thresholds), zero-result search rate, reservation conversion rate, bed capacity trend, demand vs capacity overlay, stale shelter count. Spring Batch job success/failure rate and duration trends. Only available when the observability stack is active.</div>
+    <div class="card-caption">For operations teams — utilization gauges, zero-result search rate, batch job health, and demand-vs-capacity overlays. The dashboard that answers "is the system working?" at a glance.</div>
     <img src="screenshots/analytics-06-grafana-dashboard.png" alt="Grafana CoC Analytics dashboard with 8 panels">
   </div>
 
   <div class="callout">
-    <h3>Privacy &amp; Compliance</h3>
+    <h2>Privacy &amp; Compliance</h2>
     <p>All analytics are aggregate &mdash; no client PII. DV shelter data uses dual-threshold suppression: aggregate is only shown when 3+ distinct DV shelters AND 5+ beds exist, preventing re-identification of individual shelters. Geographic view excludes DV shelters entirely. Analytics queries run on a separate HikariCP connection pool (3 connections, read-only, 30s timeout) so they can never starve OLTP bed search queries.</p>
   </div>
 

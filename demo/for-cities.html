@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>For Cities — Finding A Bed Tonight</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="Finding A Bed Tonight for city officials: data ownership, WCAG accessibility, security posture, Apache 2.0 procurement.">
+  <meta property="og:title" content="Finding A Bed Tonight — For Cities">
+  <meta property="og:description" content="Self-hosted, WCAG accessible, Apache 2.0 licensed. Your city owns its data.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/02-bed-search.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/for-cities.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1a56db;
+      --border: #e2e8f0;
+      --success: #166534;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --bg-alt: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --border: #334155;
+        --success: #4ade80;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .header {
+      background: var(--bg-alt);
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .header p { font-size: 16px; color: var(--muted); max-width: 600px; margin: 0 auto; }
+    .content { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    h2:first-of-type { margin-top: 0; }
+    p, li { font-size: 15px; margin-bottom: 12px; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--accent); }
+    .checklist {
+      background: var(--bg-alt);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    .checklist li { list-style: none; padding-left: 24px; position: relative; }
+    .checklist li::before { content: '✓'; position: absolute; left: 0; color: var(--success); font-weight: 700; }
+    a { color: var(--accent); }
+    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 12px 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .back-link:hover { opacity: 0.9; }
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); }
+    @media (max-width: 768px) {
+      .header { padding: 32px 20px; }
+      .header h1 { font-size: 26px; }
+      .content { padding: 32px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link" style="position:absolute;top:-100px;left:16px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:0 0 8px 8px;font-weight:700;font-size:14px;z-index:1000;">Skip to content</a>
+  <a href="#main" style="position:absolute;top:-100px;" tabindex="-1">Skip</a>
+
+  <header class="header">
+    <h1>For City Officials & IT Departments</h1>
+    <p>What you need to know before evaluating Finding A Bed Tonight for your community.</p>
+  </header>
+
+  <main id="main" class="content">
+    <h2>Who Owns the Data?</h2>
+    <p>
+      <strong>You do.</strong> The platform is self-hosted — your city or CoC deploys it on
+      infrastructure you control. No vendor has access to your shelter data. If you stop
+      using the platform, export your data in HSDS 3.0 format and take it with you.
+    </p>
+
+    <h2>Accessibility (WCAG 2.1 AA)</h2>
+    <p>
+      The platform is designed to support WCAG 2.1 Level AA — the accessibility standard
+      adopted under ADA Title II for state and local government web content (DOJ Final Rule, April 2024).
+      A self-assessed <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/WCAG-ACR.md">Accessibility Conformance Report</a>
+      covers all 50 Level A and AA criteria. Automated testing (axe-core) blocks any
+      release with violations.
+    </p>
+
+    <h2>Security Posture</h2>
+    <div class="checklist">
+      <ul>
+        <li>OWASP dependency scanning in CI (failBuildOnCVSS=7)</li>
+        <li>PostgreSQL Row Level Security for DV shelter data isolation</li>
+        <li>JWT authentication with startup secret validation</li>
+        <li>Rate limiting on authentication endpoints</li>
+        <li>Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)</li>
+        <li>OWASP ZAP API scan baseline — zero HIGH/CRITICAL findings</li>
+        <li>Cross-tenant isolation verified under concurrent virtual thread load</li>
+      </ul>
+    </div>
+    <p>
+      Full details: <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/security/zap-baseline.md">Security scan baseline</a>
+    </p>
+
+    <h2>Licensing & Procurement</h2>
+    <p>
+      Licensed under <strong>Apache 2.0</strong> — permissive, no copyleft, no per-seat fees.
+      Your city can modify, deploy, and redistribute the software. No vendor contract required.
+      See the <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/government-adoption-guide.md">Government Adoption Guide</a>
+      for procurement checklist and RFP language.
+    </p>
+
+    <h2>Support Model</h2>
+    <p>
+      Community-supported open source with operational runbook, GitHub Issues, and full
+      source code access. For organizations requiring contractual SLAs, integrator
+      partnerships are available. See <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/support-model.md">Support Model</a>.
+    </p>
+
+    <h2>What's Different from Commercial Alternatives</h2>
+    <p>
+      No per-seat licensing. No vendor lock-in. Your data never leaves your infrastructure.
+      Purpose-built for the communities that need it most — not adapted from a commercial
+      product built for a different market.
+    </p>
+
+    <a href="../index.html" class="back-link">← Back to Finding A Bed Tonight</a>
+  </main>
+
+  <footer>
+    <p>
+      <a href="https://github.com/ccradle/finding-a-bed-tonight">GitHub</a> ·
+      <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a> ·
+      No more midnight phone calls.
+    </p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finding A Bed Tonight — No more midnight phone calls</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <meta name="description" content="Open-source emergency shelter bed availability platform. Real-time bed search, 3-tap holds, DV privacy protection. Free forever.">
+  <meta property="og:title" content="Finding A Bed Tonight">
+  <meta property="og:description" content="No more midnight phone calls. Open-source emergency shelter bed availability. Real-time. Free forever.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/02-bed-search.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Finding A Bed Tonight">
+  <meta name="twitter:description" content="No more midnight phone calls. Open-source emergency shelter bed availability.">
+  <meta name="twitter:image" content="https://ccradle.github.io/findABed/demo/screenshots/02-bed-search.png">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-light: #64748b;
+      --accent: #1a56db;
+      --accent-hover: #1e40af;
+      --success: #166534;
+      --border: #e2e8f0;
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --hero-bg: #0f172a;
+      --hero-text: #e2e8f0;
+      --hero-muted: #94a3b8;
+      --hero-accent: #60a5fa;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --bg-alt: #1e293b;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --text-light: #64748b;
+        --accent: #60a5fa;
+        --accent-hover: #93c5fd;
+        --success: #4ade80;
+        --border: #334155;
+        --card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+        --hero-bg: #020617;
+        --hero-text: #f1f5f9;
+        --hero-muted: #94a3b8;
+        --hero-accent: #93c5fd;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+    /* Skip link */
+    .skip-link {
+      position: absolute; top: -100px; left: 16px;
+      background: var(--accent); color: #fff;
+      padding: 8px 16px; border-radius: 0 0 8px 8px;
+      font-weight: 700; font-size: 14px; z-index: 1000;
+    }
+    .skip-link:focus { top: 0; }
+
+    /* Hero */
+    .hero {
+      background: var(--hero-bg);
+      color: var(--hero-text);
+      padding: 80px 24px 64px;
+      text-align: center;
+    }
+    .hero-inner { max-width: 720px; margin: 0 auto; }
+    .hero-story {
+      font-size: 20px;
+      line-height: 1.7;
+      font-weight: 400;
+      color: var(--hero-muted);
+      margin-bottom: 40px;
+      font-style: italic;
+    }
+    .hero h1 {
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      color: var(--hero-text);
+    }
+    .hero-sub {
+      font-size: 18px;
+      color: var(--hero-muted);
+      margin-bottom: 40px;
+    }
+    .hero-cta {
+      display: inline-flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      min-height: 48px;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-primary { background: var(--hero-accent); color: #0f172a; }
+    .btn-secondary { background: transparent; color: var(--hero-accent); border: 2px solid var(--hero-accent); }
+
+    /* Sections */
+    .section { padding: 72px 24px; }
+    .section-alt { background: var(--bg-alt); }
+    .section-inner { max-width: 960px; margin: 0 auto; }
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .section-desc {
+      font-size: 16px;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 48px;
+      line-height: 1.7;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+    .stat {
+      text-align: center;
+      padding: 24px 16px;
+      background: var(--bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(26,86,219,0.1);
+    }
+    .card-emoji { font-size: 32px; margin-bottom: 12px; }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      flex: 1;
+      margin-bottom: 16px;
+    }
+    .card-link {
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .card-link::after { content: ' →'; }
+
+    /* Walkthroughs */
+    .walkthroughs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .walkthrough-link {
+      display: block;
+      padding: 20px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      text-align: center;
+      transition: border-color 0.15s;
+    }
+    .walkthrough-link:hover { border-color: var(--accent); }
+    .walkthrough-emoji { font-size: 28px; display: block; margin-bottom: 8px; }
+    .walkthrough-title { font-weight: 700; font-size: 14px; }
+    .walkthrough-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Solution */
+    .solution-text {
+      font-size: 18px;
+      line-height: 1.8;
+      max-width: 680px;
+      margin: 0 auto;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .solution-highlight {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--hero-bg);
+      color: var(--hero-muted);
+      padding: 48px 24px;
+      text-align: center;
+    }
+    footer p { font-size: 14px; margin-bottom: 8px; }
+    footer a { color: var(--hero-accent); }
+    .footer-tagline {
+      font-style: italic;
+      font-size: 16px;
+      color: var(--hero-text);
+      margin-top: 24px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero { padding: 56px 20px 48px; }
+      .hero-story { font-size: 17px; }
+      .hero h1 { font-size: 30px; }
+      .hero-sub { font-size: 16px; }
+      .section { padding: 48px 20px; }
+      .section-title { font-size: 24px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 26px; }
+      .hero-story { font-size: 16px; }
+      .hero-cta { flex-direction: column; align-items: center; }
+      .btn { width: 100%; text-align: center; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="hero-story">
+        A family of five is sitting in a parking lot at midnight. A social worker
+        has 30 minutes before the family stops cooperating. Right now, that social
+        worker is making phone calls — to shelters that may be closed, full, or
+        unable to serve that family's specific needs.
+      </p>
+      <h1>No more midnight phone calls.</h1>
+      <p class="hero-sub">Open-source emergency shelter bed availability. Real-time. Free forever.</p>
+      <div class="hero-cta">
+        <a href="demo/index.html" class="btn btn-primary">See the Platform</a>
+        <a href="https://github.com/ccradle/finding-a-bed-tonight" class="btn btn-secondary">View on GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- The Problem in Numbers -->
+    <section class="section section-alt" aria-labelledby="problem-heading">
+      <div class="section-inner">
+        <h2 id="problem-heading" class="section-title">The Gap</h2>
+        <p class="section-desc">
+          In most US communities, there is no shared system for real-time shelter
+          bed availability. The result: families wait while workers make calls.
+        </p>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-number">0</div>
+            <div class="stat-label">Shared bed availability systems in most communities</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">55–140</div>
+            <div class="stat-label">Estimated minutes from crisis to placement (phone calls, stale data)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">3</div>
+            <div class="stat-label">Taps to hold a bed on the platform</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Solution -->
+    <section class="section" aria-labelledby="solution-heading">
+      <div class="section-inner">
+        <h2 id="solution-heading" class="section-title">What This Does</h2>
+        <p class="solution-text">
+          An <span class="solution-highlight">outreach worker</span> searches for
+          available beds on their phone. They see what's open <span class="solution-highlight">right now</span>,
+          hold a bed in three taps, and the shelter coordinator knows they're coming.
+          The platform protects <span class="solution-highlight">domestic violence shelter locations</span>
+          through zero-PII referral design — no client name, no address in the system, ever.
+          It's <span class="solution-highlight">free, open-source, and self-hosted</span> —
+          your community owns its data.
+        </p>
+      </div>
+    </section>
+
+    <!-- Who It's For -->
+    <section class="section section-alt" aria-labelledby="audience-heading">
+      <div class="section-inner">
+        <h2 id="audience-heading" class="section-title">Who It's For</h2>
+        <p class="section-desc">
+          Every audience has their own page with the answers they need.
+        </p>
+        <div class="cards">
+          <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/FOR-COORDINATORS.md" class="card">
+            <div class="card-emoji" aria-hidden="true">🏠</div>
+            <div class="card-title">Shelter Coordinators</div>
+            <div class="card-desc">Update your bed count in 30 seconds. See who's holding a bed. Works offline.</div>
+            <span class="card-link">Read more</span>
+          </a>
+          <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/FOR-COC-ADMINS.md" class="card">
+            <div class="card-emoji" aria-hidden="true">📋</div>
+            <div class="card-title">CoC Administrators</div>
+            <div class="card-desc">HUD reporting, shelter onboarding, DV protection, HMIS connectivity — all in one platform.</div>
+            <span class="card-link">Read more</span>
+          </a>
+          <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/FOR-CITIES.md" class="card">
+            <div class="card-emoji" aria-hidden="true">🏛️</div>
+            <div class="card-title">City Officials</div>
+            <div class="card-desc">Self-hosted, WCAG accessible, Apache 2.0 licensed. Your city owns its data.</div>
+            <span class="card-link">Read more</span>
+          </a>
+          <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/FOR-FUNDERS.md" class="card">
+            <div class="card-emoji" aria-hidden="true">💰</div>
+            <div class="card-title">Funders</div>
+            <div class="card-desc">Every dollar builds permanent infrastructure. Theory of change, sustainability model, measurable impact.</div>
+            <span class="card-link">Read more</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Demo Walkthroughs -->
+    <section class="section" aria-labelledby="demo-heading">
+      <div class="section-inner">
+        <h2 id="demo-heading" class="section-title">See It Work</h2>
+        <p class="section-desc">
+          Annotated screenshots of every key view. No running instance required.
+        </p>
+        <div class="walkthroughs">
+          <a href="demo/index.html" class="walkthrough-link">
+            <span class="walkthrough-emoji" aria-hidden="true">🔍</span>
+            <div class="walkthrough-title">Platform Walkthrough</div>
+            <div class="walkthrough-desc">18 screenshots — search, hold, coordinate, admin</div>
+          </a>
+          <a href="demo/dvindex.html" class="walkthrough-link">
+            <span class="walkthrough-emoji" aria-hidden="true">🔒</span>
+            <div class="walkthrough-title">DV Referral Flow</div>
+            <div class="walkthrough-desc">7 screenshots — privacy-preserving referral</div>
+          </a>
+          <a href="demo/hmisindex.html" class="walkthrough-link">
+            <span class="walkthrough-emoji" aria-hidden="true">📊</span>
+            <div class="walkthrough-title">HMIS Bridge</div>
+            <div class="walkthrough-desc">4 screenshots — automated data push</div>
+          </a>
+          <a href="demo/analyticsindex.html" class="walkthrough-link">
+            <span class="walkthrough-emoji" aria-hidden="true">📈</span>
+            <div class="walkthrough-title">CoC Analytics</div>
+            <div class="walkthrough-desc">6 screenshots — utilization, demand, HIC/PIT</div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Open Source -->
+    <section class="section section-alt" aria-labelledby="oss-heading">
+      <div class="section-inner">
+        <h2 id="oss-heading" class="section-title">Open Source. Free Forever.</h2>
+        <p class="solution-text">
+          Licensed under <span class="solution-highlight">Apache 2.0</span>.
+          No per-seat licensing. No vendor lock-in.
+          Designed for communities that can't afford commercial software —
+          and shouldn't have to.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>
+      <a href="https://github.com/ccradle/finding-a-bed-tonight">GitHub (Code)</a> ·
+      <a href="https://github.com/ccradle/findABed">GitHub (Docs)</a> ·
+      <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a>
+    </p>
+    <p>
+      <a href="demo/outreach-one-pager.html">Outreach One-Pager</a> ·
+      <a href="demo/for-cities.html">For Cities</a> ·
+      <a href="PITCH-BRIEFS.md">Pitch Briefs</a>
+    </p>
+    <p class="footer-tagline">No more midnight phone calls.</p>
+  </footer>
+</body>
+</html>
