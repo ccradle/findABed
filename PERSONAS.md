@@ -418,7 +418,7 @@ specify which version it targets (2024 or later). This must be maintained.
 **His recommendations:**
 1. Implement minimum cell size suppression in HMIS DV aggregation (fix now)
 2. Map CoC Analytics metrics to HUD SPM definitions before implementation
-3. After 3 months of Raleigh pilot data, submit findings to the National
+3. After 3 months of pilot data (once a CoC partner is established), submit findings to the National
    Alliance to End Homelessness conference — unmet demand data will be notable
 4. Contact Greg Bloom at Open Referral about the HSDS extension — it belongs
    in the standard if it gets field-validated
@@ -650,7 +650,7 @@ technical decision.
 - First external conversation is with an outreach worker supervisor, not a city
   official — sequence matters
 - Demo environment before any outreach — showing on a real phone changes everything
-- CoC Analytics must ship before the formal Wake County conversation
+- CoC Analytics must ship before any formal CoC adoption conversation
 - Regina Rodgers (Street Reach of Johnston County) is the first recommended
   outreach contact
 
@@ -722,6 +722,17 @@ path, data governance, contributor licensing.
 ---
 
 ## How to Use These Personas in Claude Code
+
+**For truthfulness — the foundational rule (all personas):**
+Every persona on this list is harmed by false claims. Casey flags legal liability.
+Priya's trust is destroyed permanently. Teresa's city attorney will verify.
+Keisha asks: if we lie about our status, how can anyone trust us about the
+people we serve? **Never assert what is not true.** No claimed pilots that
+don't exist. No implied partnerships that haven't been established. No
+"compliant" when "designed to support" is accurate. When in doubt, state
+what is true and name what is planned — the honesty itself builds credibility.
+This is not a style preference. It is a non-negotiable principle that every
+persona depends on. Apply to every document, page, pitch, and commit message.
 
 **For accessibility auditing:**
 Ask: "Can Darius accomplish this task on a mid-range Android with one hand and
