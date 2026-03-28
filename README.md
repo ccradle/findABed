@@ -28,7 +28,7 @@ Commercial software does not serve this space because there is no profit motive.
 
 ### The Goal
 
-An open-source platform that matches homeless individuals and families to available shelter beds in real time. Designed to reduce total crisis-to-placement time from an estimated 55–140 minutes (serial phone calls, stale spreadsheets) to 25–45 minutes by providing real-time bed availability with a 3-tap hold to secure the bed during transport. Three deployment tiers (Lite, Standard, Full) ensure any community — from a rural volunteer-run CoC to a metro area with 50 shelters — can adopt the platform at a cost they can sustain.
+An open-source platform that matches individuals and families experiencing homelessness to available shelter beds in real time. Designed to reduce total crisis-to-placement time from an estimated 55–140 minutes (serial phone calls, stale spreadsheets) to 25–45 minutes by providing real-time bed availability with a 3-tap hold to secure the bed during transport. Three deployment tiers (Lite, Standard, Full) ensure any community — from a rural volunteer-run CoC to a metro area with 50 shelters — can adopt the platform at a cost they can sustain.
 
 ### Business Value
 
@@ -252,13 +252,13 @@ findABed/                                        # Docs repo root
 
 **Surge Event / White Flag** — Emergency activation when weather or crisis requires expanded shelter capacity. CoC-admin triggered, broadcast to all outreach workers.
 
-**PIT Count (Point-in-Time)** — Annual HUD-mandated count of sheltered and unsheltered homeless individuals.
+**PIT Count (Point-in-Time)** — Annual HUD-mandated count of sheltered and unsheltered individuals experiencing homelessness.
 
 **Bed Availability** — Real-time count of open beds by population type at a shelter. Append-only snapshots, never updated in place.
 
 **Population Type** — Category of individuals a shelter serves: `SINGLE_ADULT`, `FAMILY_WITH_CHILDREN`, `WOMEN_ONLY`, `VETERAN`, `YOUTH_18_24`, `YOUTH_UNDER_18`, `DV_SURVIVOR`.
 
-**Outreach Worker** — Frontline staff who connects homeless individuals to services. Primary user of the bed search interface.
+**Outreach Worker** — Frontline staff who connects individuals experiencing homelessness to services. Primary user of the bed search interface.
 
 **Coordinator** — Shelter staff responsible for updating bed counts and managing shelter profile.
 

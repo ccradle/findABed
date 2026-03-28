@@ -43,119 +43,124 @@
 <header>
   <h1>Finding A Bed Tonight</h1>
   <p>Open-source shelter bed availability platform for Continuums of Care. Real-time bed search, soft-hold reservations, DV privacy enforcement, and operational monitoring.</p>
-  <span class="badge">Demo Walkthrough &middot; 19 Screenshots</span>
+  <span class="badge">Demo Walkthrough &middot; 15 Screenshots</span>
 </header>
 
 <div class="container">
 
-  <div class="section-divider">Authentication</div>
+  <!-- ============================================================ -->
+  <!-- PART 1: DARIUS'S NIGHT — The core story (8 screenshots)      -->
+  <!-- Research: lead with the user story, not the login screen     -->
+  <!-- ============================================================ -->
+
+  <div class="section-divider">Darius's Night: Finding a Bed</div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">1</span>
-      <span class="card-title">Login</span>
-      <span class="card-role">All Roles</span>
+      <span class="card-title">Bed Search</span>
+      <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">It's 11:14 PM. Darius pulls up the app on his phone in a shelter parking lot. One tap, he's in — same credentials his CoC already issued.</div>
-    <img src="screenshots/01-login.png" alt="Login page">
+    <div class="card-caption">It's 11:14 PM. Darius has a family of five and 30 minutes. He filters by population type — the app shows only shelters that can serve this family right now.</div>
+    <img src="screenshots/02-bed-search.png" alt="Bed search page with family filter selected">
   </div>
-
-  <div class="section-divider">Outreach Worker: Bed Search &amp; Reservations</div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">2</span>
-      <span class="card-title">Bed Search</span>
+      <span class="card-title">Search Results</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">He has a family of five and 30 minutes. He filters by population type — the app shows only shelters that can serve this family right now.</div>
-    <img src="screenshots/02-bed-search.png" alt="Bed search page">
+    <div class="card-caption">Three shelters have beds. Green badges mean the data was updated in the last hour — no more calling a shelter only to find out they filled up two hours ago.</div>
+    <img src="screenshots/03-search-results.png" alt="Three family shelters with green freshness badges">
   </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">3</span>
-      <span class="card-title">Search Results</span>
+      <span class="card-title">Shelter Detail</span>
       <span class="card-role">Outreach Worker</span>
     </div>
-    <div class="card-caption">Three shelters have beds. Green badges mean the data was updated in the last hour — no more calling a shelter only to find out they filled up two hours ago.</div>
-    <img src="screenshots/03-search-results.png" alt="Bed search results">
+    <div class="card-caption">Darius taps a shelter to see the details — pets allowed, wheelchair accessible, updated 12 minutes ago. This one works.</div>
+    <img src="screenshots/04-shelter-detail-search.png" alt="Shelter detail showing constraints and freshness">
   </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">4</span>
-      <span class="card-title">Shelter Detail</span>
-      <span class="card-role">Outreach Worker</span>
-    </div>
-    <div class="card-caption">Darius taps a shelter to see the details — pets allowed, wheelchair accessible, updated 12 minutes ago. This one works.</div>
-    <img src="screenshots/04-shelter-detail-search.png" alt="Shelter detail from search">
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">5</span>
       <span class="card-title">Reservation Hold</span>
       <span class="card-role">Outreach Worker</span>
     </div>
     <div class="card-caption">One tap holds the bed for 90 minutes — enough time to drive the family across town safely. No one else can claim it while Darius is in transit.</div>
-    <img src="screenshots/05-reservation-hold.png" alt="Reservation hold with countdown">
+    <img src="screenshots/05-reservation-hold.png" alt="Reservation hold with 90-minute countdown">
   </div>
 
-  <div class="section-divider">Coordinator: Bed Management</div>
+  <div class="section-divider">Sandra's Side: Keeping the Data Fresh</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">5</span>
+      <span class="card-title">Coordinator Dashboard</span>
+      <span class="card-role">Coordinator</span>
+    </div>
+    <div class="card-caption">Meanwhile, Sandra checks her dashboard between intake tasks. She can see every shelter's occupancy and how fresh the data is — one glance tells her where the gaps are.</div>
+    <img src="screenshots/06-coordinator-dashboard.png" alt="Coordinator dashboard with occupancy and freshness">
+  </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">6</span>
-      <span class="card-title">Coordinator Dashboard</span>
-      <span class="card-role">CoC Admin</span>
+      <span class="card-title">Bed Count Update</span>
+      <span class="card-role">Coordinator</span>
     </div>
-    <div class="card-caption">Meanwhile, Sandra checks her dashboard between intake tasks. She can see every shelter's occupancy and how fresh the data is — one glance tells her where the gaps are.</div>
-    <img src="screenshots/06-coordinator-dashboard.png" alt="Coordinator dashboard">
+    <div class="card-caption">Sandra updates her shelter's bed count in three taps — total, occupied, done. The system calculates available beds automatically. Every update refreshes the data for outreach workers like Darius in real time.</div>
+    <img src="screenshots/07-coordinator-bed-update.png" alt="Three-tap bed count update with steppers">
   </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">7</span>
-      <span class="card-title">Bed Count Update</span>
-      <span class="card-role">Coordinator</span>
-    </div>
-    <div class="card-caption">Sandra updates her shelter's bed count in three taps — total, occupied, done. The system calculates available beds automatically. Every update refreshes the data for outreach workers like Darius in real time.</div>
-    <img src="screenshots/07-coordinator-bed-update.png" alt="Coordinator bed count update">
-  </div>
-
-  <div class="section-divider">Internationalization</div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">8</span>
       <span class="card-title">Spanish Language</span>
       <span class="card-role">All Roles</span>
     </div>
     <div class="card-caption">Darius works with Spanish-speaking families too. One tap switches the entire interface — labels, errors, badges, everything — to Spanish. No page reload, no second app.</div>
-    <img src="screenshots/08-spanish.png" alt="Spanish language view">
+    <img src="screenshots/08-spanish.png" alt="Full Spanish localization">
   </div>
 
-  <div class="section-divider">Administration</div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">8</span>
+      <span class="card-title">Change Password</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Darius can change his own password from any screen — one tap on "Password" in the header opens the modal. If his phone is lost, the CoC admin resets it from the Users tab. All existing sessions are invalidated immediately.</div>
+    <img src="screenshots/19-change-password.png" alt="Change password modal">
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- PART 2: BEHIND THE SCENES — Administration (5 screenshots)   -->
+  <!-- ============================================================ -->
+
+  <div class="section-divider">Behind the Scenes: Administration</div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">9</span>
-      <span class="card-title">User Management</span>
-      <span class="card-role">Platform Admin</span>
+      <span class="card-title">Secure Login</span>
+      <span class="card-role">All Roles</span>
     </div>
-    <div class="card-caption">Back at the office, the CoC administrator manages who has access. Each role sees only what they need — DV shelter access is a separate, deliberate toggle, and if someone's credentials are compromised, the admin resets their password in one click.</div>
-    <img src="screenshots/09-admin-users.png" alt="Admin users tab">
+    <div class="card-caption">Tenant-scoped authentication — each CoC has its own login with email, password, and optional SSO. Darius's credentials are issued by his CoC administrator.</div>
+    <img src="screenshots/01-login.png" alt="Login page with tenant slug and SSO">
   </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">10</span>
-      <span class="card-title">Create User Form</span>
+      <span class="card-title">User Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">Adding a new outreach worker takes 30 seconds. Pick their roles, set DV access if authorized, and they're ready for the field tonight.</div>
-    <img src="screenshots/10-admin-create-user.png" alt="Create user form">
+    <div class="card-caption">Back at the office, the CoC administrator manages who has access. Each role sees only what they need — DV shelter access is a separate, deliberate toggle, and if someone's credentials are compromised, the admin resets their password in one click.</div>
+    <img src="screenshots/09-admin-users.png" alt="Admin users tab with roles and reset password">
   </div>
 
   <div class="card">
@@ -171,92 +176,105 @@
   <div class="card">
     <div class="card-header">
       <span class="card-number">12</span>
-      <span class="card-title">Add Shelter Form</span>
+      <span class="card-title">Surge Mode</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">A new transitional housing program opens downtown. The admin adds it with constraints — pets allowed, wheelchair accessible — and initial bed counts by population type.</div>
-    <img src="screenshots/12-add-shelter.png" alt="Add shelter form">
+    <div class="card-caption">Temperature drops below freezing tonight. The administrator activates surge mode — overflow beds become visible to every outreach worker immediately.</div>
+    <img src="screenshots/14-admin-surge.png" alt="Surge mode activation">
   </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">13</span>
-      <span class="card-title">Shelter Detail</span>
+      <span class="card-title">OAuth2 Providers</span>
       <span class="card-role">Platform Admin</span>
     </div>
-    <div class="card-caption">The full shelter profile — everything an administrator needs to verify the data is correct before it goes live to outreach workers.</div>
-    <img src="screenshots/13-admin-shelter-detail.png" alt="Shelter detail from admin">
+    <div class="card-caption">The CoC already uses Microsoft 365. The admin adds their SSO provider — staff sign in with existing credentials. No new passwords to manage.</div>
+    <img src="screenshots/16-admin-oauth2-providers.png" alt="OAuth2 provider management">
   </div>
+
+  <!-- ============================================================ -->
+  <!-- PART 3: OPERATIONS — Observability (2 screenshots)           -->
+  <!-- ============================================================ -->
+
+  <div class="section-divider">Operations (Optional)</div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">14</span>
-      <span class="card-title">Surge Mode</span>
-      <span class="card-role">Platform Admin</span>
+      <span class="card-title">Grafana Dashboard</span>
+      <span class="card-role">Operations</span>
     </div>
-    <div class="card-caption">Temperature drops below freezing tonight. The administrator activates surge mode — overflow beds become visible to every outreach worker immediately.</div>
-    <img src="screenshots/14-admin-surge.png" alt="Admin surge tab">
+    <div class="card-caption">For teams that want operational visibility — search volume, response times, stale shelters, DV safety canaries — all in one Grafana dashboard, deployed alongside the app.</div>
+    <img src="screenshots/17-grafana-dashboard.png" alt="Grafana operations dashboard">
   </div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">15</span>
-      <span class="card-title">Observability Settings</span>
-      <span class="card-role">Platform Admin</span>
-    </div>
-    <div class="card-caption">The operations team configures monitoring thresholds — live temperature from NOAA, stale data alerts, DV safety canaries — all toggleable at runtime without a restart.</div>
-    <img src="screenshots/15-admin-observability.png" alt="Admin observability tab">
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">16</span>
-      <span class="card-title">OAuth2 Providers</span>
-      <span class="card-role">Platform Admin</span>
-    </div>
-    <div class="card-caption">The CoC already uses Microsoft 365. The admin adds their SSO provider — staff sign in with existing credentials. No new passwords to manage.</div>
-    <img src="screenshots/16-admin-oauth2-providers.png" alt="Admin OAuth2 providers tab">
-  </div>
-
-  <div class="section-divider">Password Management</div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">17</span>
-      <span class="card-title">Change Password</span>
-      <span class="card-role">All Roles</span>
-    </div>
-    <div class="card-caption">Darius can change his own password from any screen — one tap on "Password" in the header opens the modal. If his phone is lost, the CoC admin resets it from the Users tab. All existing sessions are invalidated immediately.</div>
-    <img src="screenshots/19-change-password.png" alt="Change password modal">
-  </div>
-
-  <div class="section-divider">Observability Stack (Optional)</div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">18</span>
-      <span class="card-title">Grafana Dashboard</span>
-      <span class="card-role">Operations</span>
-    </div>
-    <div class="card-caption">For teams that want operational visibility — search volume, response times, stale shelters, DV safety canaries — all in one Grafana dashboard, deployed alongside the app.</div>
-    <img src="screenshots/17-grafana-dashboard.png" alt="Grafana FABT Operations dashboard">
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">19</span>
       <span class="card-title">Distributed Tracing</span>
       <span class="card-role">Operations</span>
     </div>
     <div class="card-caption">When something is slow, distributed tracing shows exactly where the time went — from API request to database query. Enabled at runtime, no redeployment needed.</div>
-    <img src="screenshots/18-jaeger-traces.png" alt="Jaeger traces">
+    <img src="screenshots/18-jaeger-traces.png" alt="Jaeger distributed tracing">
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- PART 4: TRUST — Compliance & next steps (no screenshots)     -->
+  <!-- ============================================================ -->
+
+  <div class="section-divider">Trust &amp; Compliance</div>
+
+  <div style="background: #1e293b; border-radius: 12px; padding: 24px 28px; margin-bottom: 32px; border: 1px solid #334155;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px;">
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Accessibility</div>
+        <div style="font-size: 14px; color: #94a3b8;">Designed to meet WCAG 2.1 AA. <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/WCAG-ACR.md" style="color: #60a5fa;">Self-assessed ACR</a> covering all 50 criteria. Automated axe-core CI gate.</div>
+      </div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">DV Privacy</div>
+        <div style="font-size: 14px; color: #94a3b8;">Zero client PII. Shelter addresses never displayed. Referral tokens hard-deleted within 24 hours. Designed to support VAWA/FVPSA requirements.</div>
+      </div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">License</div>
+        <div style="font-size: 14px; color: #94a3b8;">Apache 2.0 — free forever. Every deployment survives independently. No vendor lock-in, no per-seat fees.</div>
+      </div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Deployment</div>
+        <div style="font-size: 14px; color: #94a3b8;">Three tiers: Lite ($15-30/mo), Standard ($30-75/mo), Full ($100+/mo). Self-hosted — your data stays on your infrastructure.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audience-specific CTAs -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 32px;">
+    <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/FOR-FUNDERS.md" style="display: block; padding: 20px; background: #1e293b; border-radius: 12px; border: 1px solid #334155; text-decoration: none; transition: border-color 0.15s;">
+      <div style="font-size: 14px; font-weight: 700; color: #60a5fa; margin-bottom: 4px;">For Funders</div>
+      <div style="font-size: 13px; color: #94a3b8;">Theory of change, sustainability model, what funding enables</div>
+    </a>
+    <a href="for-cities.html" style="display: block; padding: 20px; background: #1e293b; border-radius: 12px; border: 1px solid #334155; text-decoration: none; transition: border-color 0.15s;">
+      <div style="font-size: 14px; font-weight: 700; color: #60a5fa; margin-bottom: 4px;">For City Officials</div>
+      <div style="font-size: 13px; color: #94a3b8;">Data ownership, WCAG, security posture, procurement</div>
+    </a>
+    <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/FOR-DEVELOPERS.md" style="display: block; padding: 20px; background: #1e293b; border-radius: 12px; border: 1px solid #334155; text-decoration: none; transition: border-color 0.15s;">
+      <div style="font-size: 14px; font-weight: 700; color: #60a5fa; margin-bottom: 4px;">For Developers</div>
+      <div style="font-size: 13px; color: #94a3b8;">Architecture, API reference, running tests, contributing</div>
+    </a>
+  </div>
+
+  <!-- More walkthroughs -->
+  <div style="text-align: center; margin-bottom: 16px; font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.1em;">More Walkthroughs</div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px;">
+    <a href="dvindex.html" style="display: block; padding: 14px 16px; background: #1e293b; border-radius: 10px; border: 1px solid #334155; text-decoration: none; text-align: center; font-size: 14px; font-weight: 600; color: #c4b5fd;">DV Opaque Referral</a>
+    <a href="hmisindex.html" style="display: block; padding: 14px 16px; background: #1e293b; border-radius: 10px; border: 1px solid #334155; text-decoration: none; text-align: center; font-size: 14px; font-weight: 600; color: #60a5fa;">HMIS Bridge</a>
+    <a href="analyticsindex.html" style="display: block; padding: 14px 16px; background: #1e293b; border-radius: 10px; border: 1px solid #334155; text-decoration: none; text-align: center; font-size: 14px; font-weight: 600; color: #60a5fa;">CoC Analytics</a>
   </div>
 
 </div>
 
 <footer>
   <p>Finding A Bed Tonight — Open-source shelter bed availability platform</p>
-  <p><a href="dvindex.html">DV Opaque Referral Walkthrough</a> &middot; <a href="hmisindex.html">HMIS Bridge Walkthrough</a> &middot; <a href="https://github.com/ccradle/finding-a-bed-tonight">github.com/ccradle/finding-a-bed-tonight</a> &middot; <a href="https://github.com/ccradle/findABed">github.com/ccradle/findABed</a></p>
+  <p><a href="https://github.com/ccradle/finding-a-bed-tonight">github.com/ccradle/finding-a-bed-tonight</a> &middot; <a href="https://github.com/ccradle/findABed">github.com/ccradle/findABed</a></p>
   <p style="margin-top: 8px;">Screenshots captured via Playwright. Regenerate with <code>./demo/capture.sh</code></p>
   <p style="margin-top: 12px; font-size: 11px; color: #64748b;">Finding A Bed Tonight is provided as-is under the Apache 2.0 License, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions. This platform is not a guarantee of shelter availability.</p>
 </footer>
