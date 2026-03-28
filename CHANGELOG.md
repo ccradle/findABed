@@ -14,6 +14,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.15.3] — 2026-03-28 — README Restructure
+
+### Added
+- The code repository README now routes you to the right page in seconds — separate pages for shelter coordinators, CoC administrators, city officials, developers, and funders
+- 90-second pitch briefs for each audience (PITCH-BRIEFS.md)
+- Updated screenshots showing "Safety Shelter" labels and refreshed freshness badges
+
+### Fixed
+- Population type labels on shelter cards and coordinator dashboard now show human-readable names in both English and Spanish (was showing raw API values like "DV SURVIVOR")
+- Security vulnerability in a frontend build dependency resolved
+
+---
+
 ## [v0.15.2] — 2026-03-28 — Dignity-Centered Copy
 
 ### Changed
