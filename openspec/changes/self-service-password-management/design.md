@@ -55,6 +55,23 @@ Add `password_changed_at` column to `user` table. On password change, update thi
 
 This is simpler than a token blocklist and doesn't require Redis.
 
+### MCP-Ready API Design
+
+Both new endpoints must have `@Operation` annotations with semantic descriptions for AI agent consumption (REQ-MCP-1 through REQ-MCP-3). An MCP agent could invoke password reset for a user as part of an automated onboarding or incident response workflow.
+
+### Observability
+
+Three new Micrometer metrics:
+- `fabt.auth.password_change.count` (tag: outcome=success|wrong_password|weak_password) — monitors self-service rotation rate
+- `fabt.auth.password_reset.count` (tag: admin_role=COC_ADMIN|PLATFORM_ADMIN) — monitors admin resets; high count in short window is suspicious
+- `fabt.auth.token_invalidated.count` (tag: reason=password_change|admin_reset) — tracks forced re-logins
+
+### Rate Limiting
+
+- Password change: 5 attempts per 15 minutes per user (bucket4j, existing JCache infrastructure)
+- Admin reset: 10 attempts per 15 minutes per admin IP (prevent mass reset with compromised admin credentials)
+- Login rate limit interaction: password change does NOT reset the login attempt counter (separate buckets)
+
 ### No Email-Based Forgot Password (Deferred)
 
 Email-based "forgot password" flow requires email infrastructure (SMTP, templates, secure token generation, rate limiting). This is deferred to a future change. The admin reset provides the immediate need.
@@ -63,12 +80,17 @@ Email-based "forgot password" flow requires email infrastructure (SMTP, template
 
 | File | Change |
 |------|--------|
-| `AuthController.java` or new `PasswordController.java` | Password change + admin reset endpoints |
+| `AuthController.java` or new `PasswordController.java` | Password change + admin reset endpoints with `@Operation` |
 | `UserController.java` | Remove "password cannot be changed" comment |
 | `JwtService.java` | Check `iat` against `password_changed_at` |
 | `User.java` | Add `passwordChangedAt` field |
 | New Flyway migration | Add `password_changed_at` column to `user` table |
+| `application.yml` | bucket4j filter for password change + admin reset |
 | Frontend: new `ChangePasswordModal.tsx` | Self-service password change form |
 | Frontend: `AdminPanel.tsx` | "Reset Password" button per user row |
 | `frontend/src/i18n/en.json` + `es.json` | i18n strings for password forms |
-| `docs/runbook.md` | Password management procedures |
+| `docs/runbook.md` | Password management procedures, metric monitoring |
+| `docs/government-adoption-guide.md` | Credential management posture |
+| `docs/WCAG-ACR.md` | Accessibility review of new forms (if needed) |
+| `README.md` | Project Status update |
+| Demo screenshots | Admin Users tab recapture, Change Password modal capture |

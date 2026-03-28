@@ -33,14 +33,35 @@
 - [ ] T-13: Create reset password modal — new password + confirm, submit to POST endpoint
 - [ ] T-14: Add i18n keys for admin reset (en.json + es.json)
 
+### MCP-Ready API Design
+
+- [ ] T-15: Add `@Operation` annotations with semantic descriptions to both endpoints — password change and admin reset must be discoverable by AI agents (REQ-MCP-1 through REQ-MCP-3)
+
+### Observability
+
+- [ ] T-16: Add Micrometer metrics — `fabt.auth.password_change.count` (tag: success/failure), `fabt.auth.password_reset.count` (tag: admin_role), `fabt.auth.token_invalidated.count` (tag: reason=password_change|admin_reset)
+- [ ] T-17: Add rate limiting on admin reset endpoint — 10 attempts per 15 minutes per admin (prevent mass reset attack with compromised admin credentials)
+
 ### Testing
 
-- [ ] T-15: Write Playwright tests — change password flow (login, change, verify old token rejected, login with new password)
-- [ ] T-16: Write Playwright tests — admin reset flow (admin resets coordinator, coordinator must re-login)
-- [ ] T-17: Run full test suite — all green
-- [ ] T-18: Update docs/runbook.md — password management procedures
+- [ ] T-18: Write Playwright tests — change password flow (login, change, verify old token rejected, login with new password)
+- [ ] T-19: Write Playwright tests — admin reset flow (admin resets coordinator, coordinator must re-login)
+- [ ] T-20: Run full test suite — all green
+- [ ] T-21: Run OWASP ZAP scan — verify new auth endpoints don't introduce findings
+
+### Documentation
+
+- [ ] T-22: Update `docs/runbook.md` — password management procedures, metric monitoring, suspicious reset activity alerts
+- [ ] T-23: Update README Project Status — add password management to completed features
+- [ ] T-24: Update `docs/government-adoption-guide.md` — credential management posture for city procurement
+- [ ] T-25: Update `docs/WCAG-ACR.md` if new forms require accessibility review (password inputs, modal focus management)
+
+### Demo Screenshots
+
+- [ ] T-26: Recapture Admin panel Users tab screenshot (new Reset Password button)
+- [ ] T-27: Capture new Change Password modal screenshot for demo walkthrough
 
 ### Verification
 
-- [ ] T-19: CI green on all jobs
-- [ ] T-20: Merge to main, tag
+- [ ] T-28: CI green on all jobs
+- [ ] T-29: Merge to main, tag
