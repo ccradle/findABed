@@ -14,6 +14,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.15.2] — 2026-03-28 — Dignity-Centered Copy
+
+### Changed
+- The search filter that previously showed "DV Survivors" now shows "Safety Shelter" — protecting the dignity and safety of people in crisis when the outreach worker's screen is visible to a client
+- Freshness badges ("Fresh," "Stale") now translate to Spanish when the language is switched
+- The offline banner now reassures users: "your last search is still available"
+- Error messages are warmer and more actionable for outreach workers
+
+---
+
 ## [v0.15.1] — 2026-03-27 — Typography System
 
 ### Added
