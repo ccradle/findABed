@@ -14,6 +14,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.16.0] — 2026-03-28 — Password Management
+
+### Added
+- Users can now change their own password from any screen — one tap on "Password" in the header opens the form
+- CoC administrators and platform administrators can reset any user's password from the Admin panel Users tab
+- All existing sessions are invalidated immediately when a password is changed — the user (or anyone with their old credentials) must sign in again
+- SSO-only users see a clear message explaining their password is managed by their identity provider
+- New passwords must be at least 12 characters (following NIST 800-63B guidance — length over complexity)
+- Full Spanish translation of all password management forms
+
+### Security
+- Password change and reset endpoints are rate-limited to prevent brute force attacks
+- If an outreach worker's phone is lost or stolen, the administrator can reset their credentials in one click and all active sessions end immediately
+
+### Changed
+- GitHub Pages demo walkthrough updated with new screenshot showing the Change Password modal
+- Admin Users tab screenshot recaptured showing the Reset Password button on each user row
+- False claims about pilot deployments removed from funder and sustainability documentation — the platform is not yet deployed in any community
+
+---
+
 ## [v0.15.3] — 2026-03-28 — README Restructure
 
 ### Added
