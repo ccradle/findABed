@@ -22,7 +22,7 @@
 
 ## For a City Official
 
-> "This is open-source infrastructure for emergency shelter coordination — free to use, self-hosted, so the city owns its data. It's designed to support WCAG 2.1 AA accessibility, Apache 2.0 licensed, and it's been built from day one for government adoption. We're piloting it in the Raleigh area and looking for a city partner who wants to be part of shaping it."
+> "This is open-source infrastructure for emergency shelter coordination — free to use, self-hosted, so the city owns its data. It's designed to support WCAG 2.1 AA accessibility, Apache 2.0 licensed, and it's been built from day one for government adoption. We're looking for a city partner who wants to be part of shaping the first pilot."
 
 **Key phrase:** *"Built from day one for government adoption."*
 
@@ -30,7 +30,7 @@
 
 ## For a Funder
 
-> "A family in crisis waits two hours to find a shelter bed because outreach workers are making phone calls in the dark. We built a free, open-source platform that makes real-time availability visible across an entire region — designed for communities that can't afford commercial software. We're in pilot in Wake County and looking for funding to support adoption in additional communities."
+> "A family in crisis waits two hours to find a shelter bed because outreach workers are making phone calls in the dark. We built a free, open-source platform that makes real-time availability visible across an entire region — designed for communities that can't afford commercial software. The platform is ready for a first pilot and we're looking for funding to support community adoption."
 
 **Key phrase:** *"Designed for communities that can't afford commercial software."*
 
