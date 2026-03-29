@@ -96,5 +96,5 @@
 
 - [x] T-47: Re-run full backend test suite — 272 tests, all green
 - [x] T-48: Re-run full Playwright test suite — 143 passed, 2 skipped, 0 failures
-- [ ] T-49: CI green on all jobs
-- [ ] T-50: Merge to main, tag
+- [x] T-49: CI green on all jobs
+- [x] T-50: Merge to main, tag v0.18.0, GitHub release
