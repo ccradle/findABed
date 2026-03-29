@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelter Onboarding — Finding A Bed Tonight</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="Walkthrough: onboard new shelters from a 211 CSV export, edit details, and configure DV protections — in under a minute.">
+  <meta property="og:title" content="Shelter Onboarding — Finding A Bed Tonight">
+  <meta property="og:description" content="See how a CoC administrator onboards new shelters from 211 data, corrects details, and enables DV safeguards.">
+  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/20-import-211-preview.png">
+  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/shelter-onboarding.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    header { background: linear-gradient(135deg, #0c1929 0%, #1a3a5c 50%, #0f2940 100%); padding: 48px 24px; text-align: center; border-bottom: 3px solid #1a56db; }
+    header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    header p { font-size: 16px; color: #94b8d8; max-width: 600px; margin: 0 auto; }
+    header .badge { display: inline-block; background: #1a56db; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-top: 12px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+    .card { background: #1e293b; border-radius: 12px; overflow: hidden; margin-bottom: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+    .card-number { background: #1a56db; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+    .card-title { font-size: 18px; font-weight: 700; }
+    .card-role { font-size: 12px; color: #64748b; background: #0f172a; padding: 2px 8px; border-radius: 8px; margin-left: auto; }
+    .card-caption { padding: 12px 20px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; }
+    .card img { width: 100%; display: block; }
+    footer { text-align: center; padding: 32px 24px; color: #475569; font-size: 13px; border-top: 1px solid #1e293b; }
+    footer a { color: #60a5fa; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .section-divider { text-align: center; padding: 24px 0 8px; font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; }
+    @media (max-width: 640px) {
+      header h1 { font-size: 24px; }
+      .card-title { font-size: 15px; }
+      .card-header { flex-wrap: wrap; }
+      .card-role { margin-left: 0; margin-top: 4px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Shelter Onboarding</h1>
+  <p>Every hour a shelter isn't in the system is an hour a family can't find it. This walkthrough shows how a CoC administrator onboards new shelters from 211 data, corrects details, and protects survivors — in under a minute.</p>
+  <span class="badge">7 steps</span>
+</header>
+
+<div class="container">
+
+  <div class="section-divider">Act 1: Import — Three shelters join the network</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">1</span>
+      <span class="card-title">Preview Column Mapping</span>
+      <span class="card-role">CoC Admin</span>
+    </div>
+    <div class="card-caption">Marcus receives a CSV export from the region's 211 database — three shelters that just agreed to participate in coordinated entry. He uploads the file and the system maps the columns automatically. Agency name becomes shelter name. Street address, city, phone — all matched without manual data entry.</div>
+    <img src="screenshots/20-import-211-preview.png" alt="211 CSV preview showing 8 columns mapped from iCarol-style headers to FABT fields, with sample values from 3 shelters">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">2</span>
+      <span class="card-title">Import Complete</span>
+      <span class="card-role">CoC Admin</span>
+    </div>
+    <div class="card-caption">One click. Three shelters created. What used to take an afternoon of phone calls and manual data entry is done in seconds. These shelters are now visible to every outreach worker in the system.</div>
+    <img src="screenshots/21-import-211-success.png" alt="Import success screen showing 3 shelters created, 0 updated, 0 skipped">
+  </div>
+
+  <div class="section-divider">Act 2: Correct — Sandra will need this number tonight</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">3</span>
+      <span class="card-title">Shelters Tab with Edit</span>
+      <span class="card-role">CoC Admin</span>
+    </div>
+    <div class="card-caption">Marcus navigates to the Shelters tab. The three imported shelters are here — alongside the thirteen already in the system. Every row has an Edit link. He spots Sunrise Family Center with a placeholder phone number that came through wrong in the 211 data.</div>
+    <img src="screenshots/22-admin-shelters-edit.png" alt="Admin Shelters tab showing 16 shelters with Edit links, including the 3 newly imported shelters">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">4</span>
+      <span class="card-title">Fix Phone Number</span>
+      <span class="card-role">CoC Admin</span>
+    </div>
+    <div class="card-caption">A phone number came through wrong in the import. Sandra will need this number tonight when outreach workers call about incoming clients. Marcus clicks Edit, fixes the number, saves. Three taps. The correct number is now visible to every outreach worker in the system.</div>
+    <img src="screenshots/23-shelter-edit-phone.png" alt="Shelter edit form showing Sunrise Family Center with phone field displaying 919-555-0000, ready to be corrected">
+  </div>
+
+  <div class="section-divider">Act 3: Protect — Safety isn't a setting, it's a commitment</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">5</span>
+      <span class="card-title">DV Shelter Toggle</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">Safe Passage House in Durham serves domestic violence survivors. The 211 import brought it in as a regular shelter — addresses visible, no special protections. The administrator opens the edit form and sees the Domestic Violence Shelter toggle. One decision changes everything.</div>
+    <img src="screenshots/24-shelter-edit-dv-toggle.png" alt="Shelter edit form for Safe Passage House showing the Domestic Violence Shelter toggle switch">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">6</span>
+      <span class="card-title">DV Confirmation</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">If someone tries to remove DV protection, the system requires explicit confirmation: "This will make the shelter address visible to all users including outreach workers without DV authorization. This action affects survivor safety." Removing protection is never an accident.</div>
+    <img src="screenshots/25-dv-confirm-dialog.png" alt="Confirmation dialog warning that removing DV protection will make the shelter address visible to all users">
+  </div>
+
+  <div class="section-divider">The coordinator's view</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">7</span>
+      <span class="card-title">Coordinator Edit Access</span>
+      <span class="card-role">Coordinator</span>
+    </div>
+    <div class="card-caption">Sandra can update her shelter's phone number, hours, and operational details — the things that change week to week. But shelter name, address, and DV status are controlled by the CoC administrator. The fields Sandra needs are editable. The decisions that affect safety require a different level of authority.</div>
+    <img src="screenshots/26-coordinator-edit-form.png" alt="Coordinator shelter edit form showing operational fields editable">
+  </div>
+
+  <!-- Summary -->
+  <div style="background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid #334155;">
+    <div style="font-size: 16px; font-weight: 700; color: #e2e8f0; margin-bottom: 12px;">The Complete Story</div>
+    <div style="font-size: 14px; color: #94a3b8; line-height: 1.8;">
+      From CSV to operational in under a minute. Three shelters that families can now find. One shelter whose survivors are now protected. One phone number that will work when Sandra answers tonight.
+    </div>
+  </div>
+
+  <!-- Back link -->
+  <div style="text-align: center; margin-bottom: 16px;">
+    <a href="index.html" style="color: #60a5fa; text-decoration: none; font-size: 14px; font-weight: 600;">&larr; Back to main walkthrough</a>
+  </div>
+
+</div>
+
+<footer>
+  <p>Finding A Bed Tonight — Open-source shelter bed availability platform</p>
+  <p><a href="https://github.com/ccradle/finding-a-bed-tonight">github.com/ccradle/finding-a-bed-tonight</a> &middot; <a href="https://github.com/ccradle/findABed">github.com/ccradle/findABed</a></p>
+  <p style="margin-top: 12px; font-size: 11px; color: #64748b;">Finding A Bed Tonight is provided as-is under the Apache 2.0 License, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions. This platform is not a guarantee of shelter availability.</p>
+</footer>
+
+</body>
+</html>
