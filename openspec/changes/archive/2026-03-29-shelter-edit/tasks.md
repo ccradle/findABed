@@ -113,5 +113,5 @@
 - [x] T-57: Run full backend test suite (including ArchUnit) — all green (290 tests, 0 failures)
 - [x] T-58: Run full Playwright test suite — all green (159 passed, 2 skipped, 0 failed)
 - [x] T-59: ESLint + TypeScript clean
-- [ ] T-60: CI green on all jobs
-- [ ] T-61: Merge to main, tag
+- [x] T-60: CI green on all jobs — CI/E2E passed on merge to main
+- [x] T-61: Merge to main, tag v0.20.0, GitHub release created
