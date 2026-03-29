@@ -131,5 +131,5 @@
 - [x] T-61: Full backend test suite — 296 tests, 0 failures
 - [x] T-62: Full Playwright suite — 167 passed, 0 failed, 2 skipped (includes light mode, dark mode, HIC/PIT, shelter edit, demo lifecycle)
 - [x] T-63: ESLint + TypeScript clean
-- [ ] T-64: CI green on all jobs
-- [ ] T-65: Merge to main, tag
+- [x] T-64: CI green on all jobs — E2E/CI passed on main
+- [x] T-65: Merged to main, tagged v0.21.0, release created
