@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelter Onboarding Checklist — Finding A Bed Tonight</title>
+  <style>
+    :root { --bg: #fff; --text: #0f172a; --muted: #475569; --accent: #1a56db; --border: #e2e8f0; --section-bg: #f8fafc; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --text: #e2e8f0; --muted: #94a3b8; --accent: #60a5fa; --border: #334155; --section-bg: #1e293b; }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; max-width: 680px; margin: 0 auto; padding: 32px 24px; }
+    h1 { font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 8px; color: var(--accent); }
+    .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+    .field-row { display: flex; gap: 12px; margin-bottom: 10px; }
+    .field { flex: 1; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+    .field .input { border-bottom: 1px solid var(--border); min-height: 22px; padding: 2px 0; font-size: 13px; }
+    .check-item { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; font-size: 13px; }
+    .checkbox { width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+    .check-item .completion { display: flex; gap: 8px; margin-top: 2px; font-size: 11px; color: var(--muted); }
+    .check-item .completion span { border-bottom: 1px solid var(--border); min-width: 80px; }
+    .note { font-size: 12px; color: var(--muted); margin-top: 16px; padding: 8px 12px; background: var(--section-bg); border-radius: 6px; }
+    .notes-section { margin-top: 20px; }
+    .notes-section .line { border-bottom: 1px solid var(--border); height: 24px; margin-bottom: 4px; }
+    footer { margin-top: 24px; text-align: center; font-size: 11px; color: var(--muted); }
+
+    @media print {
+      body { font-size: 10pt; color: #000; background: #fff; padding: 12px; max-width: none; line-height: 1.3; }
+      :root { --bg: #fff; --text: #000; --muted: #333; --accent: #1a56db; --border: #999; --section-bg: #f5f5f5; }
+      .checkbox { border-color: #666; }
+      footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Shelter Onboarding Checklist</h1>
+<div class="subtitle">Finding A Bed Tonight — One checklist per shelter</div>
+
+<div class="field-row">
+  <div class="field"><label>Shelter Name</label><div class="input"></div></div>
+</div>
+<div class="field-row">
+  <div class="field"><label>CoC Administrator</label><div class="input"></div></div>
+  <div class="field"><label>Start Date</label><div class="input"></div></div>
+</div>
+
+<h2>Day 1–2: Setup</h2>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Shelter profile created</strong> — via admin panel (Add Shelter) or 211 CSV import<br>
+    <span style="font-size: 12px; color: var(--muted);">Name, address, phone, population types, bed capacity, constraints</span>
+    <div class="completion"><span></span> Date &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Shelter details reviewed and edited</strong> — verify phone, address, capacity are correct<br>
+    <span style="font-size: 12px; color: var(--muted);">Admin → Shelters tab → Edit. Fix any import errors.</span>
+    <div class="completion"><span></span> Date &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>DV status configured</strong> (if applicable) — enable DV Shelter toggle for DV providers<br>
+    <span style="font-size: 12px; color: var(--muted);">Activates address redaction and audit logging. Requires Platform Admin.</span>
+    <div class="completion"><span></span> Date &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Coordinator user account created</strong><br>
+    <div class="field-row" style="margin-top: 4px;">
+      <div class="field"><label>Name</label><div class="input"></div></div>
+      <div class="field"><label>Email</label><div class="input"></div></div>
+    </div>
+    <div class="completion"><span></span> Date &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Coordinator assigned to shelter</strong><br>
+    <span style="font-size: 12px; color: var(--muted);">Admin → Shelters tab → shelter detail → Assign Coordinator</span>
+    <div class="completion"><span></span> Date &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Quick-start card sent or printed for coordinator</strong><br>
+    <span style="font-size: 12px; color: var(--muted);">Print coordinator-quick-start.html, fill in tenant code and admin contact, deliver.</span>
+    <div class="completion"><span></span> Date &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<h2>Day 3–4: Verification</h2>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Coordinator logged in successfully</strong>
+    <div class="completion"><span></span> Date of first login</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Coordinator completed first bed count update</strong>
+    <div class="completion"><span></span> Date of first update</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>CoC admin confirmed data visible on dashboard</strong>
+    <div class="completion"><span></span> Confirmed &nbsp; <span></span> By</div>
+  </div>
+</div>
+
+<h2>Day 5–7: Go Live</h2>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Shelter briefed on update frequency expectations</strong><br>
+    <span style="font-size: 12px; color: var(--muted);">Twice daily minimum — shift change recommended. More during surge events.</span>
+    <div class="completion"><span></span> Date</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>Shelter visible to outreach workers in search results</strong>
+    <div class="completion"><span></span> Date</div>
+  </div>
+</div>
+
+<div class="check-item">
+  <div class="checkbox"></div>
+  <div>
+    <strong>First week check-in scheduled</strong>
+    <div class="completion"><span></span> Date</div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Shelter is live:</strong> <span style="border-bottom: 1px solid var(--border); min-width: 120px; display: inline-block;">&nbsp;</span> (date)
+</div>
+
+<div class="notes-section">
+  <h2>Notes</h2>
+  <div class="line"></div>
+  <div class="line"></div>
+  <div class="line"></div>
+  <div class="line"></div>
+</div>
+
+<footer>
+  <p>Finding A Bed Tonight — Shelter Onboarding Checklist</p>
+  <p>Print one per shelter. Fill in as each step is completed.</p>
+</footer>
+
+</body>
+</html>
