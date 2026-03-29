@@ -121,6 +121,48 @@ Some proxies and load balancers close idle connections after 60-90 seconds. A `@
 - `fabt.sse.events.sent.count` (counter, tag: eventType) — events pushed to clients
 - Grafana panel: "SSE Active Connections" gauge added to operations dashboard
 
+### D10: WAI-ARIA disclosure pattern (not menu)
+
+Persona review (Teresa Nguyen) identified that `role="menu"` + `role="menuitem"` is incorrect for a notification list. Per W3C APG, `role="menu"` implies desktop-app action semantics (arrow key navigation, type-ahead) which screen readers expect but our notification list doesn't implement.
+
+**Correct pattern: Disclosure (Show/Hide)**
+- Bell button: `aria-expanded="true|false"`, `aria-controls="notification-panel"`. No `aria-haspopup`.
+- Panel: plain `<ul role="list">` or `<section role="region">`, not `role="menu"`.
+- Keyboard: Enter/Space toggles, Escape closes (returns focus to button), Tab navigates items.
+- Focus: on open, move focus to first notification item. On close, return focus to bell button.
+
+### D11: SSE connection status indicator
+
+Persona review (Darius Webb) identified that outreach workers on unreliable mobile connections need to know if real-time updates are flowing. The `useNotifications` hook already tracks `connected` state but doesn't display it.
+
+**Pattern: Show on disconnect only (Slack model)**
+- Connected: no indicator (default assumption).
+- Reconnecting: persistent banner below header — "Reconnecting to live updates..." with `role="status"` + `aria-live="polite"`.
+- Disconnected (EventSource closed): banner "Live updates unavailable. Data shown may not be current."
+- Recovered: brief "Reconnected" toast (3s auto-dismiss) on `EventSource.onopen` after a disconnect.
+
+Banner placement: below the header, above main content, full-width. Pushes content down (not overlay).
+
+### D12: Person-centered notification language
+
+Persona review (Keisha Thompson) identified notification messages as system-centric rather than person-centered.
+
+| Current (system-centric) | Revised (person-centered) |
+|---|---|
+| Referral response received | A shelter responded to your referral |
+| New referral request | New referral needs your review |
+| Bed availability updated | Bed availability changed at {shelterName} |
+
+Include status (Accepted/Rejected) directly in the notification so Darius doesn't have to tap through to see the outcome.
+
+### D13: DV safety test — payload assertion
+
+Persona review (Riley Cho) identified that the DV safety test asserts no-error-on-send rather than asserting the actual SSE payload doesn't contain shelter info. Use `HttpClient.sendAsync()` + `BodyHandlers.ofLines()` to read the actual wire data and assert `shelter_name` and `shelter_address` are absent from the event data field.
+
+### D14: Gatling SSE + search concurrent load test
+
+Persona review (Sam Okafor) identified that Gatling results (p99=206ms) were measured with zero SSE connections. A new simulation should hold N SSE connections open while running the standard bed search workload to verify SSE doesn't degrade search latency.
+
 ## Risks / Trade-offs
 
 - **Risk:** SseEmitter deadlock on abrupt client disconnect (Spring #33421). → **Mitigation:** Register `onCompletion`/`onTimeout`/`onError` callbacks, remove emitter from map immediately.

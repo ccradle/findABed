@@ -10,8 +10,10 @@ Server-Sent Events (SSE) is the right solution for our stack: one-directional se
 
 - **Backend**: New SSE endpoint `GET /api/v1/notifications/stream` returning `text/event-stream`. A `NotificationService` manages per-user `SseEmitter` connections and subscribes to `SpringEventBus` application events, filtering by tenant + user role and pushing relevant events.
 - **Frontend**: `EventSource` connection established on login. Bell icon / notification badge in the header showing unread count. Notification dropdown with recent events. Auto-refresh of referral list when `dv-referral.responded` event arrives. Auto-refresh of search results when `availability.updated` event arrives.
-- **Accessibility**: `aria-live="polite"` hidden region for screen reader announcements when notifications arrive. `aria-label` on bell button updated with count. Badge visually `aria-hidden="true"`.
-- **DV Safety**: Referral response notifications to outreach workers contain status + phone number (if accepted), never shelter address or name. Same zero-PII principle as the referral system itself.
+- **Accessibility**: WAI-ARIA disclosure pattern (not menu) — `aria-expanded`, `aria-controls`, Escape-to-close, focus management. `aria-live="polite"` hidden region for screen reader announcements. Badge `aria-hidden="true"`. Keyboard: Enter/Space toggles, Tab through items, Escape closes.
+- **Connection status**: Disconnect/reconnecting banner (Slack pattern) — hidden when connected, shown on disconnect with `role="status"` + `aria-live="polite"`. Brief "Reconnected" toast on recovery.
+- **DV Safety**: Referral response notifications to outreach workers contain status + phone number (if accepted), never shelter address or name. Same zero-PII principle as the referral system itself. DV safety test asserts on actual SSE payload bytes, not just no-error.
+- **Person-centered language**: Notification messages written for the person in crisis context — "A shelter responded to your referral" not "Referral response received".
 
 ## Capabilities
 
