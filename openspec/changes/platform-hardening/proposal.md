@@ -1,0 +1,25 @@
+## Why
+
+The admin panel creates API keys and webhook subscriptions but cannot manage their lifecycle — no revoke, rotate, delete, pause, or test. Marcus (CoC Admin) can't revoke a compromised key or remove a decommissioned webhook. The Gatling AvailabilityUpdate test shows 2.05% KO (above 1% SLO) from advisory lock contention that could be absorbed by server-side retry. The SSE notification system has no backpressure protection for slow clients. These are operational gaps that block production readiness.
+
+## What Changes
+
+- **API key lifecycle**: revoke button (confirmation, immediate invalidation), rotate with grace period (new key + old key valid for configurable window, default 24h), metadata display (last used, status badge, expiry).
+- **Webhook subscription management**: delete button (confirmation), pause/resume toggle, send test event button with event-type dropdown, recent delivery log table (last 20 deliveries per subscription).
+- **Server-side retry on 409**: spring-retry with @Retryable on availability update for advisory lock contention. 3 attempts, 50ms backoff × 2. Eliminates 409 from client perspective.
+- **SSE slow-client protection**: bounded per-client event queue (max 10) with drop-oldest on overflow. Gatling simulation with 200 SSE connections + bed search.
+- **Webhook delivery log**: new table for recent deliveries with status, response time, attempt count. Auto-disable endpoint after 5 consecutive failures.
+
+## Capabilities
+
+### New Capabilities
+- `platform-hardening`: API key revoke/rotate, webhook delete/pause/test, delivery log, server-side retry, SSE backpressure
+
+### Modified Capabilities
+
+## Impact
+
+- **Backend**: Flyway migration (webhook_delivery_log table, subscription active flag), spring-retry dependency, @Retryable on AvailabilityService, webhook pause/test endpoints, SSE bounded queue
+- **Frontend**: API key revoke/rotate buttons + metadata in admin tab, subscription delete/pause/test buttons + delivery log panel
+- **Performance**: Gatling AvailabilityUpdate KO rate expected to drop below 1% with retry. New Gatling simulation for 200-connection SSE load.
+- **Testing**: Backend integration for key rotate, subscription pause/test, retry, delivery log. Playwright e2e for all admin UI additions. Gatling performance verification.
