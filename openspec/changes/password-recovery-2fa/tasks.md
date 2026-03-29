@@ -4,10 +4,10 @@
 
 - [ ] T-0: Create branch `feature/password-recovery-2fa` in code repo (`finding-a-bed-tonight`)
 
-### Backend — Database
+### Backend — Database (Flyway range: V30–V31)
 
-- [ ] T-1: Flyway migration: add `totp_secret VARCHAR(64)`, `totp_enabled BOOLEAN DEFAULT false`, `recovery_codes TEXT` to `app_user`
-- [ ] T-2: Flyway migration: create `one_time_access_code` table (id UUID, user_id UUID, code_hash VARCHAR, expires_at TIMESTAMPTZ, used BOOLEAN DEFAULT false)
+- [ ] T-1: Flyway V30: add `totp_secret VARCHAR(64)`, `totp_enabled BOOLEAN DEFAULT false`, `recovery_codes TEXT` to `app_user`
+- [ ] T-2: Flyway V31: create `one_time_access_code` table (id UUID, user_id UUID, code_hash VARCHAR, expires_at TIMESTAMPTZ, used BOOLEAN DEFAULT false)
 - [ ] T-3: Add `dev.samstevens.totp:totp` dependency to pom.xml
 
 ### Backend — TOTP Service

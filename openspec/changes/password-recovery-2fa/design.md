@@ -47,8 +47,28 @@ Password reset for users with `dvAccess=true` requires supervisor confirmation. 
 
 `FABT_REQUIRE_MFA` env var: `false` (default in dev/lite), `true` in production. When true, users without 2FA enrolled see a prompt on login to set it up (not blocked, just prompted). Future: hard enforcement where unenrolled users must enroll before accessing any other page.
 
+### D8: TOTP scope — local password login only
+
+TOTP applies ONLY to local password authentication (POST /api/v1/auth/login). It does NOT apply to:
+- **API key authentication** — machine-to-machine, no interactive second factor possible
+- **OAuth2/SSO login** — 2FA is the IdP's responsibility (Google, Microsoft, Keycloak handle their own MFA)
+- **MCP server service accounts** — use API keys, exempt from TOTP
+
+This ensures the MCP agent integration (which uses API keys for backend communication) is unaffected by 2FA.
+
+### D9: mfaToken is NOT a regular JWT — filter chain separation
+
+The `mfaToken` returned during two-phase login is signed with the same secret but carries `purpose: "mfa"` in its claims. It is validated ONLY by the `/auth/verify-totp` endpoint, NOT by `JwtAuthenticationFilter`. The filter must skip tokens with `purpose: "mfa"` — they are not access tokens and should not grant API access.
+
+This also prevents interaction with `tokenVersion` (from admin-user-management). The mfaToken does not carry a `ver` claim and is not subject to version checking — it's a 5-minute ephemeral proof of password correctness, not an authorization token.
+
+### D10: Password-change-required enforcement after access code login
+
+After access-code login, the user receives a JWT with `mustChangePassword: true` claim. A new `PasswordChangeRequiredFilter` (after JwtAuthenticationFilter in the chain) checks this claim. If present and true, all requests except PUT /api/v1/auth/password return 403 with error code `password_change_required`. This forces the user to set a new password before accessing any other functionality.
+
 ## Risks / Trade-offs
 
 - **No email infrastructure**: admin-generated codes are the primary recovery path. Email reset is secondary and requires SMTP configuration. This is a feature, not a bug — field workers don't have reliable email access.
 - **TOTP secret storage**: stored encrypted in DB. If DB is compromised, attacker has secrets. Mitigated by: TOTP alone is useless without the password (second factor), and DB access implies full compromise already.
 - **mfaToken signing**: uses the same JWT secret as access tokens. Could use a separate secret for defense-in-depth. Complexity not justified for Phase 1.
+- **PasswordChangeRequiredFilter ordering**: must be after JwtAuthenticationFilter and SseTokenFilter but before the security chain's authorization checks. Test with integration tests that verify the 403 response and the exemption for the password-change endpoint.

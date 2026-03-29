@@ -53,3 +53,4 @@ Instead of calling `emitter.send()` synchronously per event, queue events into a
 - **Dropped events during webhook pause**: admins must understand events are lost, not queued. Documented in UI and API response.
 - **Spring Retry masking real errors**: retry absorbs transient lock contention but could mask persistent issues. Mitigated by logging each retry attempt and returning 409 if all retries exhausted.
 - **SSE queue drop-oldest**: slow clients may miss events. Mitigated by client-side REST catch-up on reconnection (already implemented in useNotifications hook).
+- **@Scheduled cleanup tasks disabled in tests**: v0.18.1 gates scheduling via `fabt.scheduling.enabled=false` in test profile. New @Scheduled tasks (API key expiry cleanup T-4, delivery log cleanup T-14) won't run in tests. Test cleanup logic via direct service method calls, not by waiting for the scheduler. @Retryable (T-17) is separate from scheduling and works regardless.

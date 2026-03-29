@@ -1,5 +1,8 @@
 ## Tasks
 
+> **Dependency:** This change requires the `audit_events` table from `admin-user-management` (T-2).
+> Implement `admin-user-management` first, or extract the audit table migration into a shared prerequisite.
+
 ### Setup
 
 - [ ] T-0: Create branch `feature/shelter-edit` in code repo (`finding-a-bed-tonight`)

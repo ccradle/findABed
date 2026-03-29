@@ -45,3 +45,9 @@ Editing DV shelters SHALL have tiered safeguards based on field sensitivity and 
 
 - **WHEN** a COORDINATOR sends PUT /api/v1/shelters/{id} with a changed dvShelter value
 - **THEN** the response is 403 Forbidden
+
+#### Scenario: DV shelter address shown according to redaction policy
+
+- **WHEN** a user opens the edit form for a DV shelter
+- **THEN** address fields show the redacted value unless the user's role satisfies the tenant's `dv_address_visibility` policy
+- **AND** if address is redacted, address fields are read-only with message "Address protected by DV policy"

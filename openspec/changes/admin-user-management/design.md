@@ -38,6 +38,16 @@ New `audit_events` table: `id UUID`, `timestamp TIMESTAMPTZ`, `actor_user_id UUI
 
 When a user is deactivated, NotificationService must complete their SSE emitter (if connected) to immediately disconnect the notification stream. Use the existing `emitters.remove(userId)` + `emitter.complete()` pattern.
 
+### D6: i18n key naming convention (applies to all v0.19.0 changes)
+
+Establish namespace convention for all new i18n keys: `<module>.<feature>.<element>`. Examples:
+- `admin.user.editTitle`, `admin.user.deactivateConfirm`, `admin.user.statusActive`
+- `shelter.edit.saveSuccess`, `shelter.edit.dvConfirmation`
+- `auth.totp.enrollTitle`, `auth.totp.verifyPrompt`, `auth.recovery.codeExpired`
+- `admin.apiKey.revokeConfirm`, `admin.webhook.testSuccess`
+
+Document in `en.json` header comment for all v0.19.0 developers.
+
 ## Risks / Trade-offs
 
 - **Token version DB check on every request**: adds a cache lookup per request. Mitigated by existing Caffeine JWT claims cache (already does passwordChangedAt check in the same lookup).

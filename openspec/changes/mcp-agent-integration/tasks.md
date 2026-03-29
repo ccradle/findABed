@@ -4,7 +4,7 @@
 
 ## 2. MCP Server — Project Scaffolding
 
-- [ ] 2.1 Create `mcp-server/` directory with Maven `pom.xml` (Spring Boot 3.4, Spring AI MCP server starter)
+- [ ] 2.1 Create `mcp-server/` directory with Maven `pom.xml` (Spring Boot 4.0, Spring AI MCP server starter — verify Spring AI starter compatibility with Spring Boot 4.0 before proceeding)
 - [ ] 2.2 Add `McpServerApplication.java` entry point with `@SpringBootApplication`
 - [ ] 2.3 Configure `application.yml`: Streamable HTTP transport on port 8090, backend URL, API key reference
 - [ ] 2.4 Add stdio transport support for local dev (Claude Desktop / Claude Code)

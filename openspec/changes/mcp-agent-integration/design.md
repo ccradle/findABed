@@ -168,3 +168,22 @@ Micrometer metrics:
 - `fabt.mcp.tool.invocation.count` (tags: tool, role, status)
 - `fabt.mcp.tool.invocation.duration` (timer)
 - `fabt.mcp.dv.access.count` (counter for DV-related tool usage)
+
+### D11: Interaction with SSE notifications (v0.18.0)
+
+The proactive alerting scenario (D8, scenario 2) currently uses webhook subscriptions. SSE notifications (added in v0.18.0) provide an alternative real-time push channel. Consider:
+- MCP server could subscribe to the backend's SSE endpoint for real-time event delivery to agents
+- This would be more efficient than webhook polling for agent scenarios
+- However, SSE requires a persistent HTTP connection from MCP server → backend, which adds operational complexity
+- **Decision**: Use webhook subscriptions for Phase 1 (already supported). Evaluate SSE for Phase 2 if agents need lower-latency event delivery.
+
+### D12: Interaction with 2FA (password-recovery-2fa change)
+
+MCP server authenticates to the backend via **API key** (D3), not local password login. TOTP two-factor authentication (from password-recovery-2fa) applies only to local password login. Therefore:
+- MCP service accounts are **exempt from TOTP** — they use API keys
+- OAuth2 human-facing agents authenticate via the IdP, which handles its own MFA
+- No changes to the MCP auth model are needed when 2FA is implemented
+
+### D13: Audit trail integration (admin-user-management change)
+
+MCP tool invocation audit (D10) should use the same `audit_events` table created by admin-user-management, with action type `MCP_TOOL_INVOKED`. This avoids two separate audit systems. The MCP server writes audit events via a REST endpoint on the backend (POST /api/v1/audit-events) rather than direct DB access, maintaining module separation.

@@ -4,10 +4,10 @@
 
 - [ ] T-0: Create branch `feature/admin-user-management` in code repo (`finding-a-bed-tonight`)
 
-### Backend — Database
+### Backend — Database (Flyway range: V28–V29)
 
-- [ ] T-1: Flyway migration: add `status VARCHAR DEFAULT 'ACTIVE'` and `token_version INTEGER DEFAULT 0` to `app_user`
-- [ ] T-2: Flyway migration: create `audit_events` table (id UUID, timestamp TIMESTAMPTZ, actor_user_id UUID, target_user_id UUID, action VARCHAR, details JSONB, ip_address VARCHAR)
+- [ ] T-1: Flyway V28: add `status VARCHAR DEFAULT 'ACTIVE'` and `token_version INTEGER DEFAULT 0` to `app_user`
+- [ ] T-2: Flyway V29: create `audit_events` table (id UUID, timestamp TIMESTAMPTZ, actor_user_id UUID, target_user_id UUID, action VARCHAR, details JSONB, ip_address VARCHAR)
 - [ ] T-3: Update `User.java` domain entity with `status`, `tokenVersion` fields
 
 ### Backend — JWT Token Versioning

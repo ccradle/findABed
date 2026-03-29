@@ -4,18 +4,18 @@
 
 - [ ] T-0: Create branch `feature/platform-hardening` in code repo (`finding-a-bed-tonight`)
 
-### Backend — API Key Lifecycle
+### Backend — API Key Lifecycle (Flyway range: V32–V33)
 
 - [ ] T-1: `ApiKeyService.revokeKey()` — immediate invalidation, clear from cache
 - [ ] T-2: `ApiKeyService.rotateKey()` — generate new key, set `old_key_expires_at` on previous (default 24h grace), return new plaintext once
 - [ ] T-3: `ApiKeyAuthenticationFilter` — check `old_key_expires_at` for grace period validation
 - [ ] T-4: `@Scheduled` cleanup: invalidate expired old keys past grace period
-- [ ] T-5: Add `last_used_at TIMESTAMPTZ` column to api_key table (Flyway migration), update on each successful auth
+- [ ] T-5: Flyway V32: add `last_used_at TIMESTAMPTZ` and `old_key_expires_at TIMESTAMPTZ` to api_key table, update on each successful auth
 
-### Backend — Webhook Management
+### Backend — Webhook Management (Flyway range: V33–V34)
 
-- [ ] T-6: Flyway migration: add `active BOOLEAN DEFAULT true` to `subscription` table
-- [ ] T-7: Flyway migration: create `webhook_delivery_log` table (id, subscription_id, event_type, status_code, response_time_ms, attempted_at, attempt_number, response_body TEXT)
+- [ ] T-6: Flyway V33: add `active BOOLEAN DEFAULT true` to `subscription` table
+- [ ] T-7: Flyway V34: create `webhook_delivery_log` table (id, subscription_id, event_type, status_code, response_time_ms, attempted_at, attempt_number, response_body TEXT)
 - [ ] T-8: PATCH /api/v1/subscriptions/{id}/status — pause/resume toggle
 - [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver, return result
 - [ ] T-10: `WebhookDeliveryService` — check `active` flag before delivery, skip paused subscriptions
