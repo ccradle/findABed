@@ -59,15 +59,23 @@
 - [ ] T-30: Add deactivated user to seed data for screenshot captures
 - [ ] T-31: Capture screenshots: user edit drawer, deactivate confirmation, status badges
 
+### Docs-as-Code — DBML, AsyncAPI, OpenAPI, ArchUnit
+
+- [ ] T-32: Update `docs/schema.dbml` — add `status`, `token_version` to app_user table, add `audit_events` table definition
+- [ ] T-33: Update `docs/asyncapi.yaml` — add `user.deactivated` and `user.role-changed` event channels with payload schemas
+- [ ] T-34: Add `@Operation` annotations to all new endpoints (user edit, deactivate/reactivate, audit events query)
+- [ ] T-35: Add ArchUnit boundary rule for `notification` module (missing from v0.18.0 — notification must not access other modules' repositories or domain entities)
+- [ ] T-36: Add ArchUnit boundary rule for audit functionality — ensure audit event persistence does not create circular dependencies
+
 ### Documentation
 
-- [ ] T-32: Update FOR-DEVELOPERS.md — API reference (user edit, deactivate, audit events), project status
-- [ ] T-33: Update runbook — user deactivation procedure, JWT invalidation troubleshooting
+- [ ] T-37: Update FOR-DEVELOPERS.md — API reference (user edit, deactivate, audit events), project status
+- [ ] T-38: Update runbook — user deactivation procedure, JWT invalidation troubleshooting
 
 ### Verification
 
-- [ ] T-34: Run full backend test suite — all green
-- [ ] T-35: Run full Playwright test suite — all green
-- [ ] T-36: ESLint + TypeScript clean
-- [ ] T-37: CI green on all jobs
-- [ ] T-38: Merge to main, tag
+- [ ] T-39: Run full backend test suite (including ArchUnit) — all green
+- [ ] T-40: Run full Playwright test suite — all green
+- [ ] T-41: ESLint + TypeScript clean
+- [ ] T-42: CI green on all jobs
+- [ ] T-43: Merge to main, tag

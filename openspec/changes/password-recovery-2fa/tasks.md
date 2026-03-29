@@ -83,15 +83,21 @@
 - [ ] T-42: Add user with totp_enabled=true to seed data (known test secret for screenshots)
 - [ ] T-43: Capture screenshots: TOTP enrollment QR, TOTP login screen, recovery codes, forgot password, access code modal
 
+### Docs-as-Code — DBML, OpenAPI
+
+- [ ] T-44: Update `docs/schema.dbml` — add `totp_secret`, `totp_enabled`, `recovery_codes` to app_user table, add `one_time_access_code` table definition
+- [ ] T-45: Add `@Operation` annotations to all new endpoints: enroll-totp, confirm-totp-enrollment, verify-totp, generate-access-code, access-code login, forgot-password, reset-password, delete user TOTP
+- [ ] T-46: Verify ArchUnit — TOTP logic in auth module, OTT in auth module. No cross-module repository access.
+
 ### Documentation
 
-- [ ] T-44: Update FOR-DEVELOPERS.md — API reference (TOTP, access code, forgot password), project status, security notes
-- [ ] T-45: Update runbook — 2FA troubleshooting (lost device, admin disable), password recovery procedures
+- [ ] T-47: Update FOR-DEVELOPERS.md — API reference (TOTP, access code, forgot password), project status, security notes
+- [ ] T-48: Update runbook — 2FA troubleshooting (lost device, admin disable), password recovery procedures
 
 ### Verification
 
-- [ ] T-46: Run full backend test suite — all green
-- [ ] T-47: Run full Playwright test suite — all green
-- [ ] T-48: ESLint + TypeScript clean
-- [ ] T-49: CI green on all jobs
-- [ ] T-50: Merge to main, tag
+- [ ] T-49: Run full backend test suite (including ArchUnit) — all green
+- [ ] T-50: Run full Playwright test suite — all green
+- [ ] T-51: ESLint + TypeScript clean
+- [ ] T-52: CI green on all jobs
+- [ ] T-53: Merge to main, tag

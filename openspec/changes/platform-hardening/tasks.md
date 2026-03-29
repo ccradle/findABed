@@ -85,15 +85,22 @@
 - [ ] T-47: Add subscription with delivery log entries for screenshot
 - [ ] T-48: Capture screenshots: API key management, subscription management, delivery log
 
+### Docs-as-Code — DBML, AsyncAPI, OpenAPI
+
+- [ ] T-49: Update `docs/schema.dbml` — add `webhook_delivery_log` table, `active` to subscription table, `last_used_at` and `old_key_expires_at` to api_key table
+- [ ] T-50: Update `docs/asyncapi.yaml` — document webhook test event channel, subscription auto-disable notification event
+- [ ] T-51: Add `@Operation` annotations to all new endpoints: subscription pause/status, subscription test, subscription deliveries, API key rotate (verify existing revoke has it)
+- [ ] T-52: Verify ArchUnit — subscription delivery log stays in subscription module, retry logic stays in availability module, SSE backpressure stays in notification module
+
 ### Documentation
 
-- [ ] T-49: Update FOR-DEVELOPERS.md — API reference (key rotate, subscription pause/test, delivery log), project status
-- [ ] T-50: Update runbook — API key rotation procedure, webhook troubleshooting, retry behavior
+- [ ] T-53: Update FOR-DEVELOPERS.md — API reference (key rotate, subscription pause/test, delivery log), project status
+- [ ] T-54: Update runbook — API key rotation procedure, webhook troubleshooting, retry behavior
 
 ### Verification
 
-- [ ] T-51: Run full backend test suite — all green
-- [ ] T-52: Run full Playwright test suite — all green
-- [ ] T-53: ESLint + TypeScript clean
-- [ ] T-54: CI green on all jobs
-- [ ] T-55: Merge to main, tag
+- [ ] T-55: Run full backend test suite (including ArchUnit) — all green
+- [ ] T-56: Run full Playwright test suite — all green
+- [ ] T-57: ESLint + TypeScript clean
+- [ ] T-58: CI green on all jobs
+- [ ] T-59: Merge to main, tag
