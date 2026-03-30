@@ -61,3 +61,24 @@ All imported data SHALL be scoped to the importing user's tenant.
 #### Scenario: Import cannot overwrite other tenants
 - **WHEN** an import file references shelter IDs from another tenant
 - **THEN** the system ignores external IDs and creates new records within the importing tenant
+
+### Requirement: csv-injection-prevention
+All string fields in imported CSV and JSON data SHALL be sanitized before storage to prevent formula injection (CWE-1236) when data is later exported and opened in spreadsheet software.
+
+#### Scenario: Dangerous prefix stripped
+- **WHEN** a CSV field starts with `=`, `+` (non-digit follows), or `@`
+- **THEN** the leading character is stripped and a warning is logged
+- **AND** the sanitized value is stored in the database
+
+#### Scenario: Legitimate values preserved
+- **WHEN** a phone field contains `+1-919-555-0100` or an address contains `-123 Main St`
+- **THEN** the value is stored unchanged (digit follows `+`, `-` is always preserved)
+
+### Requirement: import-field-length-validation
+Imported fields SHALL be validated against maximum lengths matching database column sizes. Rows exceeding limits are skipped with a row-level error.
+
+### Requirement: import-mime-type-validation
+The import controller SHALL validate the uploaded file's content type before processing. CSV endpoints accept `text/csv`, `text/plain`, `application/csv`, `application/octet-stream`. JSON endpoints accept `application/json`, `text/plain`, `application/octet-stream`. Null content types are accepted with a logged warning.
+
+### Requirement: import-navigation
+Admin panel import links SHALL use React Router client-side navigation (`<Link>`) instead of HTML anchor tags (`<a href>`) to ensure correct SPA routing.

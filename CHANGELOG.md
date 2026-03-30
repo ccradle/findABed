@@ -8,9 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [v0.22.0] — 2026-03-30 — Import Hardening & Security Headers
 
-*(Nothing yet)*
+### Fixed
+- **211 Import button was broken** — clicking "2-1-1 Import" in the Admin panel did nothing. Fixed navigation so coordinators can now import shelter data from 211 CSV files as intended.
+- **CSV injection vulnerability** — imported shelter data (names, addresses) was stored without sanitization. If exported and opened in Excel, malicious formulas could execute. All imported data is now sanitized before storage.
+- **Headers-only CSV** — uploading a CSV with only column headers and no data now shows a clear error instead of silently proceeding.
+
+### Added
+- OWASP ZAP security headers on the live deployment: HSTS, Content Security Policy, server version suppression, Cross-Origin-Embedder-Policy
+- MIME type validation on import (rejects non-CSV/JSON files)
+- Field length validation on all imported fields
+- 29 new automated tests covering import security and error handling
+
+### Changed
+- Backend version aligned to release tags (0.22.0)
 
 ---
 
