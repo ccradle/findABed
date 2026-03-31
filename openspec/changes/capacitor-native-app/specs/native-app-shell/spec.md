@@ -41,6 +41,24 @@ PWA manifest icon assets SHALL exist at `frontend/public/icon-192.png` and `fron
 - `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`, and `apple-touch-icon` tags present
 - iOS home screen bookmark shows proper icon and splash behavior
 
+### Requirement: Deep linking
+The native app SHALL register a custom URL scheme (`fabt://`) and universal links (`https://YOUR_DOMAIN/shelter/{id}`) for deep linking into specific screens.
+
+**Acceptance criteria:**
+- `fabt://shelter/{id}` opens the shelter detail screen
+- `fabt://search` opens bed search
+- Push notification tap navigates to the relevant screen via deep link
+- iOS: Associated Domains configured in Xcode for universal links
+- Android: Intent filters configured in AndroidManifest.xml
+
+### Requirement: App size budget
+The native app SHALL be under 25MB installed size on both iOS and Android. Darius uses a mid-range Android with limited storage.
+
+**Acceptance criteria:**
+- iOS IPA: < 25MB (compressed)
+- Android APK: < 25MB
+- Measured after all assets, plugins, and native frameworks included
+
 ### Requirement: Routing abstraction
 The `api.ts` 401 handler SHALL use a platform-aware navigation abstraction instead of `window.location.href = '/login'`.
 

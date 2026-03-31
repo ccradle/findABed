@@ -106,6 +106,8 @@ export const tokenStorage = {
 
 This abstraction keeps the PWA working with localStorage while native apps use hardware-backed keychain. The `AuthContext`, `api.ts`, and `SessionTimeoutWarning` migrate to use `tokenStorage` instead of direct `localStorage` calls.
 
+**Critical: in-memory token cache.** SecureStorage reads are async, but the API request interceptor needs the token synchronously. Solution: on login, write to SecureStorage AND cache in a module-level variable. On each request, read from memory (synchronous). On logout, clear both. On app launch (native), read from SecureStorage into memory before rendering the first route. This avoids making the entire fetch pipeline async.
+
 ### Push notification architecture
 
 ```
@@ -120,7 +122,7 @@ Event occurs (availability update, referral response)
 ```
 
 **Backend:**
-- New `PushNotificationSender` service using Firebase Admin SDK
+- New `PushNotificationSender` service using direct FCM HTTP v1 API calls (no `firebase-admin` SDK — keeps backend cloud-provider-agnostic, uses `java.net.http.HttpClient` already in the project)
 - New `DeviceTokenRepository` (Flyway migration: `device_token` table with `user_id`, `token`, `platform`, `created_at`)
 - New endpoint: `POST /api/v1/devices` (register FCM token), `DELETE /api/v1/devices/{token}` (unregister)
 - `NotificationService.broadcast()` calls both SSE dispatch and FCM push
