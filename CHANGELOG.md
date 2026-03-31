@@ -8,6 +8,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.23.0] — 2026-03-31 — SSE Stability & Cache Fix
+
+### Fixed
+- **Page refreshing every few minutes**: The real-time notification connection was dropping periodically, causing the search results and dashboard to reload. The connection now stays open indefinitely — dropped connections are detected by heartbeat and cleaned up silently.
+- **Stale data after editing a shelter**: After saving changes (phone number, DV flag, etc.), re-opening the edit form showed the old values. The caching strategy now always fetches fresh data from the server, falling back to cache only when offline.
+
+### Added
+- Real-time notification connection now uses secure headers for authentication (previously used URL parameters)
+- When the browser tab is backgrounded, the connection closes to save battery. It reconnects automatically when the tab is visible again.
+- Grafana monitoring panels for notification connection health
+
+---
+
 ## [v0.22.2] — 2026-03-30 — Dev/Prod Parity Testing
 
 ### Added
