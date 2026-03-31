@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.22.2] — 2026-03-30 — Dev/Prod Parity Testing
+
+### Added
+- Developers can now test the app through the same web server used in production, catching configuration issues before deployment. This would have prevented the screen-refresh bug (v0.22.1) from reaching the live demo.
+- New automated test verifies the real-time notification connection stays stable for 15+ seconds without dropping.
+
+---
+
 ## [v0.22.0] — 2026-03-30 — Import Hardening & Security Headers
 
 ### Fixed
