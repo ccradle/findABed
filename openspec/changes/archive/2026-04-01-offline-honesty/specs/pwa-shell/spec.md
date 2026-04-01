@@ -1,49 +1,5 @@
 ## MODIFIED Requirements
 
-### Requirement: Switch to @microsoft/fetch-event-source
-
-The `useNotifications` hook SHALL replace native `EventSource` with `@microsoft/fetch-event-source` for the SSE notification stream.
-
-**Acceptance criteria:**
-- SSE connection uses `Authorization: Bearer <jwt>` header (not query-param `?token=`)
-- No `?token=` parameter in SSE request URLs
-- Connection auto-closes when tab is backgrounded (Page Visibility API)
-- Connection auto-reconnects when tab is foregrounded, with `Last-Event-ID`
-- `@microsoft/fetch-event-source` added to `package.json` dependencies
-
-### Requirement: Exponential backoff with jitter on reconnect
-
-On SSE connection failure, the client SHALL retry with exponential backoff (initial 1s, max 30s, factor 2) and 30% jitter.
-
-**Acceptance criteria:**
-- First retry: ~1 second
-- Second retry: ~2 seconds
-- Third retry: ~4 seconds
-- Max retry interval: 30 seconds
-- Jitter prevents thundering herd (±30% randomization)
-- Retry counter resets to 0 on successful message receipt
-
-### Requirement: Remove catchUp refetch pattern
-
-The `catchUp()` function and its associated `SSE_REFERRAL_UPDATE` / `SSE_AVAILABILITY_UPDATE` window event dispatching SHALL be removed entirely. Missed events are handled by server-side `Last-Event-ID` replay.
-
-**Acceptance criteria:**
-- No `window.dispatchEvent(new Event(SSE_REFERRAL_UPDATE))` on reconnect
-- No `window.dispatchEvent(new Event(SSE_AVAILABILITY_UPDATE))` on reconnect
-- Reconnection does NOT trigger `fetchBeds()` or `fetchReferrals()`
-- Only a server `refresh` event type triggers a bulk refetch (when gap is too large)
-- Playwright test verifies: over 30 seconds, max 1 request to `/api/v1/queries/beds` (initial load only)
-
-### Requirement: Page Visibility integration
-
-SSE connection SHALL close when the browser tab is hidden and reconnect when the tab becomes visible.
-
-**Acceptance criteria:**
-- `fetch-event-source` `openWhenHidden: false` option used
-- Backgrounding the tab closes the SSE connection (verified by Playwright)
-- Foregrounding the tab reconnects with `Last-Event-ID` (verified by Playwright)
-- No visible UI disruption on reconnect after foregrounding
-
 ### Requirement: Offline queue wired to bed holds
 
 The outreach search flow (`OutreachSearch.tsx`) SHALL check `navigator.onLine` before posting a bed hold. When offline, the hold action SHALL be enqueued via `enqueueAction()` with type `HOLD_BED`. When online but the request fails, the hold SHALL also be enqueued as a fallback.
@@ -104,7 +60,7 @@ The offline banner SHALL not promise that actions "will sync." It SHALL accurate
 - EN: "You are offline. Cached searches are still visible. Bed holds and updates will be queued and sent when you reconnect."
 - ES: Equivalent Spanish translation
 - No mention of "sync" (implies guaranteed success)
-- FOR-COORDINATORS.md updated to match
+- FOR-COORDINATORS.md and training quick-start card updated to match
 
 ### Requirement: Service worker for caching only
 
@@ -121,7 +77,7 @@ A custom service worker (`src/sw.ts`) SHALL use `injectManifest` for precaching 
 Queued hold actions SHALL include a UUID `X-Idempotency-Key` header. The backend `POST /api/v1/reservations` endpoint SHALL check for existing active holds with the same user and idempotency key, returning the existing hold instead of creating a duplicate.
 
 **Acceptance criteria:**
-- Flyway V30 adds nullable `idempotency_key VARCHAR(36)` to `reservation` table
+- New Flyway migration adds nullable `idempotency_key VARCHAR(36)` to `reservation` table
 - Duplicate POST with same user + idempotency key returns 200 with existing hold (not 201)
 - First POST with a new key creates hold as normal (201)
 - Idempotency key is optional — requests without it behave as before
