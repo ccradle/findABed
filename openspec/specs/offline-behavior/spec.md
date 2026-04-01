@@ -64,3 +64,9 @@ A Gatling simulation SHALL verify concurrent queue replay from multiple users do
 
 ### Requirement: Hospital use case — service workers blocked
 A Playwright test SHALL verify the app functions fully when service workers are blocked, using `serviceWorkers: 'block'` context option.
+
+### Requirement: DV referral button offline guard
+When offline, the "Request Referral" button on DV shelter cards SHALL be visually muted (`aria-disabled="true"`, NOT `disabled`) and prevent the referral modal from opening. An inline action-oriented message with the shelter phone as a clickable `tel:` link SHALL appear. Connectivity restored clears the disabled state and dismisses inline messages.
+
+### Requirement: Offline banner mentions referral limitation
+The offline banner SHALL explicitly state that DV referral requests require a connection, in both English and Spanish.

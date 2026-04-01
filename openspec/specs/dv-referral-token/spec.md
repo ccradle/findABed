@@ -79,3 +79,6 @@ Seed data and test infrastructure SHALL include a DV-authorized outreach worker 
 #### Scenario: Referral request succeeds for DV outreach worker
 - **WHEN** a DV-authorized outreach worker submits a referral request via the modal
 - **THEN** the referral is created and appears in "My DV Referrals"
+
+### Requirement: DV referrals intentionally not queued offline
+DV referral requests SHALL NOT be queued in the offline IndexedDB queue. Referral data (callback number, household size, special needs) persisted on-device undermines the zero-PII threat model. No DV service platform in the sector has an offline referral workflow (NNEDV Safety Net, 2026).
