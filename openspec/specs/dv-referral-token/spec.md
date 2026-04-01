@@ -59,3 +59,23 @@ The system SHALL enforce Row Level Security on referral tokens so that only auth
 #### Scenario: DV coordinator sees tokens for assigned shelters only
 - **WHEN** a DV shelter coordinator views pending referrals
 - **THEN** they see only tokens for shelters they are assigned to
+
+### Requirement: dv-outreach-worker-test-coverage
+Seed data and test infrastructure SHALL include a DV-authorized outreach worker persona for verifying the DV referral flow from the outreach worker perspective.
+
+#### Scenario: DV outreach worker seed user exists
+- **GIVEN** seed data is loaded
+- **THEN** `dv-outreach@dev.fabt.org` exists with role `OUTREACH_WORKER` and `dvAccess=true`
+- **AND** Playwright auth fixture `dvOutreachPage` is available for tests
+
+#### Scenario: DV shelters visible to DV outreach worker
+- **WHEN** a DV-authorized outreach worker searches for beds
+- **THEN** DV shelters appear in results with addresses redacted ("Address withheld for safety")
+
+#### Scenario: Request Referral button for DV shelters
+- **WHEN** a DV shelter has available beds in search results for a DV-authorized outreach worker
+- **THEN** the shelter card shows "Request Referral" button instead of "Hold This Bed"
+
+#### Scenario: Referral request succeeds for DV outreach worker
+- **WHEN** a DV-authorized outreach worker submits a referral request via the modal
+- **THEN** the referral is created and appears in "My DV Referrals"
