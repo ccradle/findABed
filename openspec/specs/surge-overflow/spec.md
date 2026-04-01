@@ -13,3 +13,9 @@ The system SHALL allow coordinators to report temporary overflow capacity during
 #### Scenario: Overflow beds default to 0 when not provided
 - **WHEN** a coordinator sends an availability update without the `overflowBeds` field
 - **THEN** `overflow_beds` defaults to 0 in the snapshot
+
+### Requirement: Coordinator overflow input (surge-gated)
+The coordinator dashboard SHALL display a "Temporary Beds" stepper input when a surge event is active. The stepper uses the existing StepperButton pattern. Pre-populated from latest snapshot. Hidden when no surge active. Value submitted in PATCH payload and self-corrects to 0 when surge ends.
+
+### Requirement: Holds succeed at overflow-only shelters
+`ReservationService` SHALL use `effectiveAvailable = bedsAvailable + overflowBeds` when checking if a hold can be created. INV-5 updated: `occupied + on_hold <= total + overflow`. Overflow preserved through hold/confirm/cancel snapshot creation.

@@ -41,6 +41,12 @@ The system SHALL allow shelter coordinators to submit availability updates via P
 - **THEN** the snapshot is created with `overflow_beds = 15`
 - **AND** the `availability.updated` event payload includes `overflow_beds`
 
+### Requirement: Pre-populate overflow from latest snapshot
+The coordinator dashboard form SHALL pre-populate overflow from the latest availability snapshot. INV-5 updated to `occupied + on_hold <= total + overflow`. Overflow preserved through reservation lifecycle (hold/confirm/cancel/expire) snapshot creation.
+
+### Requirement: Availability math invariants preserved with overflow
+`beds_available = beds_total - beds_occupied - beds_on_hold` remains unchanged in the domain. Overflow is additive at the consumption layer only. `beds_total` stays pure (permanent capacity).
+
 ### Requirement: ui-stepper-bounds
 The coordinator dashboard UI SHALL enforce bed count bounds on all steppers. Occupied cannot exceed total minus on-hold. On-hold cannot exceed total minus occupied. The `beds_on_hold` stepper is disabled (read-only) when active reservations exist — holds are system-managed.
 
