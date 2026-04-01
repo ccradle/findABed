@@ -43,13 +43,14 @@
 <header>
   <h1>Finding A Bed Tonight</h1>
   <p>Open-source shelter bed availability platform for Continuums of Care. Real-time bed search, soft-hold reservations, DV privacy enforcement, and operational monitoring.</p>
-  <span class="badge">Demo Walkthrough &middot; 15 Screenshots</span>
+  <span class="badge">Demo Walkthrough &middot; 18 Screenshots</span>
 </header>
 
 <div class="container">
 
   <!-- ============================================================ -->
-  <!-- PART 1: DARIUS'S NIGHT — The core story (8 screenshots)      -->
+  <!-- PART 1: DARIUS'S NIGHT — The core story (7 screenshots)      -->
+  <!-- + OFFLINE: Signal lost → queued → replay (3 screenshots)    -->
   <!-- Research: lead with the user story, not the login screen     -->
   <!-- ============================================================ -->
 
@@ -95,11 +96,43 @@
     <img src="screenshots/05-reservation-hold.png" alt="Reservation hold with 90-minute countdown">
   </div>
 
-  <div class="section-divider">Sandra's Side: Keeping the Data Fresh</div>
+  <div class="section-divider">Signal Lost: What Happens When the Network Drops</div>
 
   <div class="card">
     <div class="card-header">
       <span class="card-number">5</span>
+      <span class="card-title">Offline — Honest Banner</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Darius is between clients now — driving to meet a second family his supervisor radioed about. He hits a dead zone. The yellow banner is honest: your searches are still here, and anything you do next will be saved and sent when signal comes back.</div>
+    <img src="screenshots/offline-01-banner.png" alt="Offline banner showing honest messaging while search results remain visible">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">6</span>
+      <span class="card-title">Holding a Bed Without Signal</span>
+      <span class="card-role">Outreach Worker</span>
+    </div>
+    <div class="card-caption">He finds a bed that works and taps hold — no signal, doesn't matter. The app tells him it's queued and shows it alongside his active holds. When he gets signal back, it will send. He keeps driving.</div>
+    <img src="screenshots/offline-02-hold-queued.png" alt="Bed hold queued while offline, shown alongside active reservations">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">7</span>
+      <span class="card-title">Signal Returns</span>
+      <span class="card-role">Outreach Worker</span>
+    </div>
+    <div class="card-caption">Two miles later, signal comes back. The hold sends automatically — 79 minutes on the clock. If someone else had taken that bed while he was offline, the app would tell him that too. No silent failures. No guessing.</div>
+    <img src="screenshots/offline-04-replay-result.png" alt="Hold replayed after reconnect, countdown timer running">
+  </div>
+
+  <div class="section-divider">Sandra's Side: Keeping the Data Fresh</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">8</span>
       <span class="card-title">Coordinator Dashboard</span>
       <span class="card-role">Coordinator</span>
     </div>
@@ -109,7 +142,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">6</span>
+      <span class="card-number">9</span>
       <span class="card-title">Bed Count Update</span>
       <span class="card-role">Coordinator</span>
     </div>
@@ -119,7 +152,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">7</span>
+      <span class="card-number">10</span>
       <span class="card-title">Spanish Language</span>
       <span class="card-role">All Roles</span>
     </div>
@@ -129,7 +162,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">8</span>
+      <span class="card-number">11</span>
       <span class="card-title">Change Password</span>
       <span class="card-role">All Roles</span>
     </div>
@@ -145,7 +178,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">9</span>
+      <span class="card-number">12</span>
       <span class="card-title">Secure Login</span>
       <span class="card-role">All Roles</span>
     </div>
@@ -155,7 +188,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">10</span>
+      <span class="card-number">13</span>
       <span class="card-title">User Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -165,7 +198,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">11</span>
+      <span class="card-number">14</span>
       <span class="card-title">Shelter Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -175,7 +208,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">12</span>
+      <span class="card-number">15</span>
       <span class="card-title">Surge Mode</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -185,7 +218,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">13</span>
+      <span class="card-number">16</span>
       <span class="card-title">OAuth2 Providers</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -201,7 +234,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">14</span>
+      <span class="card-number">17</span>
       <span class="card-title">Grafana Dashboard</span>
       <span class="card-role">Operations</span>
     </div>
@@ -211,7 +244,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">15</span>
+      <span class="card-number">18</span>
       <span class="card-title">Distributed Tracing</span>
       <span class="card-role">Operations</span>
     </div>
