@@ -25,7 +25,7 @@ POST /api/v1/auth/login validates password. If user has `totp_enabled=true`, ret
 
 ### D2: TOTP implementation with dev.samstevens.totp
 
-Library: `dev.samstevens.totp:totp` (~50KB, zero external deps). Database: `totp_secret VARCHAR(64)` (base32-encoded), `totp_enabled BOOLEAN DEFAULT false`, `recovery_codes TEXT` (JSON array of bcrypt-hashed codes). Enrollment: POST /auth/enroll-totp (authenticated) returns QR code URI + base32 secret. User scans QR, enters first code to confirm. Server stores secret only after verification.
+Library: `dev.samstevens.totp:totp` (~50KB, zero external deps). Database: `totp_secret_encrypted VARCHAR(255)` (AES-256-GCM encrypted, see D11), `totp_enabled BOOLEAN DEFAULT false`, `recovery_codes TEXT` (JSON array of bcrypt-hashed codes). Enrollment: POST /auth/enroll-totp (authenticated) returns QR code URI + base32 secret. User scans QR, enters first code to confirm. Server stores encrypted secret only after verification.
 
 ### D3: Admin-generated temporary access code
 
@@ -56,9 +56,13 @@ TOTP applies ONLY to local password authentication (POST /api/v1/auth/login). It
 
 This ensures the MCP agent integration (which uses API keys for backend communication) is unaffected by 2FA.
 
-### D9: mfaToken is NOT a regular JWT — filter chain separation
+### D9: mfaToken is NOT a regular JWT — filter chain separation, single-use
 
 The `mfaToken` returned during two-phase login is signed with the same secret but carries `purpose: "mfa"` in its claims. It is validated ONLY by the `/auth/verify-totp` endpoint, NOT by `JwtAuthenticationFilter`. The filter must skip tokens with `purpose: "mfa"` — they are not access tokens and should not grant API access.
+
+**Single-use enforcement:** The mfaToken includes a `jti` (JWT ID) claim. On successful `verify-totp`, the jti is stored in a short-lived blocklist (Caffeine cache, 5-minute TTL matching token expiry). Subsequent uses of the same mfaToken are rejected. This prevents replay attacks where an intercepted mfaToken + stolen TOTP code could be used multiple times within the 5-minute window.
+
+**Rate limiting on verify-totp:** 5 attempts per mfaToken (tracked by jti). After 5 failed TOTP attempts, the mfaToken is invalidated — user must re-enter password. This prevents brute-force of the 6-digit TOTP space (1M possibilities) within the token window.
 
 This also prevents interaction with `tokenVersion` (from admin-user-management). The mfaToken does not carry a `ver` claim and is not subject to version checking — it's a 5-minute ephemeral proof of password correctness, not an authorization token.
 
@@ -66,9 +70,33 @@ This also prevents interaction with `tokenVersion` (from admin-user-management).
 
 After access-code login, the user receives a JWT with `mustChangePassword: true` claim. A new `PasswordChangeRequiredFilter` (after JwtAuthenticationFilter in the chain) checks this claim. If present and true, all requests except PUT /api/v1/auth/password return 403 with error code `password_change_required`. This forces the user to set a new password before accessing any other functionality.
 
+### D11: TOTP secret encryption at rest (CRITICAL — Marcus Webb)
+
+TOTP secrets MUST be encrypted at rest in the database. A plaintext `totp_secret` column means a DB dump gives an attacker full 2FA bypass for every user.
+
+**Approach:** AES-256-GCM encryption. Column: `totp_secret_encrypted VARCHAR(255)` (base64-encoded ciphertext + IV + auth tag). Encryption key from `FABT_TOTP_ENCRYPTION_KEY` env var (32 bytes, base64-encoded). Key MUST NOT reside in the database. Decrypt only at TOTP verification time. Never log or expose decrypted secrets in API responses.
+
+**TotpEncryptionService:** Standalone service with `encrypt(base32Secret)` → ciphertext and `decrypt(ciphertext)` → base32Secret. Used by TotpService for enrollment storage and verification.
+
+### D12: Recovery code regeneration
+
+Users (authenticated) can regenerate recovery codes via POST /api/v1/auth/regenerate-recovery-codes. This invalidates ALL previous codes and generates 8 new ones. Admin can trigger this for a user via POST /api/v1/users/{id}/regenerate-recovery-codes. Both are audit-logged. The remaining-codes count is visible in the user's security settings.
+
+### D13: "Forgot Password?" conditional on SMTP configuration
+
+The frontend login page shows "Forgot Password?" ONLY if the backend indicates email delivery is configured. New endpoint: GET /api/v1/auth/capabilities (public, no auth) returns `{emailResetAvailable: boolean, totpAvailable: boolean}`. The admin OTT code path is always available regardless of email configuration.
+
+### D14: OTT token cleanup scheduler
+
+Expired one-time tokens are cleaned up by a scheduled task (hourly) similar to DV referral token purge. Prevents table bloat from accumulated expired tokens.
+
+### D15: User-facing language (Simone/Devon)
+
+All user-facing copy uses "sign-in verification" not "two-factor authentication" or "2FA." Admin/developer contexts may use "2FA/TOTP" in docs. Recovery codes are called "backup codes" in user-facing copy. The enrollment flow includes a "test your code now" confirmation step and printed guidance for non-technical users.
+
 ## Risks / Trade-offs
 
 - **No email infrastructure**: admin-generated codes are the primary recovery path. Email reset is secondary and requires SMTP configuration. This is a feature, not a bug — field workers don't have reliable email access.
-- **TOTP secret storage**: stored encrypted in DB. If DB is compromised, attacker has secrets. Mitigated by: TOTP alone is useless without the password (second factor), and DB access implies full compromise already.
+- **TOTP secret storage**: stored AES-256-GCM encrypted in DB with key from env var (D11). If DB is compromised WITHOUT the encryption key, TOTP secrets remain protected. If both are compromised, TOTP alone is useless without the password (second factor).
 - **mfaToken signing**: uses the same JWT secret as access tokens. Could use a separate secret for defense-in-depth. Complexity not justified for Phase 1.
 - **PasswordChangeRequiredFilter ordering**: must be after JwtAuthenticationFilter and SseTokenFilter but before the security chain's authorization checks. Test with integration tests that verify the 403 response and the exemption for the password-change endpoint.
