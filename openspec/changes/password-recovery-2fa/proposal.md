@@ -27,6 +27,7 @@ Darius (Outreach Worker) is in the field at 11pm and forgot his password. His on
 - **Backend**: Flyway V31-V32, TotpService + TotpEncryptionService (AES-256-GCM), modified login flow, mfaToken single-use blocklist, PasswordChangeRequiredFilter, OTT generation, email reset, cleanup scheduler
 - **Frontend**: TOTP enrollment page (QR + backup codes), two-phase login screen, Forgot Password (conditional), Access Code login, admin access code modal, backup code regeneration
 - **Security**: NIST 800-63B AAL2, TOTP secrets encrypted at rest, mfaToken single-use + rate-limited, no account enumeration, CJIS alignment documented
-- **Testing**: 13 backend integration tests (positive + negative + security + concurrency), 1 Gatling load test, 6 Playwright E2E, TotpTestHelper
+- **Testing**: 13 backend integration tests (positive + negative + security + concurrency), 7+ Playwright E2E (including full-flow TOTP enrollment, two-phase login, and access code), TotpTestHelper. Gatling deferred.
+- **Testing gap fix (D16/D17)**: TOTP encryption key must be configured in dev/test/CI — without it, ALL TOTP tests skip silently and the core 2FA feature has zero E2E verification. Dev key in dev-start.sh, test key in BaseIntegrationTest, CI key in workflow.
 - **Config**: FABT_REQUIRE_MFA, FABT_TOTP_ENCRYPTION_KEY env vars
 - **Docs**: FOR-DEVELOPERS, FOR-COORDINATORS, FOR-CITIES, government adoption guide, oracle runbook

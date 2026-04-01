@@ -94,6 +94,29 @@ Expired one-time tokens are cleaned up by a scheduled task (hourly) similar to D
 
 All user-facing copy uses "sign-in verification" not "two-factor authentication" or "2FA." Admin/developer contexts may use "2FA/TOTP" in docs. Recovery codes are called "backup codes" in user-facing copy. The enrollment flow includes a "test your code now" confirmation step and printed guidance for non-technical users.
 
+### D16: Dev/test TOTP encryption key (Riley/Jordan — TESTING GAP FIX)
+
+The `FABT_TOTP_ENCRYPTION_KEY` env var MUST be set in dev, test, and CI environments. Without it, ALL TOTP tests skip silently and the core 2FA feature has ZERO end-to-end verification.
+
+**Dev:** `dev-start.sh` exports a dev-only key before starting the backend. Not a production secret — just enables local TOTP testing.
+
+**Test (Testcontainers):** `BaseIntegrationTest` sets the key via `@DynamicPropertySource` so backend integration tests don't skip.
+
+**CI (GitHub Actions):** Workflow env var set to a test key (not sensitive — TOTP secrets in test DB are ephemeral).
+
+**Production:** Real key in `~/fabt-secrets/.env.prod` on Oracle. Generated with `openssl rand -base64 32`.
+
+### D17: Full-flow Playwright tests for TOTP and access code (Riley — COVERAGE GAP FIX)
+
+The initial Playwright tests only verified page rendering — not actual flow completion. With the dev encryption key (D16), Playwright tests MUST:
+
+1. Complete TOTP enrollment (QR renders → enter code from TotpTestHelper → backup codes displayed)
+2. Two-phase login (password → mfaRequired → enter TOTP code → logged in)
+3. Backup code login (use backup code instead of TOTP → logged in, code consumed)
+4. Access code full flow (admin generates → worker enters → forced password change → can access app)
+
+These tests use the backend API to generate valid TOTP codes programmatically (same approach as backend integration tests).
+
 ## Risks / Trade-offs
 
 - **No email infrastructure**: admin-generated codes are the primary recovery path. Email reset is secondary and requires SMTP configuration. This is a feature, not a bug — field workers don't have reliable email access.

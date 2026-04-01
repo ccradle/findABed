@@ -8,7 +8,7 @@ The system SHALL allow authenticated users to enroll in TOTP two-factor authenti
 
 - **WHEN** an authenticated user calls POST /api/v1/auth/enroll-totp
 - **THEN** the response includes a QR code URI and base32 secret
-- **AND** the secret is NOT stored until the user verifies their first TOTP code
+- **AND** the encrypted secret is stored in pending state (`totp_enabled=false`) — activated only after verification. This allows concurrent enrollment to replace a previous pending secret.
 
 #### Scenario: User confirms TOTP enrollment
 
@@ -70,7 +70,7 @@ The system SHALL allow admins to disable TOTP for a user (e.g., lost device).
 
 #### Scenario: Admin disables user's 2FA
 
-- **WHEN** a COC_ADMIN calls DELETE /api/v1/users/{id}/totp
+- **WHEN** a COC_ADMIN calls DELETE /api/v1/auth/totp/{id}
 - **THEN** totp_enabled is set to false, totp_secret_encrypted is cleared, and an audit event is recorded
 
 ### Requirement: Recovery code regeneration
@@ -100,3 +100,42 @@ TOTP secrets SHALL be encrypted with AES-256-GCM before storage. The encryption 
 - **THEN** the database column `totp_secret_encrypted` contains AES-256-GCM ciphertext
 - **AND** the encryption key is from `FABT_TOTP_ENCRYPTION_KEY` env var
 - **AND** the plaintext base32 secret is never logged or persisted unencrypted
+
+### Requirement: TOTP encryption key available in all environments
+
+The `FABT_TOTP_ENCRYPTION_KEY` SHALL be configured in dev, test, and CI environments so TOTP tests never skip silently.
+
+#### Scenario: Dev environment has encryption key
+- **GIVEN** `dev-start.sh` is used to start the local stack
+- **THEN** `FABT_TOTP_ENCRYPTION_KEY` is exported with a dev-only key
+- **AND** TOTP enrollment succeeds locally
+
+#### Scenario: Test environment has encryption key
+- **GIVEN** backend integration tests run via Testcontainers
+- **THEN** `fabt.totp.encryption-key` is set via DynamicPropertySource
+- **AND** ALL TOTP backend tests execute (none skip)
+
+#### Scenario: CI environment has encryption key
+- **GIVEN** GitHub Actions runs backend tests
+- **THEN** the encryption key is available as a workflow env var
+- **AND** ALL TOTP tests execute in CI
+
+### Requirement: Full-flow E2E verification of TOTP
+
+Playwright tests SHALL complete the FULL TOTP flow, not just verify page rendering.
+
+#### Scenario: E2E TOTP enrollment completes
+- **GIVEN** encryption key is configured
+- **WHEN** a Playwright test calls the enrollment API and generates a valid TOTP code
+- **THEN** the enrollment page shows QR code (client-side rendered), code verification succeeds, and backup codes are displayed
+
+#### Scenario: E2E two-phase login completes
+- **GIVEN** a test user has TOTP enabled
+- **WHEN** a Playwright test enters password → receives mfaRequired → enters valid TOTP code
+- **THEN** the user is logged in and can access protected pages
+
+#### Scenario: E2E access code full flow completes
+- **GIVEN** an admin generates an access code for a worker
+- **WHEN** the worker enters the code on the access code login page
+- **THEN** the worker is logged in with mustChangePassword=true
+- **AND** all API calls except password change return 403
