@@ -8,9 +8,66 @@
   <meta name="description" content="Finding A Bed Tonight for city officials: data ownership, WCAG accessibility, security posture, Apache 2.0 procurement.">
   <meta property="og:title" content="Finding A Bed Tonight — For Cities">
   <meta property="og:description" content="Self-hosted, WCAG accessible, Apache 2.0 licensed. Your city owns its data.">
-  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/02-bed-search.png">
-  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/for-cities.html">
+  <meta property="og:image" content="https://findabed.org/demo/screenshots/02-bed-search.png">
+  <meta property="og:url" content="https://findabed.org/demo/for-cities.html">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://findabed.org/demo/for-cities.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Who owns the data in Finding A Bed Tonight?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You do. The platform is self-hosted — your city or CoC deploys it on infrastructure you control. No vendor has access to your shelter data. If you stop using the platform, export your data in HSDS 3.0 format and take it with you."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is Finding A Bed Tonight WCAG accessible?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The platform is designed to support WCAG 2.1 Level AA — the accessibility standard adopted under ADA Title II for state and local government web content. A self-assessed Accessibility Conformance Report covers all 50 Level A and AA criteria. Automated testing blocks any release with violations."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the security posture of Finding A Bed Tonight?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "OWASP dependency scanning in CI, PostgreSQL Row Level Security for DV shelter data isolation, JWT authentication with startup secret validation, rate limiting on authentication endpoints, security headers, OWASP ZAP API scan baseline with zero HIGH/CRITICAL findings, and cross-tenant isolation verified under concurrent virtual thread load."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the licensing and procurement path?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Licensed under Apache 2.0 — permissive, no copyleft, no per-seat fees. Your city can modify, deploy, and redistribute the software. No vendor contract required."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What support is available?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Community-supported open source with operational runbook, GitHub Issues, and full source code access. For organizations requiring contractual SLAs, integrator partnerships are available."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What's different from commercial shelter management alternatives?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No per-seat licensing. No vendor lock-in. Your data never leaves your infrastructure. Purpose-built for the communities that need it most — not adapted from a commercial product built for a different market."
+        }
+      }
+    ]
+  }
+  </script>
   <style>
     :root {
       --bg: #ffffff;
@@ -131,11 +188,11 @@
     </p>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0;">
       <div>
-        <img src="screenshots/02-bed-search.png" alt="Search page in light mode" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);">
+        <img loading="lazy" src="screenshots/02-bed-search.png" alt="Search page in light mode" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);">
         <p style="font-size: 12px; color: var(--muted); text-align: center; margin-top: 4px;">Light mode</p>
       </div>
       <div>
-        <img src="screenshots/dark-search.png" alt="Search page in dark mode" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);">
+        <img loading="lazy" src="screenshots/dark-search.png" alt="Search page in dark mode" style="width: 100%; border-radius: 8px; border: 1px solid var(--border);">
         <p style="font-size: 12px; color: var(--muted); text-align: center; margin-top: 4px;">Dark mode (automatic)</p>
       </div>
     </div>

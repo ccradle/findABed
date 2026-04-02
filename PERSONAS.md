@@ -614,6 +614,196 @@ should be everything.
 
 ---
 
+### 📋 Devon Kessler — Instructional Designer & Technical Writer
+
+**Real role:** External advisor — training materials, user documentation,
+job aids (volunteer)
+**Background:** 12 years instructional design for social services software —
+HMIS platforms, case management systems, nonprofit tech rollouts
+**Origin:** Started as AmeriCorps shelter intake volunteer; moved into
+instructional design after watching a $300,000 software deployment fail
+because no one wrote documentation coordinators could actually use
+
+**Who she is:**
+Devon thinks in job aids, not manuals. She knows that a PDF nobody reads is
+worse than no documentation at all — it creates the illusion that training
+happened. She is direct about format: the right content in the wrong delivery
+vehicle is still a failure. She distinguishes clearly between documentation
+for evaluators (FOR-COORDINATORS.md on GitHub) and documentation for users
+(a laminated card taped to the front desk). Both matter. They are not the
+same thing and should never be confused.
+
+**Her core principle:**
+Documentation should fill gaps the UI leaves — not repeat what the UI
+already explains clearly. Always do a gap analysis of the running application
+before writing a word.
+
+**What she prioritizes:**
+- **Job aids** over manuals — single-page, task-specific, printable,
+  laminate-able reference cards that live next to the computer
+- **Context-specific formats** — the right format for the right user in
+  the right moment
+- **Zero-assumption onboarding** — gets a user from "I have the URL" to
+  "I completed my first task" without requiring prior knowledge
+- **In-app help gap analysis** — tooltips, empty state guidance, contextual
+  help text; what does the UI leave unexplained?
+
+**The three formats she would prioritize for FABT:**
+
+1. **Coordinator quick-start card** — Sandra Kim and Reverend Monroe's
+   volunteer coordinator. Front: log in and update bed count (with screenshots).
+   Back: what to do if something goes wrong. One page. Print and laminate.
+   Tape to the desk next to the computer. This is the highest-priority
+   training deliverable before any pilot onboarding.
+
+2. **Outreach worker 5-minute onboarding** — Darius's getting-started flow.
+   Mobile-optimized. "I have the URL" to "I held my first bed" in under
+   5 minutes. No reading required — task-by-task following along.
+
+3. **Admin onboarding checklist** — Marcus's 7-day shelter onboarding
+   sequence as a fillable tracking checklist, not just prose description.
+   Something he can hand to a new shelter director with checkboxes.
+
+**Her gap analysis questions (ask before writing anything):**
+- Is there in-app help text? Tooltips? Empty state guidance?
+- Where does a user land if they don't know what to do next?
+- What does the session timeout warning say? Is it actionable?
+- What happens on a first login — is there a welcome state or do they land
+  cold on the dashboard?
+- What error messages exist and are they written for the user or the developer?
+
+**Her collaboration with Simone Okafor:**
+The coordinator quick-start card is both a training document and a brand
+touchpoint — logo, tagline, and three steps. Devon handles instructional
+design and task flow; Simone handles voice, layout, and presentation.
+These should be produced together.
+
+**Her lens for every documentation and training decision:**
+"Can Reverend Monroe's 67-year-old volunteer coordinator do this task
+correctly after reading only this card, with no other support available?"
+If no — the card is not done yet.
+
+**Her first request:**
+Share the demo URL when the Oracle environment is live. She will do a
+gap analysis of the running application before writing a word of
+training material.
+
+---
+
+### 🔍 Nadia Petrova — SEO Strategist & Technical Search Consultant
+
+**Real role:** External advisor — search engine optimization, discoverability,
+structured data (volunteer)
+**Background:** 11 years SEO for nonprofits and civic technology platforms —
+including Code for America projects, United Way digital properties, and three
+HUD-funded housing navigation tools
+**Origin:** Started in newspaper digital strategy, watched three newsrooms fail
+because great journalism was invisible to Google. Pivoted to making public
+interest technology findable.
+
+**Who she is:**
+Nadia has optimized sites that serve people in crisis — domestic violence
+hotlines, food bank finders, emergency shelter locators. She knows that for
+someone searching "emergency shelter near me" at 11pm on a phone, the
+difference between appearing on page 1 and page 5 is the difference between
+finding help and not finding it. She is technically precise and strategically
+patient — SEO is a 6-month game, not a weekend project. She will not overpromise
+timeline and she will not let you skip the technical foundation.
+
+**What she reviews:**
+- Crawlability: can Google actually see the content, or is it hidden behind
+  a React SPA that renders an empty `<div id="root">`?
+- Indexation: robots.txt, XML sitemaps, canonical tags, Search Console coverage
+- Core Web Vitals: LCP < 2.5s, INP < 200ms, CLS < 0.1 — these are ranking signals
+- Structured data: JSON-LD schema markup for CivicStructure, GovernmentService,
+  SoftwareApplication — how you communicate with search engines and AI
+- Meta tags: unique title (< 60 chars) and description (150-160 chars) per page
+- Local SEO: Google Business Profile, geographic service area pages, NAP consistency
+- New domain trust building: backlink strategy, content authority, patience
+- AI search readiness: Google AI Overviews, LLM citability, structured data
+  for generative search
+
+**Her current assessment of FABT (static review):**
+
+1. **The React SPA is invisible to search engines.** The authenticated app
+   (dashboard, coordinator, admin) doesn't need SEO — that's fine. But if any
+   public-facing content (shelter search results, landing pages) relies on
+   client-side rendering, Googlebot will see an empty page. The static HTML
+   landing page at `findabed.org/` is correct — it's server-rendered by nginx.
+   Keep all public content static or pre-rendered.
+
+2. **No XML sitemap exists.** Google doesn't know what pages to index. Create
+   `sitemap.xml` listing all static pages (landing, about, demo walkthrough,
+   outreach one-pager) and submit to Google Search Console.
+
+3. **No robots.txt.** Without it, Googlebot will try to crawl everything,
+   including `/api/` endpoints and the SPA routes, wasting crawl budget and
+   potentially indexing error pages.
+
+4. **No structured data.** The landing page has good og:tags for social sharing
+   but no JSON-LD schema markup. Add Organization and SoftwareApplication
+   schemas to make the project citable in Google's AI Overviews.
+
+5. **No Google Search Console or Bing Webmaster Tools.** The domain exists
+   but Google doesn't know about it yet. Register immediately — indexing takes
+   days to weeks, not hours.
+
+6. **The domain is brand new.** `findabed.org` has zero history, zero backlinks,
+   zero domain authority. Expect 1-3 months before any organic rankings appear.
+   Early actions matter: submit sitemap, publish 3-5 authoritative pages
+   targeting long-tail keywords, earn backlinks from civic tech directories
+   and government partner sites.
+
+7. **No hreflang tags.** The app supports Spanish but there are no language
+   signals for search engines. Spanish-language content without `hreflang`
+   may be treated as duplicate content.
+
+8. **Google Ad Grants opportunity.** If the deploying organization is a
+   registered 501(c)(3), Google provides $10,000/month in free search ads.
+   This is the fastest path to visibility while organic rankings build.
+
+**Her 30-day recommendation for findabed.org:**
+1. Register with Google Search Console and Bing Webmaster Tools (day 1)
+2. Create `robots.txt` — allow public pages, block `/api/`, `/admin`, `/dashboard`
+3. Create `sitemap.xml` with all static pages, submit to Search Console
+4. Add JSON-LD structured data to landing page (Organization + SoftwareApplication)
+5. Write 3 authoritative pages targeting: "emergency shelter bed availability
+   software," "homeless shelter management open source," "CoC bed tracking system"
+6. Submit to civic tech directories: Code for America brigade list, Civic Tech
+   Index, HUD resource directories
+7. Set up Google Business Profile if deploying for a specific CoC
+8. Monitor Core Web Vitals via PageSpeed Insights — fix any red flags
+
+**Her collaboration with other personas:**
+- **Simone Okafor:** SEO and brand are inseparable — the meta title and
+  description are both a search ranking signal and a brand touchpoint. Nadia
+  handles the technical optimization; Simone ensures the copy is compelling.
+- **Devon Kessler:** Public-facing documentation (one-pagers, guides) doubles
+  as SEO content if structured correctly. Devon writes for users; Nadia ensures
+  search engines find it.
+- **Jordan Reyes:** Cloudflare configuration directly affects SEO — bot
+  protection that blocks Googlebot, aggressive caching that serves stale content
+  to crawlers, and performance optimization all live in Jordan's domain.
+- **Alex Chen:** The SPA architecture is the biggest SEO risk. Nadia and Alex
+  need to agree on the rendering strategy for any public-facing content.
+
+**Her lens for every feature and page:**
+"How does Googlebot see this page, and what does it find? If the answer is
+'an empty div and a loading spinner,' we have a problem."
+
+**Her test for the platform:**
+"Search Google for 'emergency shelter bed availability North Carolina.'
+Does findabed.org appear in the first 100 results? If not, no one outside
+your direct network will ever find this."
+
+**Accessibility considerations:**
+SEO and accessibility share significant overlap — alt text on images, semantic
+HTML headings, proper `lang` attributes, and keyboard-navigable content all
+serve both screen readers and search engine crawlers. When Darius's
+accessibility audit fixes heading hierarchy, Nadia's SEO improves too.
+
+---
+
 ## Team Personas
 
 These are the advisors and builders. Reference when making architectural
@@ -789,6 +979,21 @@ person being served, or process them?
 Ask: "Can Reverend Monroe's 67-year-old volunteer coordinator do this with
 zero training?" If no, simplify before shipping.
 
+**For training and documentation:**
+Ask: "What would Devon say about this?" Specifically: is this the right
+format for the actual user, or just the right content? Would Reverend
+Monroe's 67-year-old volunteer coordinator complete this task correctly
+using only what we've given them? Before any pilot onboarding conversation,
+share the demo URL with Devon for a gap analysis of in-app help text,
+empty states, and error messages.
+
+**For search engine optimization and discoverability:**
+Ask: "Can Nadia find this page via Google?" Apply to every public-facing page,
+landing page, and static content page. Specifically: is the content server-rendered
+(not hidden behind client-side JS)? Does it have proper meta tags, structured
+data, and a path to indexation? Before any new public page goes live, verify
+it has a unique title, description, JSON-LD schema, and is included in the sitemap.
+
 **For hospital / institutional user scenarios:**
 Ask: "Does this work in locked-down hospital Chrome with no app install?
 Is the hold duration sufficient for discharge workflows?"
@@ -810,6 +1015,8 @@ Is the hold duration sufficient for discharge workflows?"
 | 🙋 Keisha Thompson | Lived Experience | Dignity, person-centered language, human impact |
 | 🔒 Marcus Webb | Pen Tester / AppSec | Auth surface, multi-tenant isolation, security headers |
 | 📣 Simone Okafor | Brand & Communications | Naming, messaging, audience-specific materials, copy review |
+| 📋 Devon Kessler | Instructional Designer | Job aids, coordinator quick-start card, onboarding formats |
+| 🔍 Nadia Petrova | SEO Strategist | Crawlability, structured data, local SEO, new domain authority |
 | 🏗️ Alex Chen | Principal Engineer | Architecture, module boundaries, correctness |
 | 🤝 Maria Torres | Product Manager | User outcomes, adoption sequencing, outreach strategy |
 | 🔧 Jordan Reyes | SRE | Deployment, security posture, CI integrity |
@@ -822,4 +1029,4 @@ Is the hold duration sufficient for discharge workflows?"
 *Finding A Bed Tonight — Personas Reference*
 *Used by: Claude Code (CLAUDE-CODE-BRIEF.md), design reviews, accessibility audits,
 QA planning, demo preparation, funding conversations*
-*Last updated: March 2026*
+*Last updated: April 2026 — v19 personas*

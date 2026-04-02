@@ -1,3 +1,9 @@
 User-agent: *
 Allow: /
-Sitemap: https://ccradle.github.io/findABed/sitemap.xml
+Disallow: /api/
+Disallow: /login
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /actuator/
+
+Sitemap: https://findabed.org/sitemap.xml

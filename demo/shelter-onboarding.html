@@ -8,9 +8,39 @@
   <meta name="description" content="Walkthrough: onboard new shelters from a 211 CSV export, edit details, and configure DV protections — in under a minute.">
   <meta property="og:title" content="Shelter Onboarding — Finding A Bed Tonight">
   <meta property="og:description" content="See how a CoC administrator onboards new shelters from 211 data, corrects details, and enables DV safeguards.">
-  <meta property="og:image" content="https://ccradle.github.io/findABed/demo/screenshots/20-import-211-preview.png">
-  <meta property="og:url" content="https://ccradle.github.io/findABed/demo/shelter-onboarding.html">
+  <meta property="og:image" content="https://findabed.org/demo/screenshots/20-import-211-preview.png">
+  <meta property="og:url" content="https://findabed.org/demo/shelter-onboarding.html">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://findabed.org/demo/shelter-onboarding.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to onboard a shelter to Finding A Bed Tonight",
+    "description": "Onboard new shelters from a 211 CSV export, edit details, and configure DV protections — in under a minute.",
+    "totalTime": "PT1M",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Import from 211 CSV",
+        "text": "Upload a CSV export from your local 211 system. The platform maps columns, previews the data, and creates shelter records with one click.",
+        "image": "https://findabed.org/demo/screenshots/20-import-211-preview.png"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Correct shelter details",
+        "text": "Edit shelter phone numbers, addresses, and bed counts. The coordinator will need accurate contact information tonight.",
+        "image": "https://findabed.org/demo/screenshots/23-shelter-edit-phone.png"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Protect DV shelters",
+        "text": "Enable DV safeguards on domestic violence shelters. The system requires explicit confirmation — safety is never an accident.",
+        "image": "https://findabed.org/demo/screenshots/25-dv-confirm-dialog.png"
+      }
+    ]
+  }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
@@ -57,7 +87,7 @@
       <span class="card-role">CoC Admin</span>
     </div>
     <div class="card-caption">Marcus receives a CSV export from the region's 211 database — three shelters that just agreed to participate in coordinated entry. He uploads the file and the system maps the columns automatically. Agency name becomes shelter name. Street address, city, phone — all matched without manual data entry.</div>
-    <img src="screenshots/20-import-211-preview.png" alt="211 CSV preview showing 8 columns mapped from iCarol-style headers to FABT fields, with sample values from 3 shelters">
+    <img loading="lazy" src="screenshots/20-import-211-preview.png" alt="211 CSV preview showing 8 columns mapped from iCarol-style headers to FABT fields, with sample values from 3 shelters">
   </div>
 
   <div class="card">
@@ -67,7 +97,7 @@
       <span class="card-role">CoC Admin</span>
     </div>
     <div class="card-caption">One click. Three shelters created. What used to take an afternoon of phone calls and manual data entry is done in seconds. These shelters are now visible to every outreach worker in the system.</div>
-    <img src="screenshots/21-import-211-success.png" alt="Import success screen showing 3 shelters created, 0 updated, 0 skipped">
+    <img loading="lazy" src="screenshots/21-import-211-success.png" alt="Import success screen showing 3 shelters created, 0 updated, 0 skipped">
   </div>
 
   <div class="section-divider">Act 2: Correct — Sandra will need this number tonight</div>
@@ -79,7 +109,7 @@
       <span class="card-role">CoC Admin</span>
     </div>
     <div class="card-caption">Marcus navigates to the Shelters tab. The three imported shelters are here — alongside the thirteen already in the system. Every row has an Edit link. He spots Sunrise Family Center with a placeholder phone number that came through wrong in the 211 data.</div>
-    <img src="screenshots/22-admin-shelters-edit.png" alt="Admin Shelters tab showing 16 shelters with Edit links, including the 3 newly imported shelters">
+    <img loading="lazy" src="screenshots/22-admin-shelters-edit.png" alt="Admin Shelters tab showing 16 shelters with Edit links, including the 3 newly imported shelters">
   </div>
 
   <div class="card">
@@ -89,7 +119,7 @@
       <span class="card-role">CoC Admin</span>
     </div>
     <div class="card-caption">A phone number came through wrong in the import. Sandra will need this number tonight when outreach workers call about incoming clients. Marcus clicks Edit, fixes the number, saves. Three taps. The correct number is now visible to every outreach worker in the system.</div>
-    <img src="screenshots/23-shelter-edit-phone.png" alt="Shelter edit form showing Sunrise Family Center with phone field displaying 919-555-0000, ready to be corrected">
+    <img loading="lazy" src="screenshots/23-shelter-edit-phone.png" alt="Shelter edit form showing Sunrise Family Center with phone field displaying 919-555-0000, ready to be corrected">
   </div>
 
   <div class="section-divider">Act 3: Protect — Safety isn't a setting, it's a commitment</div>
@@ -101,7 +131,7 @@
       <span class="card-role">Platform Admin</span>
     </div>
     <div class="card-caption">Safe Passage House in Durham serves domestic violence survivors. The 211 import brought it in as a regular shelter — addresses visible, no special protections. The administrator opens the edit form and sees the Domestic Violence Shelter toggle. One decision changes everything.</div>
-    <img src="screenshots/24-shelter-edit-dv-toggle.png" alt="Shelter edit form for Safe Passage House showing the Domestic Violence Shelter toggle switch">
+    <img loading="lazy" src="screenshots/24-shelter-edit-dv-toggle.png" alt="Shelter edit form for Safe Passage House showing the Domestic Violence Shelter toggle switch">
   </div>
 
   <div class="card">
@@ -111,7 +141,7 @@
       <span class="card-role">Platform Admin</span>
     </div>
     <div class="card-caption">If someone tries to remove DV protection, the system requires explicit confirmation: "This will make the shelter address visible to all users including outreach workers without DV authorization. This action affects survivor safety." Removing protection is never an accident.</div>
-    <img src="screenshots/25-dv-confirm-dialog.png" alt="Confirmation dialog warning that removing DV protection will make the shelter address visible to all users">
+    <img loading="lazy" src="screenshots/25-dv-confirm-dialog.png" alt="Confirmation dialog warning that removing DV protection will make the shelter address visible to all users">
   </div>
 
   <div class="section-divider">The coordinator's view</div>
@@ -123,7 +153,7 @@
       <span class="card-role">Coordinator</span>
     </div>
     <div class="card-caption">Sandra can update her shelter's phone number, hours, and operational details — the things that change week to week. But shelter name, address, and DV status are controlled by the CoC administrator. The fields Sandra needs are editable. The decisions that affect safety require a different level of authority.</div>
-    <img src="screenshots/26-coordinator-edit-form.png" alt="Coordinator shelter edit form showing operational fields editable">
+    <img loading="lazy" src="screenshots/26-coordinator-edit-form.png" alt="Coordinator shelter edit form showing operational fields editable">
   </div>
 
   <!-- Summary -->
