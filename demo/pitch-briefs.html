@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pitch Briefs — Finding A Bed Tonight</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="90-second elevator pitches for Finding A Bed Tonight — tailored for shelter coordinators, CoC administrators, city officials, and funders.">
+  <meta property="og:title" content="Finding A Bed Tonight — Pitch Briefs">
+  <meta property="og:description" content="No more midnight phone calls. 90-second pitches for every audience.">
+  <meta property="og:image" content="https://findabed.org/demo/screenshots/02-bed-search.png">
+  <meta property="og:url" content="https://findabed.org/demo/pitch-briefs.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://findabed.org/demo/pitch-briefs.html">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1a56db;
+      --border: #e2e8f0;
+      --success: #166534;
+      --highlight: #eff6ff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --bg-alt: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --border: #334155;
+        --success: #4ade80;
+        --highlight: #1e293b;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .skip-link {
+      position: absolute; left: -9999px; top: auto;
+      padding: 8px 16px; background: var(--accent); color: #fff;
+      z-index: 100; font-weight: 600; border-radius: 4px;
+    }
+    .skip-link:focus { left: 16px; top: 16px; }
+    .header {
+      background: var(--bg-alt);
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .header p { font-size: 16px; color: var(--muted); max-width: 600px; margin: 0 auto; }
+    .content { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    .pitch {
+      background: var(--bg-alt);
+      border-radius: 12px;
+      padding: 28px;
+      margin: 24px 0;
+      border: 1px solid var(--border);
+    }
+    .pitch-audience {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .pitch blockquote {
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text);
+      margin: 0 0 16px 0;
+      padding-left: 16px;
+      border-left: 3px solid var(--accent);
+      font-style: italic;
+    }
+    .pitch .key-phrase {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .pitch .key-phrase strong {
+      color: var(--accent);
+      font-style: italic;
+    }
+    .headline {
+      text-align: center;
+      margin: 48px 0;
+      padding: 32px;
+      background: var(--highlight);
+      border-radius: 12px;
+      border: 2px solid var(--accent);
+    }
+    .headline p {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .headline h2 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent);
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+    .headline .usage {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    a { color: var(--accent); }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 12px 24px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .back-link:hover { border-color: var(--accent); }
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <header class="header">
+    <h1>90-Second Pitch Briefs</h1>
+    <p>What to say when you have someone's attention for 90 seconds.
+       Each pitch is tailored to a specific audience — use as a starting point
+       and refine based on actual conversations.</p>
+  </header>
+
+  <main id="main" class="content" tabindex="-1">
+
+    <div class="pitch">
+      <div class="pitch-audience">For a Shelter Coordinator</div>
+      <blockquote>
+        "Right now, every time an outreach worker needs a bed, they call you. This platform
+        lets them see your availability on their phone — so they only call when they have a
+        specific question, not to ask if you have space. Updating your bed count takes about
+        30 seconds. And if a worker holds a bed for a client, you can see it so you're not
+        caught off guard."
+      </blockquote>
+      <p class="key-phrase">Key phrase: <strong>"They only call when they have a specific question."</strong></p>
+    </div>
+
+    <div class="pitch">
+      <div class="pitch-audience">For a CoC Administrator</div>
+      <blockquote>
+        "We built a free, open-source platform that gives your whole CoC real-time bed
+        availability across every participating shelter. Outreach workers search on their
+        phones. Coordinators update in three taps. You get utilization data and demand signals
+        that your current system can't give you. It connects to HMIS. And because it's
+        open-source and self-hosted, you own your data."
+      </blockquote>
+      <p class="key-phrase">Key phrase: <strong>"You own your data."</strong></p>
+    </div>
+
+    <div class="pitch">
+      <div class="pitch-audience">For a City Official</div>
+      <blockquote>
+        "This is open-source infrastructure for emergency shelter coordination — free to use,
+        self-hosted, so the city owns its data. It's designed to support WCAG 2.1 AA
+        accessibility, Apache 2.0 licensed, and it's been built from day one for government
+        adoption. We're looking for a city partner who wants to be part of shaping the first
+        pilot."
+      </blockquote>
+      <p class="key-phrase">Key phrase: <strong>"Built from day one for government adoption."</strong></p>
+    </div>
+
+    <div class="pitch">
+      <div class="pitch-audience">For a Funder</div>
+      <blockquote>
+        "A family in crisis waits two hours to find a shelter bed because outreach workers are
+        making phone calls in the dark. We built a free, open-source platform that makes
+        real-time availability visible across an entire region — designed for communities that
+        can't afford commercial software. The platform is ready for a first pilot and we're
+        looking for funding to support community adoption."
+      </blockquote>
+      <p class="key-phrase">Key phrase: <strong>"Designed for communities that can't afford commercial software."</strong></p>
+    </div>
+
+    <div class="headline">
+      <p>The Universal Headline</p>
+      <h2>"No more midnight phone calls."</h2>
+      <p class="usage">Use this in every document, every page, every pitch. It's specific, emotional, and true.</p>
+    </div>
+
+    <a href="../index.html" class="back-link">← Back to Finding A Bed Tonight</a>
+  </main>
+
+  <footer>
+    <p>Finding A Bed Tonight — Pitch Briefs</p>
+    <p><a href="https://github.com/ccradle/finding-a-bed-tonight">GitHub</a> · <a href="../index.html">Home</a></p>
+  </footer>
+</body>
+</html>

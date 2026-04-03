@@ -44,7 +44,7 @@
 <header>
   <h1>Finding A Bed Tonight</h1>
   <p>Open-source shelter bed availability platform for Continuums of Care. Real-time bed search, soft-hold reservations, DV privacy enforcement, and operational monitoring.</p>
-  <span class="badge">Demo Walkthrough &middot; 18 Screenshots</span>
+  <span class="badge">Demo Walkthrough &middot; 20 Screenshots</span>
 </header>
 
 <div class="container">
@@ -161,35 +161,15 @@
     <img loading="lazy" src="screenshots/08-spanish.png" alt="Full Spanish localization">
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">11</span>
-      <span class="card-title">Change Password</span>
-      <span class="card-role">All Roles</span>
-    </div>
-    <div class="card-caption">Darius can change his own password from any screen — one tap on "Password" in the header opens the modal. If his phone is lost, the CoC admin resets it from the Users tab. All existing sessions are invalidated immediately.</div>
-    <img loading="lazy" src="screenshots/19-change-password.png" alt="Change password modal">
-  </div>
-
   <!-- ============================================================ -->
-  <!-- PART 2: BEHIND THE SCENES — Administration (5 screenshots)   -->
+  <!-- PART 2: BEHIND THE SCENES — Administration (4 screenshots)   -->
   <!-- ============================================================ -->
 
   <div class="section-divider">Behind the Scenes: Administration</div>
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">12</span>
-      <span class="card-title">Secure Login</span>
-      <span class="card-role">All Roles</span>
-    </div>
-    <div class="card-caption">Tenant-scoped authentication — each CoC has its own login with email, password, and optional SSO. Darius's credentials are issued by his CoC administrator.</div>
-    <img loading="lazy" src="screenshots/01-login.png" alt="Login page with tenant slug and SSO">
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-number">13</span>
+      <span class="card-number">11</span>
       <span class="card-title">User Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -199,7 +179,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">14</span>
+      <span class="card-number">12</span>
       <span class="card-title">Shelter Management</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -209,7 +189,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">15</span>
+      <span class="card-number">13</span>
       <span class="card-title">Surge Mode</span>
       <span class="card-role">Platform Admin</span>
     </div>
@@ -219,12 +199,58 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">16</span>
+      <span class="card-number">14</span>
       <span class="card-title">OAuth2 Providers</span>
       <span class="card-role">Platform Admin</span>
     </div>
     <div class="card-caption">The CoC already uses Microsoft 365. The admin adds their SSO provider — staff sign in with existing credentials. No new passwords to manage.</div>
     <img loading="lazy" src="screenshots/16-admin-oauth2-providers.png" alt="OAuth2 provider management">
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TRUST: KEEPING ACCOUNTS SAFE (4 screenshots)                 -->
+  <!-- ============================================================ -->
+
+  <div class="section-divider">Trust: Keeping Accounts Safe</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">15</span>
+      <span class="card-title">Secure Login</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Tenant-scoped authentication — each CoC has its own login with email, password, and optional SSO. Darius's credentials are issued by his CoC administrator. Every session is JWT-based with automatic token refresh.</div>
+    <img loading="lazy" src="screenshots/01-login.png" alt="Login page with tenant slug and SSO">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">16</span>
+      <span class="card-title">Two-Factor Authentication</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">When the CoC requires it, users enroll in TOTP two-factor authentication — Google Authenticator, Authy, or any standard authenticator app. After entering their password, they verify with a 6-digit code. Lost device? Backup codes or an admin-generated access code gets them back in.</div>
+    <img loading="lazy" src="screenshots/28-totp-two-phase-login.png" alt="Two-phase login with TOTP 6-digit code input">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">17</span>
+      <span class="card-title">Change Password</span>
+      <span class="card-role">All Roles</span>
+    </div>
+    <div class="card-caption">Darius can change his own password from any screen — one tap on "Password" in the header opens the modal. If his phone is lost, the CoC admin resets it from the Users tab. All existing sessions are invalidated immediately.</div>
+    <img loading="lazy" src="screenshots/19-change-password.png" alt="Change password modal">
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-number">18</span>
+      <span class="card-title">Admin Access Code</span>
+      <span class="card-role">Platform Admin</span>
+    </div>
+    <div class="card-caption">Locked out? Lost your authenticator? The CoC administrator generates a one-time access code — 15 minutes to use it, single-use, and the user must change their password immediately after. No one waits until Monday for IT support.</div>
+    <img loading="lazy" src="screenshots/29-admin-access-code.png" alt="Admin generates one-time access code for locked-out user">
   </div>
 
   <!-- ============================================================ -->
@@ -235,7 +261,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">17</span>
+      <span class="card-number">19</span>
       <span class="card-title">Grafana Dashboard</span>
       <span class="card-role">Operations</span>
     </div>
@@ -245,7 +271,7 @@
 
   <div class="card">
     <div class="card-header">
-      <span class="card-number">18</span>
+      <span class="card-number">20</span>
       <span class="card-title">Distributed Tracing</span>
       <span class="card-role">Operations</span>
     </div>
@@ -307,10 +333,26 @@
 
 </div>
 
+  <!-- Try It Live -->
+  <div style="margin: 32px 0; padding: 28px; background: linear-gradient(135deg, #0c2940 0%, #1a3a5c 100%); border-radius: 14px; border: 2px solid #1a56db; text-align: center;">
+    <div style="font-size: 20px; font-weight: 800; color: #e2e8f0; margin-bottom: 4px;">Try It Live</div>
+    <p style="font-size: 16px; font-weight: 600; color: #4ade80; margin-bottom: 8px;">This is a safe demo.</p>
+    <p style="color: #94b8d8; margin-bottom: 16px; line-height: 1.6;">Browse every screen, search for beds, hold a reservation.<br>You can't break anything — account management and safety settings are protected.</p>
+    <a href="/login" style="display: inline-block; background: #1a56db; color: #fff; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 17px;">Open Demo →</a>
+    <div style="margin-top: 16px; font-size: 13px; color: #94a3b8; line-height: 1.8;">
+      <span style="font-family: monospace;">Tenant: dev-coc</span><br>
+      <span style="font-family: monospace;">outreach@dev.fabt.org / admin123</span> ·
+      <span style="font-family: monospace;">cocadmin@dev.fabt.org / admin123</span><br>
+      <span style="font-family: monospace;">admin@dev.fabt.org / admin123</span> ·
+      <span style="font-family: monospace;">dv-outreach@dev.fabt.org / admin123</span>
+    </div>
+    <p style="margin-top: 12px; color: #64748b; font-size: 12px; font-style: italic;">Demonstration environment with fictional data. Do not enter real information.</p>
+  </div>
+
 <footer>
   <p>Finding A Bed Tonight — Open-source shelter bed availability platform</p>
   <p><a href="https://github.com/ccradle/finding-a-bed-tonight">github.com/ccradle/finding-a-bed-tonight</a> &middot; <a href="https://github.com/ccradle/findABed">github.com/ccradle/findABed</a></p>
-  <p style="margin-top: 8px;">Screenshots captured via Playwright. Regenerate with <code>./demo/capture.sh</code></p>
+  <!-- Screenshots captured via Playwright. Regenerate with ./demo/capture.sh -->
   <p style="margin-top: 12px; font-size: 11px; color: #64748b;">Finding A Bed Tonight is provided as-is under the Apache 2.0 License, without warranty of any kind. Availability data is supplied by shelter operators and may not reflect current conditions. This platform is not a guarantee of shelter availability.</p>
 </footer>
 
