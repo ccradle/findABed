@@ -67,6 +67,6 @@
 - [x] 7.2 Run full Playwright suite with `--trace on` — confirm green (including new expiration tests)
 - [x] 7.3 Run `npm --prefix frontend run build` — confirm clean build
 - [x] 7.4 Test SSE expiration flow through nginx proxy (not just Vite dev) — lesson learned from v0.22.1 SSE buffering bug
-- [ ] 7.5 Test in incognito/clear site data — lesson learned re: stale service worker
+- [x] 7.5 Test in incognito/clear site data — lesson learned re: stale service worker
 - [x] 7.6 Commit changes on branch, create PR referencing issues #31, #39, #40
 - [x] 7.7 Merge and tag v0.29.0

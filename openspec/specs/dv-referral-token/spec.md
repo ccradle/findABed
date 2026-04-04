@@ -27,6 +27,8 @@ The system SHALL support a referral token lifecycle (PENDING → ACCEPTED/REJECT
 - **WHEN** a PENDING token exceeds `dv_referral_expiry_minutes` (default 240 = 4 hours)
 - **THEN** the token status changes to `EXPIRED`
 - **AND** the token is eligible for immediate hard-delete
+- **AND** `expireTokens()` SHALL use `UPDATE ... RETURNING id` to atomically expire and retrieve token IDs
+- **AND** `expireTokens()` SHALL publish a `dv-referral.expired` domain event containing the list of expired token IDs and the tenant ID
 
 #### Scenario: Terminal tokens are hard-deleted within 24 hours
 - **WHEN** a token reaches ACCEPTED, REJECTED, or EXPIRED status
