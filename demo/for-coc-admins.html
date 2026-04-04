@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>For CoC Administrators — Finding A Bed Tonight</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="Finding A Bed Tonight for CoC administrators: shelter management, HUD reporting, DV protection, HMIS connectivity, surge events, and deployment tiers.">
+  <meta property="og:title" content="Finding A Bed Tonight — For CoC Administrators">
+  <meta property="og:description" content="HUD reporting, shelter onboarding, DV protection, HMIS connectivity — all in one platform.">
+  <meta property="og:image" content="https://findabed.org/demo/screenshots/09-admin-users.png">
+  <meta property="og:url" content="https://findabed.org/demo/for-coc-admins.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://findabed.org/demo/for-coc-admins.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What problem does Finding A Bed Tonight solve for CoC administrators?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "It gives your outreach workers a live view of every shelter bed in your CoC. Coordinators update their bed counts through a simple dashboard. Workers search, filter, and place a temporary hold on a bed in under a minute. You see the whole picture: which shelters are full, where demand exceeds supply, and what your community's unmet need looks like over time."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does Finding A Bed Tonight protect DV shelter locations?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "DV shelters are invisible in public search results. The shelter's physical address is never stored in the system. Zero client PII. Referrals use an opaque flow: the outreach worker requests a referral, the DV coordinator screens it, and if accepted, calls the worker directly. Referral tokens are hard-deleted within 24 hours. The design supports VAWA and FVPSA requirements."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Finding A Bed Tonight support HUD HIC/PIT reporting?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. The analytics module includes HIC/PIT data export aligned with the HUD Inventory.csv schema (FY2024+). DV shelters are aggregated per HUD guidance with small-cell protection. The export is designed to support HUD reporting requirements but has not been certified by HUD."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I onboard a new shelter?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A typical onboarding takes about 7 days. Create the shelter profile in the admin panel (or bulk-import from a 211 CSV), create a coordinator account, have them verify the information and make their first bed count update. No developer is needed — the entire process is done through the admin interface."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What does it cost to deploy Finding A Bed Tonight?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The software is free (Apache 2.0). You pay only for the server. Lite tier (PostgreSQL only) costs $15-30/month for small CoCs. Standard tier (with Redis) costs $30-75/month. Full tier (with Kafka) costs $100+/month for metro areas. Most communities start with Lite."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How does HMIS connectivity work?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The HMIS bridge module pushes data asynchronously to your HMIS vendor (Clarity, WellSky, or ClientTrack). DV shelter data is aggregated before transmission. Uses an outbox pattern with retry on failure. Every push is logged. You control when data is pushed — manual trigger or scheduled."
+        }
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1a56db;
+      --border: #e2e8f0;
+      --success: #166534;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --bg-alt: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --border: #334155;
+        --success: #4ade80;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .header {
+      background: var(--bg-alt);
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .header p { font-size: 16px; color: var(--muted); max-width: 600px; margin: 0 auto; }
+    .content { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    h2:first-of-type { margin-top: 0; }
+    h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 24px 0 8px;
+    }
+    p, li { font-size: 15px; margin-bottom: 12px; }
+    ul, ol { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--accent); }
+    .checklist {
+      background: var(--bg-alt);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    .checklist li { list-style: none; padding-left: 24px; position: relative; }
+    .checklist li::before { content: '\2713'; position: absolute; left: 0; color: var(--success); font-weight: 700; }
+    .checklist-todo li::before { content: '\25A1'; color: var(--muted); }
+    a { color: var(--accent); }
+    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 12px 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .back-link:hover { opacity: 0.9; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: var(--bg-alt);
+      font-weight: 700;
+    }
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); }
+    @media (max-width: 768px) {
+      .header { padding: 32px 20px; }
+      .header h1 { font-size: 26px; }
+      .content { padding: 32px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link" style="position:absolute;top:-100px;left:16px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:0 0 8px 8px;font-weight:700;font-size:14px;z-index:1000;">Skip to content</a>
+  <a href="#main" style="position:absolute;top:-100px;" tabindex="-1">Skip</a>
+
+  <header class="header">
+    <h1>For CoC Administrators</h1>
+    <p>Manage shelters, onboard coordinators, protect DV data, and see the whole picture across your Continuum of Care.</p>
+  </header>
+
+  <main id="main" class="content">
+    <h2>What Problem Does This Solve?</h2>
+    <p>
+      Right now, when an outreach worker needs to place a family in emergency shelter, they
+      make serial phone calls. They call shelters that may be closed, full, or unable to serve
+      that family's needs. There is no shared, real-time system for bed availability in most
+      US communities.
+    </p>
+    <p>
+      Finding A Bed Tonight gives your outreach workers a live view of every shelter bed in
+      your CoC. Coordinators update their bed counts through a simple dashboard. Workers search,
+      filter, and place a temporary hold on a bed in under a minute. You, as the CoC
+      administrator, see the whole picture: which shelters are full, where demand exceeds
+      supply, and what your community's unmet need looks like over time.
+    </p>
+
+    <h2>What Can You Do Right Now?</h2>
+    <div class="checklist">
+      <ul>
+        <li>Manage shelters and users -- create shelter profiles, assign coordinators, manage accounts</li>
+        <li>Real-time bed availability -- coordinators update counts; workers search and filter by population type, constraints, and location</li>
+        <li>Bed holds -- outreach workers hold a bed while transporting a client (default 90 minutes, configurable; hospital discharge planners can use 2-3 hour holds)</li>
+        <li>Surge events -- activate White Flag or emergency overflow with one action</li>
+        <li>DV opaque referrals -- privacy-preserving referral flow for domestic violence shelters (zero client PII, address never stored)</li>
+        <li>HMIS bridge -- async data push to HMIS vendors (Clarity, WellSky, ClientTrack) with DV aggregation</li>
+        <li>CoC analytics -- utilization trends, demand signals, batch job management</li>
+        <li>HIC/PIT export -- designed to align with HUD export format</li>
+        <li>Multi-language -- English and Spanish interface</li>
+        <li>Observability -- Grafana dashboards, structured logging, health monitoring</li>
+      </ul>
+    </div>
+
+    <h2>HUD Reporting</h2>
+    <p>
+      The analytics module includes HIC/PIT data export aligned with the HUD Inventory.csv
+      schema (FY2024+).
+    </p>
+    <p>
+      <strong>HIC export columns:</strong> InventoryID, ProjectID, CoCCode, HouseholdType,
+      Availability, UnitInventory, BedInventory, veteran bed breakdown, ESBedType,
+      InventoryStartDate, InventoryEndDate. All coded fields use HUD integer values.
+    </p>
+    <p>
+      <strong>DV shelters:</strong> Aggregated in both exports per HUD guidance. Suppressed
+      entirely if fewer than 3 DV shelters exist (small-cell protection). DV shelters report
+      HMISParticipation=2 (Comparable Database).
+    </p>
+    <p>
+      <strong>Important clarification:</strong> The export is designed to support HUD reporting
+      requirements. It has not been certified by HUD. You should review exported data against
+      your existing submission process before relying on it as your sole source.
+    </p>
+
+    <h2>How to Onboard a New Shelter</h2>
+    <p>A typical onboarding takes about 7 days:</p>
+    <h3>Day 1-2: Setup</h3>
+    <ol>
+      <li>Create the shelter profile in the admin panel -- or bulk-import from a 211 CSV file (Admin &rarr; Imports &rarr; 2-1-1 Import)</li>
+      <li>Review imported data and edit any details that need correction via the Edit link on the Shelters tab</li>
+      <li>If the shelter serves DV survivors, enable the DV Shelter toggle -- this activates address redaction and audit logging</li>
+      <li>Create a coordinator user account for the shelter's point person</li>
+      <li>Assign the coordinator to the shelter</li>
+    </ol>
+    <h3>Day 3-4: Verification</h3>
+    <ol>
+      <li>The coordinator logs in and verifies the shelter information is correct</li>
+      <li>They make their first bed count update to confirm the flow works</li>
+      <li>You review the data on your admin dashboard to confirm it appears correctly</li>
+    </ol>
+    <h3>Day 5-7: Go Live</h3>
+    <ol>
+      <li>The shelter begins regular updates (2-4 times per day recommended)</li>
+      <li>Outreach workers can now see the shelter's availability in search results</li>
+    </ol>
+    <p>
+      No developer is needed for any of these steps. The entire process is done through
+      the admin interface.
+    </p>
+
+    <h2>DV Shelter Protection</h2>
+    <h3>What the system stores about a DV shelter</h3>
+    <ul>
+      <li>The shelter exists (name, general service area, population types)</li>
+      <li>Current bed availability (number only)</li>
+      <li><strong>No client names. No client information of any kind. Zero PII.</strong></li>
+      <li><strong>The shelter's physical address is never stored in the system.</strong></li>
+    </ul>
+    <h3>How referrals work</h3>
+    <p>
+      DV shelters are invisible in public search results. An outreach worker cannot see them
+      unless they use the opaque referral flow:
+    </p>
+    <ol>
+      <li>The outreach worker requests a referral (no client name entered)</li>
+      <li>The DV shelter coordinator receives the request and screens it</li>
+      <li>If accepted, the coordinator calls the outreach worker directly (warm handoff)</li>
+      <li>The shelter address is shared verbally, never through the platform</li>
+    </ol>
+    <p>
+      Referral tokens are hard-deleted within 24 hours. Not archived. Not soft-deleted.
+      Permanently destroyed.
+    </p>
+    <h3>Legal framing</h3>
+    <p>
+      The DV protection architecture is designed to support VAWA and FVPSA requirements.
+      It has not been independently certified as compliant. The zero-PII, zero-address,
+      24-hour hard-delete design means there is effectively nothing to subpoena -- the
+      data does not exist.
+    </p>
+
+    <h2>HMIS Connectivity</h2>
+    <div class="checklist">
+      <ul>
+        <li>DV shelter data is aggregated before transmission -- no individual shelter identifiable</li>
+        <li>Outbox pattern -- data is queued reliably and retried on failure</li>
+        <li>Audit trail -- every push is logged for your records</li>
+        <li>You control when data is pushed -- manual trigger or scheduled</li>
+      </ul>
+    </div>
+
+    <h2>Deployment Cost</h2>
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>What You Get</th><th>Monthly Cost</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Lite</strong></td><td>PostgreSQL only. Small CoCs, rural counties, volunteer-run networks.</td><td>$15-30</td></tr>
+        <tr><td><strong>Standard</strong></td><td>PostgreSQL + Redis caching. Mid-size CoCs with 10-30 shelters.</td><td>$30-75</td></tr>
+        <tr><td><strong>Full</strong></td><td>PostgreSQL + Redis + Kafka event streaming. Metro areas with 30+ shelters.</td><td>$100+</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Your Checklist Before Bringing This to Partner Agencies</h2>
+    <div class="checklist checklist-todo">
+      <ul>
+        <li>Review the admin panel: can you add a shelter, create a user, assign a coordinator?</li>
+        <li>Walk a coordinator through the 3-tap bed update flow</li>
+        <li>Review the DV protection summary so you can explain it to DV shelter directors</li>
+        <li>Check the HIC/PIT export against your current reporting workflow</li>
+        <li>Understand the hosting cost for your tier</li>
+        <li>Review the support model so you can answer "who do we call?"</li>
+      </ul>
+    </div>
+
+    <a href="../index.html" class="back-link">&larr; Back to Finding A Bed Tonight</a>
+  </main>
+
+  <footer>
+    <p>
+      <a href="https://github.com/ccradle/finding-a-bed-tonight">GitHub</a> &middot;
+      <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a> &middot;
+      No more midnight phone calls.
+    </p>
+  </footer>
+</body>
+</html>

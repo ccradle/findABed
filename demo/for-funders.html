@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>For Funders — Finding A Bed Tonight</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="Finding A Bed Tonight for funders: theory of change, sustainability model, DV protection, novel demand data, and measurable impact.">
+  <meta property="og:title" content="Finding A Bed Tonight — For Funders">
+  <meta property="og:description" content="Every dollar builds permanent infrastructure. Open-source, zero-PII, measurable impact.">
+  <meta property="og:image" content="https://findabed.org/demo/screenshots/02-bed-search.png">
+  <meta property="og:url" content="https://findabed.org/demo/for-funders.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://findabed.org/demo/for-funders.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What problem does Finding A Bed Tonight solve?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A social worker has 30 minutes before a family's willingness to engage disappears. Right now, that worker is making serial phone calls to shelters that may be closed, full, or unable to serve. In Los Angeles, a 2024 City Controller audit found that 1 in 4 shelter beds sat empty while thousands waited — because providers had no reliable way to know which beds were available. Finding A Bed Tonight provides real-time bed availability with a 3-tap hold to secure the bed during transport."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What makes Finding A Bed Tonight different from commercial alternatives?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Open source means permanent — unlike vendor platforms that disappear when contracts end. Zero client PII by design. DV survivor protection with address never stored and referral tokens hard-deleted within 24 hours. Novel demand data that captures unmet need — searches that return zero results by population type, time, and geography. No HMIS system currently produces this data."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the sustainability model?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A staged plan: Apache 2.0 open source ensures the software cannot disappear. With pilot adoption, a fiscal sponsor receives grants. With multiple adopters, a cost-sharing consortium. At scale, an institutional host. Every deployment runs on standard technology (Java, PostgreSQL, React) with no proprietary components."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What does funding enable?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Three things: community adoption support (helping CoCs deploy and train), a full-time maintainer (moving from single-maintainer to sustainable development), and a third-party accessibility audit (strengthening the case for government adoption). Every dollar builds permanent infrastructure under Apache 2.0 — freely available to every community, forever."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Has the platform been deployed in a real-world pilot?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The platform is not yet deployed in any community. The time reduction has not been measured in a real-world pilot. A 90-day pilot with 5+ shelters would produce the evidence to quantify impact. The platform captures the data needed for measurement automatically."
+        }
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-alt: #f8fafc;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1a56db;
+      --border: #e2e8f0;
+      --success: #166534;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --bg-alt: #1e293b;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --border: #334155;
+        --success: #4ade80;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .header {
+      background: var(--bg-alt);
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .header p { font-size: 16px; color: var(--muted); max-width: 600px; margin: 0 auto; }
+    .content { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+    h2:first-of-type { margin-top: 0; }
+    p, li { font-size: 15px; margin-bottom: 12px; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    strong { color: var(--accent); }
+    .checklist {
+      background: var(--bg-alt);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    .checklist li { list-style: none; padding-left: 24px; position: relative; }
+    .checklist li::before { content: '\2713'; position: absolute; left: 0; color: var(--success); font-weight: 700; }
+    a { color: var(--accent); }
+    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 12px 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .back-link:hover { opacity: 0.9; }
+    .callout {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: var(--bg-alt);
+      font-weight: 700;
+    }
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); }
+    @media (max-width: 768px) {
+      .header { padding: 32px 20px; }
+      .header h1 { font-size: 26px; }
+      .content { padding: 32px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link" style="position:absolute;top:-100px;left:16px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:0 0 8px 8px;font-weight:700;font-size:14px;z-index:1000;">Skip to content</a>
+  <a href="#main" style="position:absolute;top:-100px;" tabindex="-1">Skip</a>
+
+  <header class="header">
+    <h1>For Funders</h1>
+    <p>Every dollar builds permanent infrastructure. Open-source, zero-PII, measurable impact.</p>
+  </header>
+
+  <main id="main" class="content">
+    <h2>The Problem</h2>
+    <p>
+      A family of five is sitting in a parking lot at midnight. A social worker has 30 minutes
+      before the family's willingness to engage disappears. Right now, that social worker is
+      making phone calls -- to shelters that may be closed, full, or unable to serve that
+      family's specific needs. There is no shared system for real-time shelter bed availability
+      in most US communities.
+    </p>
+    <p>
+      Commercial software does not serve this space because there is no profit motive.
+      Homelessness services operate on tight grants with no margin for per-seat licensing.
+      The result: social workers keep personal spreadsheets, shelter coordinators answer
+      midnight phone calls, and families wait in parking lots while the system fails them.
+    </p>
+
+    <h2>What This Platform Does</h2>
+    <p>
+      An outreach worker opens the app, searches for available beds filtered by the family's
+      needs (family with children, wheelchair accessible, pets allowed), and places a hold on
+      a bed in under a minute. The shelter coordinator sees the hold and knows someone is coming.
+    </p>
+    <p>
+      Without a real-time availability system, outreach workers spend hours to days making
+      serial phone calls to shelters that may be full, closed, or unable to serve the specific
+      client in front of them
+      <span style="font-size: 12px; color: var(--muted);">(NBC San Diego, 2025)</span>.
+      In Los Angeles, a 2024 City Controller audit found that 1 in 4 shelter beds sat empty
+      while approximately 5,000 people waited on waitlists -- because providers had no
+      reliable way to know which beds were available
+      <span style="font-size: 12px; color: var(--muted);">(LA City Controller, <em>Interim Housing Audit</em>, 2024)</span>.
+    </p>
+    <p>
+      The digital workflow -- search to bed hold -- takes under 10 seconds in testing.
+      <strong>Important:</strong> The time reduction has not yet been measured in a real-world
+      pilot. A 90-day pilot with 5+ shelters would produce the evidence to quantify impact.
+    </p>
+    <p>
+      The <a href="https://endhomelessness.org/resource/housing-first/">National Alliance to End Homelessness</a>
+      reports that Housing First programs produce average emergency services cost savings of
+      $31,545 per person housed over two years. While this platform does not directly house
+      people, it is designed to reduce the time from crisis to shelter placement -- the
+      critical first step in the housing pathway.
+    </p>
+
+    <h2>Who Uses It</h2>
+    <p>
+      The platform is not yet deployed in any community. It is designed to serve any US
+      Continuum of Care, from a rural volunteer-run network to a metro area with 50+ shelters.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>Audience</th><th>Monthly Cost</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Lite</strong></td><td>Small CoCs, rural counties</td><td>$15-30</td></tr>
+        <tr><td><strong>Standard</strong></td><td>Mid-size cities</td><td>$30-75</td></tr>
+        <tr><td><strong>Full</strong></td><td>Metro areas with real-time HMIS integration</td><td>$100+</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Sustainability</h2>
+    <ol>
+      <li><strong>Now:</strong> Open-source under Apache 2.0. The software cannot disappear. Any deployment survives independently.</li>
+      <li><strong>With pilot adoption:</strong> Establish a fiscal sponsor to receive grants and contributions.</li>
+      <li><strong>With multiple adopters:</strong> Cost-sharing consortium where participating CoCs share maintenance costs.</li>
+      <li><strong>At scale:</strong> Institutional host (Code for America, a university, or a managed services model).</li>
+    </ol>
+    <p>
+      The zero-vendor-dependency architecture is intentional: every deployment runs on
+      standard, widely available technology (Java, PostgreSQL, React). No proprietary
+      component. No single point of failure.
+    </p>
+
+    <h2>What Funding Enables</h2>
+    <ol>
+      <li><strong>Community adoption support</strong> -- helping additional CoCs deploy the platform, training coordinators, supporting onboarding</li>
+      <li><strong>A full-time maintainer</strong> -- moving from single-maintainer open source to sustainable development with security patches and community support</li>
+      <li><strong>Third-party accessibility audit</strong> -- an independent audit by a qualified accessibility firm to strengthen the case for government adoption</li>
+    </ol>
+    <p>
+      Every dollar builds permanent infrastructure. The Apache 2.0 license means the software,
+      its documentation, and every improvement funded by a grant remains freely available to
+      every community, forever. There is no scenario where funding builds something that later
+      becomes proprietary or inaccessible.
+    </p>
+
+    <h2>What Makes This Different</h2>
+    <div class="checklist">
+      <ul>
+        <li><strong>Open source means permanent.</strong> Unlike vendor platforms that disappear when contracts end, this software is irrevocably free.</li>
+        <li><strong>Zero client PII.</strong> The platform never stores names, dates of birth, or identifying information about the people being served.</li>
+        <li><strong>DV survivor protection.</strong> No address stored, no client information, referral tokens hard-deleted within 24 hours. Designed to support VAWA and FVPSA requirements.</li>
+        <li><strong>Novel demand data.</strong> Captures unmet demand (searches returning zero results by population type, time, and geography). No HMIS system currently produces this data.</li>
+      </ul>
+    </div>
+
+    <h2>Recommended Grant Language</h2>
+    <div class="callout">
+      "In Los Angeles, a 2024 City Controller audit found that 1 in 4 shelter beds sat empty
+      while thousands waited -- because providers had no reliable way to know which beds were
+      available. In San Diego, outreach workers reported spending hours to days making phone
+      calls to find a single bed. Finding A Bed Tonight provides real-time bed availability
+      with a 3-tap hold to secure the bed during transport. The digital workflow (search to
+      hold) takes under 10 seconds in end-to-end testing. Pilot measurement with [named partner]
+      is planned for [timeframe]."
+    </div>
+    <p style="font-size: 13px; color: var(--muted);">
+      This language is sourced, specific, and defensible. It uses government-audited data
+      (LA City Controller, 2024) and practitioner testimony (NBC San Diego, 2025) rather
+      than internal estimates.
+    </p>
+
+    <a href="../index.html" class="back-link">&larr; Back to Finding A Bed Tonight</a>
+  </main>
+
+  <footer>
+    <p>
+      <a href="https://github.com/ccradle/finding-a-bed-tonight">GitHub</a> &middot;
+      <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a> &middot;
+      No more midnight phone calls.
+    </p>
+  </footer>
+</body>
+</html>
