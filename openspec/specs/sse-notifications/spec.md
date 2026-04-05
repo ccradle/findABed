@@ -2,12 +2,16 @@
 
 ### Requirement: SseEmitter infinite timeout with heartbeat-based cleanup
 
-The `NotificationService` SHALL create `SseEmitter(-1L)` (no server-side timeout). Dead connections SHALL be detected by heartbeat send failures.
+The `NotificationService` SHALL create `SseEmitter(-1L)` (no server-side timeout). Dead connections SHALL be detected by heartbeat send failures. When a heartbeat send fails, the emitter SHALL be removed from the registry BEFORE calling `completeWithError()` to prevent race conditions with the `onError` callback. All callbacks (`onError`, `onCompletion`, `onTimeout`) SHALL be idempotent.
 
 **Acceptance criteria:**
 - No `AsyncRequestTimeoutException` in logs during normal operation
 - SSE connections remain open indefinitely when client is connected and healthy
 - When a client silently disconnects (network loss), the emitter is removed from the registry within 20 seconds (one heartbeat cycle)
+- No cascading `IllegalStateException` on AsyncContext when emitters error
+- `onError`/`onCompletion`/`onTimeout` callbacks are no-ops if emitter already removed from registry
+- Emitter failures logged at WARN level with userId and error class
+- `server.servlet.async.request-timeout` set to 600000ms (10 minutes)
 - Backend integration test verifies connection stays alive for 60+ seconds without timeout
 
 ### Requirement: 20-second heartbeat interval

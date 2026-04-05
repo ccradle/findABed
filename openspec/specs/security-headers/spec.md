@@ -22,6 +22,15 @@ Scenario: Security headers present on API response
   And the response includes Referrer-Policy: strict-origin-when-cross-origin
   And the response includes Permissions-Policy header
 
+Scenario: Async dispatch does not trigger 401 on SSE
+  Given an SSE emitter errors and Tomcat performs an async dispatch
+  Then Spring Security does not re-challenge with 401/403
+  And no "response already committed" error occurs
+
+Scenario: Initial SSE connection still requires authentication
+  Given a client connects to /api/v1/notifications/stream without a JWT token
+  Then the request receives 401 Unauthorized
+
 Scenario: Headers present on error responses
   Given the application is running behind nginx
   When a client makes a request that returns 404
