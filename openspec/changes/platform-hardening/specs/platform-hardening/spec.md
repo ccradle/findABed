@@ -5,9 +5,24 @@
 The admin panel SHALL allow revoking API keys with immediate effect.
 
 #### Scenario: Admin revokes an API key
-
 - **WHEN** an admin clicks "Revoke" on an API key row and confirms
 - **THEN** the key is immediately invalidated and cannot authenticate requests
+
+#### Scenario: Revoked key returns 401 on subsequent use
+- **WHEN** a revoked API key is used in an `X-API-Key` header
+- **THEN** the system SHALL return 401 Unauthorized
+
+#### Scenario: Revoke non-existent key returns 404
+- **WHEN** an admin attempts to revoke a key that does not exist
+- **THEN** the system SHALL return 404 Not Found
+
+#### Scenario: Non-admin cannot revoke keys
+- **WHEN** a COORDINATOR or OUTREACH_WORKER attempts to revoke an API key
+- **THEN** the system SHALL return 403 Forbidden
+
+#### Scenario: Revoking an already-revoked key is idempotent
+- **WHEN** an admin revokes a key that is already revoked
+- **THEN** the system SHALL return 200 (no error)
 
 ### Requirement: API key rotation with grace period
 
@@ -63,9 +78,17 @@ The system SHALL record recent webhook deliveries for admin visibility.
 - **THEN** the last 20 deliveries are shown with: event type, status code, response time, timestamp, attempt number
 
 #### Scenario: Auto-disable on consecutive failures
-
 - **WHEN** a subscription has 5 consecutive delivery failures
 - **THEN** the subscription is automatically paused and the admin is notified
+
+#### Scenario: Admin re-enables auto-disabled subscription
+- **WHEN** an admin resumes a subscription that was auto-disabled
+- **THEN** the consecutive failure counter SHALL reset to 0
+- **AND** delivery attempts SHALL resume on the next matching event
+
+#### Scenario: Successful delivery resets failure counter
+- **WHEN** a delivery succeeds after 3 consecutive failures
+- **THEN** the consecutive failure counter SHALL reset to 0
 
 ### Requirement: Server-side retry on availability update conflict
 
@@ -138,12 +161,54 @@ Each shelter entry in the My Reservations panel SHALL be a clickable link that n
 - **WHEN** My Reservations is rendered
 - **THEN** each clickable shelter name SHALL have `data-testid="reservation-shelter-link-{shelterId}"`
 
-### Requirement: SSE bounded event queue
+#### Scenario: Reservation for shelter not in current search results
+- **WHEN** the user has a reservation for a shelter not matching the current population filter
+- **THEN** the shelter name SHALL still be clickable
+- **AND** clicking it SHALL clear the filter or show a message that the shelter is not in current results
 
-The system SHALL protect against slow SSE clients.
+### Requirement: SSE bounded event queue (PHASE 2)
+
+The system SHALL protect against slow SSE clients. This requirement is implemented in Phase 2, after all other platform-hardening tasks are verified green.
 
 #### Scenario: Slow client event queue overflow
-
 - **WHEN** a client's SSE event queue reaches 10 pending events
 - **THEN** the oldest event is dropped to make room for the new event
 - **AND** the client can catch up via REST on reconnection
+
+#### Scenario: Heartbeats have lower priority than real events
+- **WHEN** a slow client's queue is full
+- **AND** a new real event arrives (availability.updated, dv-referral.*)
+- **THEN** the system SHALL drop a heartbeat from the queue before dropping a real event
+
+#### Scenario: Only the sender thread writes to the emitter
+- **WHEN** events are queued for delivery to a client
+- **THEN** only the per-emitter sender thread SHALL call `emitter.send()`
+- **AND** the heartbeat scheduler SHALL enqueue heartbeats, not send directly
+
+#### Scenario: Sender thread cleans up on IOException
+- **WHEN** the sender thread encounters an IOException during `emitter.send()`
+- **THEN** the emitter SHALL be removed from the registry BEFORE calling `completeWithError()`
+- **AND** the sender thread SHALL terminate cleanly
+- **AND** no `IllegalStateException` or cascading callback errors SHALL occur
+
+#### Scenario: Sender thread exits on emitter removal
+- **WHEN** an emitter is removed (user disconnect, shutdown, heartbeat failure detection)
+- **THEN** the corresponding sender thread SHALL receive a poison pill and exit
+- **AND** no thread leak SHALL occur
+
+#### Scenario: Graceful shutdown completes all sender threads
+- **WHEN** the application shuts down (@PreDestroy)
+- **THEN** all sender threads SHALL terminate within 5 seconds
+- **AND** all emitters SHALL be completed
+
+#### Scenario: SSE regression — existing tests pass after backpressure change
+- **WHEN** the bounded queue implementation is complete
+- **THEN** all existing `SseNotificationIntegrationTest` tests SHALL pass
+- **AND** all existing `SseStabilityTest` tests SHALL pass
+- **AND** all `sse-cache-regression` Playwright tests SHALL pass through nginx
+- **AND** the `sse.connections.active` Grafana gauge SHALL be flat (not sawtooth) after 5 minutes
+
+#### Scenario: Fast clients unaffected under load with slow clients present
+- **WHEN** 200 SSE clients are connected and 10 are deliberately throttled
+- **THEN** the remaining 190 fast clients SHALL receive events within normal SLO (p95 < 500ms)
+- **AND** heartbeat delivery to fast clients SHALL not be delayed by slow client queues

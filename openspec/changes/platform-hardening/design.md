@@ -43,9 +43,43 @@ After 5 consecutive delivery failures to the same subscription, set `active=fals
 
 Add `spring-retry` dependency. `@Retryable` on `AvailabilityService.createSnapshot()` for `PessimisticLockingFailureException` and `CannotAcquireLockException`. Max 3 attempts, 50ms initial backoff, multiplier 2. The client never sees 409 — the server absorbs transient lock contention. Recovery method logs and returns 409 only if all retries exhausted.
 
-### D7: SSE bounded event queue
+### D7: SSE bounded event queue — PHASED IMPLEMENTATION
 
-Instead of calling `emitter.send()` synchronously per event, queue events into a bounded `ArrayDeque<SseEvent>` per client (max 10). A background sender drains the queue. If the queue is full when a new event arrives, drop the oldest event. This prevents slow clients from blocking the event fan-out loop. The sender thread detects dead clients via IOException on send and cleans up.
+**PHASE 2 — implement AFTER all other platform-hardening tasks are verified green.**
+
+The SSE send path has caused four production bugs across three versions (v0.28.0 SW interception, v0.28.2 nginx buffering, v0.29.2 cascading emitter errors). Every bug was caused by unexpected interactions between concurrent access, Spring callback lifecycle, or proxy buffering. This change modifies that exact code path and must be isolated from the rest of the hardening work.
+
+Instead of calling `emitter.send()` synchronously per event, queue events into a bounded `ArrayDeque<SseEvent>` per client (max 10). A background sender drains the queue. If the queue is full when a new event arrives, drop the oldest event. This prevents slow clients from blocking the event fan-out loop.
+
+### D7a: Heartbeat vs. queue interaction
+
+Heartbeats MUST go through the bounded queue, not bypass it. Two concurrent write paths to the same emitter (heartbeat direct + queue sender thread) would reintroduce the race condition fixed in v0.29.2 (remove-before-completeWithError pattern depends on single-threaded access).
+
+Consequences:
+- The `@Scheduled sendHeartbeat()` method queues a heartbeat event rather than calling `emitter.send()` directly
+- The background sender thread is the ONLY writer to `emitter.send()`
+- If a slow client's queue fills with heartbeats, real events may be dropped — mitigated by giving heartbeats lower priority (drop heartbeats before real events when queue is full)
+
+### D7b: Background sender thread lifecycle
+
+Each emitter gets one sender thread (virtual thread, not platform thread). The thread:
+- Blocks on a `LinkedBlockingQueue` (not `ArrayDeque` — needs blocking take)
+- On `IOException` during send: removes emitter from registry FIRST, then completes with error, then exits. This preserves the v0.29.2 remove-before-complete pattern.
+- On emitter removal (cleanup/shutdown): the queue is poisoned with a sentinel value, sender thread exits cleanly
+- Thread naming: `sse-sender-{userId}` for diagnostics
+
+### D7c: Regression safety net
+
+Before any SSE changes:
+1. Run full `SseNotificationIntegrationTest` + `SseStabilityTest` — save baseline output
+2. Run `sse-cache-regression` Playwright tests through nginx — save baseline
+3. Verify `sse.connections.active` Grafana gauge is flat (not sawtooth) on live site
+
+After SSE changes:
+4. Re-run all SSE backend tests — compare to baseline
+5. Re-run Playwright SSE tests through nginx — compare to baseline
+6. Deploy to local nginx, connect 3 users, wait 5 minutes — verify gauge is flat
+7. Gatling SSE load test: 200 connections, 10 deliberately slow — verify fast clients unaffected
 
 ### D8: ACCESS_CODE_USED audit event fix (#58)
 
@@ -61,4 +95,6 @@ Shelter names in the My Reservations panel are rendered as static text. They sho
 - **Dropped events during webhook pause**: admins must understand events are lost, not queued. Documented in UI and API response.
 - **Spring Retry masking real errors**: retry absorbs transient lock contention but could mask persistent issues. Mitigated by logging each retry attempt and returning 409 if all retries exhausted.
 - **SSE queue drop-oldest**: slow clients may miss events. Mitigated by client-side REST catch-up on reconnection (already implemented in useNotifications hook).
+- **SSE regression risk (HIGHEST)**: The SSE send path caused 4 production bugs in 3 versions. D7 introduces a new concurrent writer (background thread) to this path. Mitigated by: phased implementation (Phase 2, after all other tasks green), comprehensive regression baseline before changes, thread-per-emitter with single-writer guarantee (only the sender thread calls `emitter.send()`), preserving the v0.29.2 remove-before-complete pattern.
+- **@Retryable + @Transactional interaction**: `@Retryable` on `AvailabilityService.createSnapshot()` must execute OUTSIDE the transaction boundary. If `@Retryable` wraps a `@Transactional` method, the second retry attempt inherits a rolled-back transaction context. Mitigated by: placing `@Retryable` on the controller or a non-transactional service wrapper, integration test verifying only ONE domain event published per successful retry sequence.
 - **@Scheduled cleanup tasks disabled in tests**: v0.18.1 gates scheduling via `fabt.scheduling.enabled=false` in test profile. New @Scheduled tasks (API key expiry cleanup T-4, delivery log cleanup T-14) won't run in tests. Test cleanup logic via direct service method calls, not by waiting for the scheduler. @Retryable (T-17) is separate from scheduling and works regardless.

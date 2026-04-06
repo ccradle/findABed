@@ -28,14 +28,30 @@
 
 - [ ] T-15: Add `spring-retry` dependency to pom.xml
 - [ ] T-16: `@EnableRetry` on Application or config class
-- [ ] T-17: `@Retryable` on `AvailabilityService.createSnapshot()` — retryFor PessimisticLockingFailureException, maxAttempts=3, backoff 50ms×2
+- [ ] T-17: `@Retryable` on availability update — retryFor PessimisticLockingFailureException, maxAttempts=3, backoff 50ms×2. **CRITICAL: `@Retryable` MUST be OUTSIDE the `@Transactional` boundary** (on the controller or a non-transactional wrapper). If retry wraps a @Transactional method, the second attempt inherits a rolled-back transaction.
 - [ ] T-18: `@Recover` method: log exhausted retries, return 409
+- [ ] T-18a: Integration test — retry succeeds on second attempt, verify only ONE domain event is published (not one per attempt)
+- [ ] T-18b: Integration test — verify @Retryable is outside @Transactional by confirming second attempt gets a fresh transaction (not rollback-only)
 
-### Backend — SSE Backpressure
+### Backend — SSE Backpressure (PHASE 2 — after all other tasks green)
 
-- [ ] T-19: Replace direct `emitter.send()` with bounded per-client `ArrayDeque<SseEvent>` (max 10)
-- [ ] T-20: Background sender thread per emitter drains queue, detects dead clients via IOException
-- [ ] T-21: On queue overflow, drop oldest event (log at DEBUG)
+**Do NOT start these until Phase 1 verification (T-55 through T-59) passes.**
+
+- [ ] T-SSE-B1: Run full `SseNotificationIntegrationTest` + `SseStabilityTest` — save baseline output to `logs/sse-baseline-pre-backpressure.log`
+- [ ] T-SSE-B2: Run `sse-cache-regression` Playwright tests through nginx — save baseline to `logs/sse-playwright-baseline.log`
+- [ ] T-SSE-B3: Verify `sse.connections.active` gauge is flat on local nginx (3 users, 5 min wait)
+- [ ] T-19: Replace direct `emitter.send()` with bounded per-client `LinkedBlockingQueue<SseEvent>` (max 10). Use virtual threads for sender (not platform threads)
+- [ ] T-20: Background sender thread per emitter — ONLY writer to `emitter.send()`. On IOException: remove emitter from registry FIRST, then completeWithError, then exit thread. Preserve v0.29.2 remove-before-complete pattern.
+- [ ] T-20a: Sender thread lifecycle — poison pill on emitter removal, thread naming `sse-sender-{userId}`, clean exit on shutdown (@PreDestroy completes all within 5 seconds)
+- [ ] T-21: On queue overflow, drop oldest event. Heartbeats have lower priority than real events (drop heartbeat first). Log at DEBUG.
+- [ ] T-21a: Heartbeat scheduler enqueues to the per-client queue — does NOT call `emitter.send()` directly
+- [ ] T-SSE-R1: Re-run full `SseNotificationIntegrationTest` + `SseStabilityTest` — compare to baseline, zero regressions
+- [ ] T-SSE-R2: Re-run `sse-cache-regression` Playwright tests through nginx — compare to baseline
+- [ ] T-SSE-R3: Verify `sse.connections.active` gauge flat (not sawtooth) on local nginx (3 users, 5 min wait)
+- [ ] T-SSE-R4: Integration test — sender thread terminates when emitter is removed (no thread leak)
+- [ ] T-SSE-R5: Integration test — IOException in sender triggers cleanup AND thread exit, no cascading errors
+- [ ] T-SSE-R6: Integration test — concurrent heartbeat enqueue + event enqueue on same client — no race condition
+- [ ] T-SSE-R7: Integration test — graceful shutdown completes all sender threads within 5 seconds
 
 ### Backend — Audit Event Fix (#58)
 
@@ -47,11 +63,16 @@
 
 ### Backend — Tests
 
-- [ ] T-22: Integration test: revoke API key, verify subsequent auth fails
+- [ ] T-22: Integration test (positive): revoke API key, verify subsequent auth returns 401
+- [ ] T-22a: Integration test (negative): revoke non-existent key returns 404
+- [ ] T-22b: Integration test (negative): non-admin revoke attempt returns 403
+- [ ] T-22c: Integration test (negative): revoke already-revoked key is idempotent (200, no error)
 - [ ] T-23: Integration test: rotate key, verify both old and new work during grace, old fails after
 - [ ] T-24: Integration test: pause subscription, verify events not delivered
 - [ ] T-25: Integration test: send test event, verify delivery
-- [ ] T-26: Integration test: 5 consecutive failures auto-disable subscription
+- [ ] T-26: Integration test (positive): 5 consecutive failures auto-disable subscription
+- [ ] T-26a: Integration test (positive): re-enable auto-disabled subscription resets failure counter
+- [ ] T-26b: Integration test (positive): successful delivery after 3 failures resets counter to 0
 - [ ] T-27: Integration test: availability update retry on lock contention (mock advisory lock failure)
 - [ ] T-28: Integration test: delivery log persisted on webhook send
 
@@ -101,8 +122,9 @@
 ### Performance — Gatling
 
 - [ ] T-43: Re-run Gatling AvailabilityUpdate with server-side retry — verify KO < 1%
-- [ ] T-44: New Gatling simulation: 200 SSE connections + bed search concurrent load
-- [ ] T-45: Verify bed search p99 stays under SLO with 200 SSE connections
+- [ ] T-44: New Gatling simulation: 200 SSE connections + bed search concurrent load (PHASE 2 — after SSE backpressure)
+- [ ] T-44a: Gatling SSE slow-client scenario: 200 connections, 10 deliberately throttled (sleep 2s per event read). Verify fast clients receive events within p95 < 500ms. (PHASE 2)
+- [ ] T-45: Verify bed search p99 stays under SLO with 200 SSE connections (PHASE 2)
 
 ### Seed Data & Screenshots
 
