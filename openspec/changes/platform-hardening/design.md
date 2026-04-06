@@ -47,6 +47,14 @@ Add `spring-retry` dependency. `@Retryable` on `AvailabilityService.createSnapsh
 
 Instead of calling `emitter.send()` synchronously per event, queue events into a bounded `ArrayDeque<SseEvent>` per client (max 10). A background sender drains the queue. If the queue is full when a new event arrives, drop the oldest event. This prevents slow clients from blocking the event fan-out loop. The sender thread detects dead clients via IOException on send and cleans up.
 
+### D8: ACCESS_CODE_USED audit event fix (#58)
+
+The access code authentication flow authenticates without an existing user context — the "actor" IS the target user. The audit event publisher must set `actor_user_id = target_user_id` for this self-authentication flow. The INSERT currently fails with a NOT NULL constraint violation on `audit_events.actor_user_id`, meaning access code logins are silently not audited — a gap Marcus Okafor would discover when asking "what happened the night of X."
+
+### D9: My Reservations clickable shelter names (#64)
+
+Shelter names in the My Reservations panel are rendered as static text. They should be clickable links that navigate to the shelter detail view (expanding the shelter card or opening the detail modal). This completes Darius's core workflow: search → hold → transport (needs directions from the reservation). The link should include the shelter ID to scroll/expand the correct card. The hold countdown timer must remain visible — the link must not replace or obscure it.
+
 ## Risks / Trade-offs
 
 - **Grace period key rotation**: two valid keys simultaneously increases attack surface slightly. Mitigated by short default window (24h) and audit logging of key usage.

@@ -82,6 +82,62 @@ The system SHALL retry availability updates on transient lock contention.
 - **WHEN** all 3 retry attempts fail
 - **THEN** the client receives 409 Conflict
 
+### Requirement: ACCESS_CODE_USED audit event has correct actor (#58)
+
+The system SHALL set `actor_user_id` to the target user's ID for self-authentication audit events (ACCESS_CODE_USED), preventing NOT NULL constraint violations on the `audit_events` table.
+
+#### Scenario: Access code login creates audit event with correct actor
+- **WHEN** a user authenticates via access code
+- **THEN** an `ACCESS_CODE_USED` audit event is inserted into `audit_events`
+- **AND** `actor_user_id` equals `target_user_id` (the user authenticating themselves)
+
+#### Scenario: Audit event includes IP address
+- **WHEN** a user authenticates via access code from a known IP
+- **THEN** the `ACCESS_CODE_USED` audit event records the client IP address
+
+#### Scenario: Access code login does not produce database constraint violation
+- **WHEN** a user authenticates via access code
+- **THEN** no `null value in column "actor_user_id"` error appears in server logs
+- **AND** the audit_events INSERT succeeds
+
+#### Scenario: Standard login audit events are not affected
+- **WHEN** a user authenticates via email/password
+- **THEN** the `LOGIN_SUCCESS` audit event still has the correct `actor_user_id`
+- **AND** no regression in existing audit behavior
+
+### Requirement: My Reservations shelter names are clickable (#64)
+
+Each shelter entry in the My Reservations panel SHALL be a clickable link that navigates to the shelter detail view, providing access to shelter details and directions.
+
+#### Scenario: Shelter name links to shelter details
+- **WHEN** an outreach worker views My Reservations after holding a bed
+- **THEN** the shelter name SHALL be a clickable link
+- **AND** clicking it SHALL scroll to and expand the shelter card in the search results
+
+#### Scenario: Hold countdown timer remains visible after clicking
+- **WHEN** the user clicks a shelter name in My Reservations
+- **THEN** the hold countdown timer SHALL remain visible in the reservations panel
+- **AND** the countdown SHALL continue decrementing
+
+#### Scenario: Directions accessible from reservation
+- **WHEN** the user clicks a shelter name in My Reservations
+- **THEN** the shelter detail view SHALL include the Directions link
+- **AND** the shelter address and phone number SHALL be visible
+
+#### Scenario: Multiple reservations are independently clickable
+- **WHEN** the user has multiple active reservations
+- **THEN** each shelter name SHALL be an independent clickable link
+- **AND** clicking one SHALL not affect the other reservations
+
+#### Scenario: Expired reservation shelter name still clickable
+- **WHEN** a reservation has expired (hold timed out)
+- **THEN** the shelter name SHALL still be clickable for directions
+- **AND** the expired badge SHALL remain visible alongside the link
+
+#### Scenario: Reservation shelter link has data-testid
+- **WHEN** My Reservations is rendered
+- **THEN** each clickable shelter name SHALL have `data-testid="reservation-shelter-link-{shelterId}"`
+
 ### Requirement: SSE bounded event queue
 
 The system SHALL protect against slow SSE clients.

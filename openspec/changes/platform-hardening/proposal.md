@@ -9,11 +9,16 @@ The admin panel creates API keys and webhook subscriptions but cannot manage the
 - **Server-side retry on 409**: spring-retry with @Retryable on availability update for advisory lock contention. 3 attempts, 50ms backoff × 2. Eliminates 409 from client perspective.
 - **SSE slow-client protection**: bounded per-client event queue (max 10) with drop-oldest on overflow. Gatling simulation with 200 SSE connections + bed search.
 - **Webhook delivery log**: new table for recent deliveries with status, response time, attempt count. Auto-disable endpoint after 5 consecutive failures.
+- **Audit event fix (#58)**: ACCESS_CODE_USED audit event has null actor_user_id — set actor_user_id = target_user_id for self-authentication flows.
+- **My Reservations clickable (#64)**: Shelter names in My Reservations are static text — make them clickable links to shelter details with directions access.
 
 ## Capabilities
 
 ### New Capabilities
 - `platform-hardening`: API key revoke/rotate, webhook delete/pause/test, delivery log, server-side retry, SSE backpressure
+
+- `audit-event-fix`: Fix ACCESS_CODE_USED null actor_user_id (#58)
+- `reservation-clickable-shelters`: Make shelter names clickable in My Reservations (#64)
 
 ### Modified Capabilities
 

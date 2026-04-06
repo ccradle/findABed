@@ -37,6 +37,14 @@
 - [ ] T-20: Background sender thread per emitter drains queue, detects dead clients via IOException
 - [ ] T-21: On queue overflow, drop oldest event (log at DEBUG)
 
+### Backend — Audit Event Fix (#58)
+
+- [ ] T-58a: Fix ACCESS_CODE_USED audit event: set `actor_user_id = target_user_id` in access code authentication flow
+- [ ] T-58b: Integration test (positive): access code login creates `ACCESS_CODE_USED` audit event with non-null `actor_user_id` matching the authenticated user
+- [ ] T-58c: Integration test (positive): audit event includes client IP address
+- [ ] T-58d: Integration test (negative): verify standard email/password login audit events still have correct `actor_user_id` (no regression)
+- [ ] T-58e: Integration test (negative): verify audit_events INSERT does not produce constraint violation in server logs during access code login
+
 ### Backend — Tests
 
 - [ ] T-22: Integration test: revoke API key, verify subsequent auth fails
@@ -60,6 +68,14 @@
 - [ ] T-34: Add "Send Test" button with event-type dropdown, show result inline
 - [ ] T-35: Add expandable delivery log panel per subscription (last 20 deliveries)
 
+### Frontend — My Reservations Clickable Shelters (#64)
+
+- [ ] T-64a: Make shelter name in My Reservations a clickable link that scrolls to and expands the shelter card in search results
+- [ ] T-64b: Add `data-testid="reservation-shelter-link-{shelterId}"` on each clickable shelter name
+- [ ] T-64c: Ensure hold countdown timer remains visible and continues after clicking
+- [ ] T-64d: Ensure expired reservations still show clickable shelter name alongside expired badge
+- [ ] T-64e: Add i18n for any new link text or aria-label (en.json + es.json)
+
 ### Frontend — i18n & Accessibility
 
 - [ ] T-36: Add i18n keys for API key lifecycle and webhook management (en.json + es.json)
@@ -72,6 +88,15 @@
 - [ ] T-40: Playwright: delete subscription, confirm dialog, row removed
 - [ ] T-41: Playwright: pause subscription, toggle visible, resume
 - [ ] T-42: Playwright: send test event, result shown inline
+
+### Frontend Tests — My Reservations (#64)
+
+- [ ] T-64f: Playwright (positive): hold a bed → My Reservations shows shelter name as clickable link with `data-testid="reservation-shelter-link-{id}"`
+- [ ] T-64g: Playwright (positive): click reservation shelter link → shelter card expands in search results with details and directions visible
+- [ ] T-64h: Playwright (positive): hold countdown timer still visible and decrementing after clicking shelter link
+- [ ] T-64i: Playwright (positive): multiple reservations → each shelter name independently clickable
+- [ ] T-64j: Playwright (negative): expired reservation → shelter name still clickable, expired badge still visible
+- [ ] T-64k: Playwright (negative): clicking shelter link does NOT navigate away from the search page (stays on same page, scrolls to card)
 
 ### Performance — Gatling
 
