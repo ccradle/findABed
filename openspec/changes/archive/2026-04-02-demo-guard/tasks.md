@@ -68,12 +68,12 @@ curl -s https://findabed.org/api/v1/version
 # Expected: remoteAddr = Docker bridge IP (172.18.0.x), X-Forwarded-For = real client IP
 
 # Path 2: SSH tunnel to :8081 (container nginx → backend, no host nginx)
-ssh -i ~/.ssh/fabt-oracle -L 8081:localhost:8081 ubuntu@150.136.221.232
+ssh -i ~/.ssh/fabt-oracle -L 8081:localhost:8081 ubuntu@${FABT_VM_IP}
 curl -s http://localhost:8081/api/v1/version
 # Expected: remoteAddr = Docker bridge IP, X-Forwarded-For = ABSENT (no upstream proxy)
 
 # Path 3: SSH tunnel to :8080 (backend directly, no nginx)
-ssh -i ~/.ssh/fabt-oracle -L 8080:localhost:8080 ubuntu@150.136.221.232
+ssh -i ~/.ssh/fabt-oracle -L 8080:localhost:8080 ubuntu@${FABT_VM_IP}
 curl -s http://localhost:8080/api/v1/version
 # Expected: remoteAddr = 127.0.0.1, X-Forwarded-For = ABSENT
 ```
@@ -140,7 +140,7 @@ done
 - [x] 4.3 Add `demo` to `SPRING_PROFILES_ACTIVE` in production config:
 
 ```bash
-ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 "grep SPRING_PROFILES_ACTIVE ~/fabt-secrets/docker-compose.prod.yml"
+ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP} "grep SPRING_PROFILES_ACTIVE ~/fabt-secrets/docker-compose.prod.yml"
 # Update from: SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE},observability
 # To: SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE},observability,demo
 # Or add demo to .env.prod: SPRING_PROFILES_ACTIVE=lite,demo
@@ -149,7 +149,7 @@ ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 "grep SPRING_PROFILES_ACTIVE ~/
 - [x] 4.4 Restart backend container and verify demo guard is active:
 
 ```bash
-ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 "cd ~/finding-a-bed-tonight && docker compose --env-file ~/fabt-secrets/.env.prod -f docker-compose.yml -f ~/fabt-secrets/docker-compose.prod.yml up -d backend"
+ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP} "cd ~/finding-a-bed-tonight && docker compose --env-file ~/fabt-secrets/.env.prod -f docker-compose.yml -f ~/fabt-secrets/docker-compose.prod.yml up -d backend"
 
 # Wait for startup, then test:
 # Destructive op should be blocked:
@@ -175,7 +175,7 @@ curl -s -X POST "https://findabed.org/api/v1/auth/login" -H "Content-Type: appli
 
 ```bash
 # SSH tunnel to backend
-ssh -i ~/.ssh/fabt-oracle -L 8081:localhost:8081 ubuntu@150.136.221.232
+ssh -i ~/.ssh/fabt-oracle -L 8081:localhost:8081 ubuntu@${FABT_VM_IP}
 
 # From another terminal, via tunnel:
 TOKEN=$(curl -s -X POST "http://localhost:8081/api/v1/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@dev.fabt.org","password":"admin123","tenantSlug":"dev-coc"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")

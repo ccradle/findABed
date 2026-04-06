@@ -1,6 +1,6 @@
 ## Context
 
-The FABT demo runs at `150.136.221.232.nip.io` on an Oracle Always Free ARM64 VM (4 OCPU, 24GB RAM). The static project site lives separately at `ccradle.github.io/findABed/`. This creates two problems: (1) the IP-based URL is unprofessional for stakeholder demos, grant conversations, and city adoption discussions, and (2) the Oracle VM is exposed directly to the internet with no CDN, DDoS protection, or WAF.
+The FABT demo runs at `${FABT_VM_IP}.nip.io` on an Oracle Always Free ARM64 VM (4 OCPU, 24GB RAM). The static project site lives separately at `ccradle.github.io/findABed/`. This creates two problems: (1) the IP-based URL is unprofessional for stakeholder demos, grant conversations, and city adoption discussions, and (2) the Oracle VM is exposed directly to the internet with no CDN, DDoS protection, or WAF.
 
 The codebase is fully environment-driven for domain configuration — zero hardcoded domains in source code. Domain migration is purely an ops-side change. The Oracle VM uses a two-layer nginx architecture: host nginx (TLS termination via Let's Encrypt) → container nginx (SPA routing, API proxy, security headers) → Spring Boot backend.
 
@@ -111,7 +111,7 @@ This will be finalized during implementation based on what feels right for the d
 
 **[Risk] Let's Encrypt renewal through Cloudflare proxy** → Mitigation: Certbot HTTP-01 challenge goes through Cloudflare. With Full (Strict) mode enabled, the challenge should pass since Cloudflare forwards HTTP requests to origin. If renewal fails, temporarily pause Cloudflare proxy (gray-cloud) for the renewal. Document in the guide.
 
-**[Risk] Origin IP historically exposed** → Mitigation: The IP `150.136.221.232` is baked into the `nip.io` domain name, HAR files, log files, and public DNS history. It cannot be "hidden." Origin lockdown (Cloudflare IP restriction) makes it unreachable on HTTP/HTTPS even if known. This is a "known and mitigated" risk, not an unaddressed gap. Marcus Webb confirms: IP-based firewall is sufficient when combined with the existing security posture.
+**[Risk] Origin IP historically exposed** → Mitigation: The IP `${FABT_VM_IP}` is baked into the `nip.io` domain name, HAR files, log files, and public DNS history. It cannot be "hidden." Origin lockdown (Cloudflare IP restriction) makes it unreachable on HTTP/HTTPS even if known. This is a "known and mitigated" risk, not an unaddressed gap. Marcus Webb confirms: IP-based firewall is sufficient when combined with the existing security posture.
 
 **[Risk] iptables flush locks out SSH** → Mitigation: The iptables script MUST NOT use `iptables -F INPUT` (flushes all rules). Must preserve established connections, loopback, and ICMP. Use Oracle Cloud security lists (cloud-level firewall) as primary approach — iptables only as fallback, with careful rule insertion rather than chain flush.
 

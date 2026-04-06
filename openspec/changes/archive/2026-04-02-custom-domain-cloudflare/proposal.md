@@ -1,6 +1,6 @@
 ## Why
 
-The live demo at `150.136.221.232.nip.io` lacks a professional, memorable URL for stakeholder demos, grant conversations, and city adoption discussions. A proper domain (`findabed.org`) signals permanence and credibility — Simone's "hallway pitch" test fails with an IP-based URL, Teresa's procurement team won't evaluate a nip.io address, and Priya can't put it in a grant narrative. Additionally, the Oracle VM is currently exposed directly to the internet with no CDN, DDoS protection, or WAF — gaps Marcus Webb flagged. The GitHub Pages static site at `ccradle.github.io/findABed/` is separate from the app, creating a split brand presence.
+The live demo at `${FABT_VM_IP}.nip.io` lacks a professional, memorable URL for stakeholder demos, grant conversations, and city adoption discussions. A proper domain (`findabed.org`) signals permanence and credibility — Simone's "hallway pitch" test fails with an IP-based URL, Teresa's procurement team won't evaluate a nip.io address, and Priya can't put it in a grant narrative. Additionally, the Oracle VM is currently exposed directly to the internet with no CDN, DDoS protection, or WAF — gaps Marcus Webb flagged. The GitHub Pages static site at `ccradle.github.io/findABed/` is separate from the app, creating a split brand presence.
 
 ## What Changes
 

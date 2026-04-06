@@ -22,11 +22,11 @@ The Namecheap domain configuration SHALL use Custom DNS pointing to the Cloudfla
 - **THEN** `dig NS findabed.org` returns Cloudflare nameservers
 
 ### Requirement: Cloudflare DNS A record proxied to Oracle VM
-A proxied (orange-cloud) A record SHALL exist in Cloudflare DNS: `findabed.org` → `150.136.221.232`.
+A proxied (orange-cloud) A record SHALL exist in Cloudflare DNS: `findabed.org` → `${FABT_VM_IP}`.
 
 #### Scenario: DNS resolves through Cloudflare
 - **WHEN** a client resolves `findabed.org`
-- **THEN** the returned IP is a Cloudflare edge IP (not the origin `150.136.221.232`)
+- **THEN** the returned IP is a Cloudflare edge IP (not the origin `${FABT_VM_IP}`)
 
 #### Scenario: HTTPS request reaches the app
 - **WHEN** a browser navigates to `https://findabed.org`
@@ -94,7 +94,7 @@ The domain SHALL be registered using a durable email address and identity associ
 - **THEN** the registration email and Namecheap account are accessible to the project lead
 
 ### Requirement: nip.io URL remains functional during transition
-The existing `150.136.221.232.nip.io` URL SHALL continue to work until DNS propagation is confirmed complete and all stakeholders are notified of the new URL.
+The existing `${FABT_VM_IP}.nip.io` URL SHALL continue to work until DNS propagation is confirmed complete and all stakeholders are notified of the new URL.
 
 #### Scenario: Parallel access during migration
 - **WHEN** DNS is propagating for `findabed.org`

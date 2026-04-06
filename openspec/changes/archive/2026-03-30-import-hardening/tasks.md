@@ -89,7 +89,7 @@
 ### Deploy to Demo
 
 - [x] Task 13: Rebuild and deploy to Oracle demo instance
-  **Action:** SSH to the VM (`ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232`):
+  **Action:** SSH to the VM (`ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP}`):
   ```bash
   cd ~/finding-a-bed-tonight
   git pull origin main
@@ -107,7 +107,7 @@
   ```
 
 - [x] Task 14: Smoke test live demo
-  **Action:** In browser at `https://150.136.221.232.nip.io`:
+  **Action:** In browser at `https://${FABT_VM_IP}.nip.io`:
   - Login as admin → Admin panel → click "2-1-1 Import" → verify import page loads
   - Upload test CSV → preview → confirm → verify success
   - DV canary: login as outreach worker, verify DV shelters invisible

@@ -33,16 +33,16 @@ Sitemap: https://findabed.org/sitemap.xml
 - [x] 1.3 Deploy `robots.txt` and `sitemap.xml` to Oracle VM:
 
 ```bash
-scp -i ~/.ssh/fabt-oracle robots.txt sitemap.xml ubuntu@150.136.221.232:/var/www/findabed-docs/
+scp -i ~/.ssh/fabt-oracle robots.txt sitemap.xml ubuntu@${FABT_VM_IP}:/var/www/findabed-docs/
 ```
 
 - [x] 1.4 Update host nginx to serve robots.txt and sitemap.xml before SPA fallthrough — insert location blocks inside the server block, before the `location /` catch-all:
 
 ```bash
-ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 "sudo sed -i '/location \/ {/i\    # SEO files — serve before SPA fallthrough\n    location = /robots.txt {\n        root /var/www/findabed-docs;\n        default_type text/plain;\n    }\n    location = /sitemap.xml {\n        root /var/www/findabed-docs;\n        default_type application/xml;\n    }\n' /etc/nginx/sites-available/fabt"
+ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP} "sudo sed -i '/location \/ {/i\    # SEO files — serve before SPA fallthrough\n    location = /robots.txt {\n        root /var/www/findabed-docs;\n        default_type text/plain;\n    }\n    location = /sitemap.xml {\n        root /var/www/findabed-docs;\n        default_type application/xml;\n    }\n' /etc/nginx/sites-available/fabt"
 
 # Verify config is valid before reloading
-ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 "sudo nginx -t"
+ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP} "sudo nginx -t"
 # If test fails: restore backup with sudo cp /etc/nginx/sites-available/fabt.bak /etc/nginx/sites-available/fabt
 ```
 
@@ -143,7 +143,7 @@ Test each page URL. For the landing page, verify both Organization AND SoftwareA
 
 ```bash
 # Get dimensions for all screenshots
-ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 'for f in /var/www/findabed-docs/demo/screenshots/*.png; do echo "$(basename $f): $(identify -format "%wx%h" "$f" 2>/dev/null || file "$f" | grep -oP "\d+x\d+")"; done'
+ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP} 'for f in /var/www/findabed-docs/demo/screenshots/*.png; do echo "$(basename $f): $(identify -format "%wx%h" "$f" 2>/dev/null || file "$f" | grep -oP "\d+x\d+")"; done'
 ```
 
 Add to each `<img>` tag: `loading="lazy" width="X" height="Y"`
@@ -167,13 +167,13 @@ Add to each `<img>` tag: `loading="lazy" width="X" height="Y"`
 - [x] 4.2 Deploy updated static site to Oracle VM:
 
 ```bash
-scp -i ~/.ssh/fabt-oracle -r /tmp/findabed-static-build/* ubuntu@150.136.221.232:/var/www/findabed-docs/
+scp -i ~/.ssh/fabt-oracle -r /tmp/findabed-static-build/* ubuntu@${FABT_VM_IP}:/var/www/findabed-docs/
 ```
 
 - [x] 4.3 Reload nginx if config was modified:
 
 ```bash
-ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232 "sudo nginx -t && sudo systemctl reload nginx"
+ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP} "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
 - [x] 4.4 Verify all pages load correctly after changes:

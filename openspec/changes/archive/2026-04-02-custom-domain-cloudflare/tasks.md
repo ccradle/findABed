@@ -12,7 +12,7 @@ export DOMAIN="findabed.org"
 #   3. findabedtonight.org
 
 # Infrastructure (known)
-export ORIGIN_IP="150.136.221.232"
+export ORIGIN_IP="${FABT_VM_IP}"
 export SSH_KEY="~/.ssh/fabt-oracle"
 export SSH_CMD="ssh -i $SSH_KEY ubuntu@$ORIGIN_IP"
 
@@ -115,7 +115,7 @@ curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/rulesets/
 
 ```bash
 dig A $DOMAIN +short
-# Expected: Cloudflare edge IPs (NOT 150.136.221.232)
+# Expected: Cloudflare edge IPs (NOT ${FABT_VM_IP})
 nslookup $DOMAIN
 # Same verification from a different resolver
 ```
@@ -424,7 +424,7 @@ curl -s --connect-timeout 5 -k https://$ORIGIN_IP
 
 - [x] 7.3 Update `finding-a-bed-tonight/docs/oracle-update-notes-v0.27.0.md`: replace nip.io verification URLs with `$DOMAIN`
 - [x] 7.4 Update project memory file `project_live_deployment_status.md`: change URL to `https://$DOMAIN`
-- [x] 7.5 Clean up stale files from docs repo root: remove `150.136.221.232.nip.io.har` and related `.log` files
+- [x] 7.5 Clean up stale files from docs repo root: remove `${FABT_VM_IP}.nip.io.har` and related `.log` files
 
 ## 8. Verification & Decommission (Riley's lens)
 

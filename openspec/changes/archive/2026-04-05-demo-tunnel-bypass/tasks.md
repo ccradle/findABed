@@ -62,7 +62,7 @@
 
 ## 8. Post-Deploy Smoke Tests — Part B: Tunnel Path (DemoGuard bypassed)
 
-- [x] 8.1 Open SSH tunnel: `ssh -i ~/.ssh/fabt-oracle -L 8081:localhost:8081 ubuntu@150.136.221.232 -N`
+- [x] 8.1 Open SSH tunnel: `ssh -i ~/.ssh/fabt-oracle -L 8081:localhost:8081 ubuntu@${FABT_VM_IP} -N`
 - [x] 8.2 Open NEW incognito browser → http://localhost:8081 → login as admin@dev.fabt.org
 - [x] 8.3 Navigate to Administration → Users → Create User → fill form → submit → verify user created successfully
 - [x] 8.4 Delete the test user just created

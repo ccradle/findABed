@@ -8,18 +8,18 @@ The Oracle Cloud security list (or VM-level iptables) SHALL restrict ingress on 
 - **THEN** the request is accepted and proxied to the application
 
 #### Scenario: Direct-to-origin request blocked
-- **WHEN** an attacker sends a request directly to `150.136.221.232:443` from a non-Cloudflare IP
+- **WHEN** an attacker sends a request directly to `${FABT_VM_IP}:443` from a non-Cloudflare IP
 - **THEN** the connection is dropped (no response)
 
 #### Scenario: Origin IP not discoverable
 - **WHEN** an attacker resolves `findabed.org`
-- **THEN** only Cloudflare edge IPs are returned, not `150.136.221.232`
+- **THEN** only Cloudflare edge IPs are returned, not `${FABT_VM_IP}`
 
 ### Requirement: SSH access restricted to admin IP
 SSH ingress (port 22) SHALL remain restricted to the project administrator's IP address. This is independent of the Cloudflare IP restriction.
 
 #### Scenario: Admin SSH access works
-- **WHEN** the admin connects via `ssh -i ~/.ssh/fabt-oracle ubuntu@150.136.221.232`
+- **WHEN** the admin connects via `ssh -i ~/.ssh/fabt-oracle ubuntu@${FABT_VM_IP}`
 - **THEN** the SSH connection is established successfully
 
 #### Scenario: Non-admin SSH blocked
@@ -27,14 +27,14 @@ SSH ingress (port 22) SHALL remain restricted to the project administrator's IP 
 - **THEN** the connection is dropped
 
 ### Requirement: Origin IP leakage acknowledged and mitigated
-The origin IP (`150.136.221.232`) is historically exposed via the `nip.io` domain name, public DNS history, HAR files in the repo, and log files. Origin lockdown (Cloudflare IP restriction) is the mitigation — the IP is known but unreachable on HTTP/HTTPS. This SHALL be documented as a known-and-mitigated risk, not an unaddressed gap.
+The origin IP (`${FABT_VM_IP}`) is historically exposed via the `nip.io` domain name, public DNS history, HAR files in the repo, and log files. Origin lockdown (Cloudflare IP restriction) is the mitigation — the IP is known but unreachable on HTTP/HTTPS. This SHALL be documented as a known-and-mitigated risk, not an unaddressed gap.
 
 #### Scenario: Direct access blocked despite known IP
 - **WHEN** an attacker uses the known origin IP from historical records or the nip.io domain
-- **THEN** direct HTTP/HTTPS connections to `150.136.221.232` are dropped by the firewall
+- **THEN** direct HTTP/HTTPS connections to `${FABT_VM_IP}` are dropped by the firewall
 
 #### Scenario: HAR and log files containing origin IP removed from repo
-- **WHEN** stale files (`150.136.221.232.nip.io.har`, related logs) are cleaned up
+- **WHEN** stale files (`${FABT_VM_IP}.nip.io.har`, related logs) are cleaned up
 - **THEN** the origin IP is no longer present in the current repo tree (though it remains in git history — acceptable)
 
 ### Requirement: API responses not cached by Cloudflare CDN

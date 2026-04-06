@@ -1,6 +1,6 @@
 ## Why
 
-OWASP ZAP baseline scan against the live deployment (`https://150.136.221.232.nip.io`) returned 0 FAIL but 9 WARN findings. Seven are actionable security header gaps in the nginx layer. The frontend container nginx sets some headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`) but is missing HSTS, CSP, COEP, and server version suppression. The host nginx (certbot-managed) adds none. Before sharing the demo URL with city IT evaluators, these headers must be present — they are exactly what a compliance scanner will flag.
+OWASP ZAP baseline scan against the live deployment (`https://${FABT_VM_IP}.nip.io`) returned 0 FAIL but 9 WARN findings. Seven are actionable security header gaps in the nginx layer. The frontend container nginx sets some headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`) but is missing HSTS, CSP, COEP, and server version suppression. The host nginx (certbot-managed) adds none. Before sharing the demo URL with city IT evaluators, these headers must be present — they are exactly what a compliance scanner will flag.
 
 ## What Changes
 
