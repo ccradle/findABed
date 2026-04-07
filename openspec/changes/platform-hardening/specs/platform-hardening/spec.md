@@ -59,33 +59,43 @@ The system SHALL support key rotation with configurable overlap.
 - **AND** the @Scheduled cleanup has not yet run
 - **THEN** the system SHALL still reject the key (expiry checked in SQL query, not dependent on cleanup)
 
-### Requirement: API key brute-force rate limiting
+### Requirement: API key rate limiting
 
-The system SHALL rate limit failed API key authentication attempts to prevent brute-force key guessing.
+The system SHALL rate limit all API key authentication attempts (valid and invalid) per IP to prevent brute-force key guessing. Both valid and invalid keys consume tokens — no information leakage.
 
-#### Scenario: Invalid API key attempts are rate limited per IP
-- **WHEN** a client IP sends more than 5 requests with invalid API keys within 1 minute
-- **THEN** subsequent requests with `X-API-Key` header SHALL return 429 Too Many Requests
-- **AND** the response SHALL include a `Retry-After` header
-- **AND** the response body SHALL be `{"error":"rate_limited"}`
+#### Scenario: 6th API key attempt within 1 minute returns 429
+- **WHEN** a client IP sends 5 requests with `X-API-Key` header within 1 minute
+- **AND** sends a 6th request
+- **THEN** the 6th request SHALL return 429 Too Many Requests
+- **AND** the response SHALL include `Retry-After` header with seconds until refill
+- **AND** the response SHALL include `X-RateLimit-Limit: 5` and `X-RateLimit-Remaining: 0`
 
-#### Scenario: Valid API key requests are not affected by failure rate limit
-- **WHEN** a client IP has been rate-limited due to failed API key attempts
-- **AND** the same IP sends a request with a VALID API key
-- **THEN** the valid request SHALL still be processed (failure counter is separate from success path)
+#### Scenario: All API key responses include rate limit headers
+- **WHEN** any request with `X-API-Key` header is processed (valid or invalid key)
+- **THEN** the response SHALL include `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers
 
 #### Scenario: Rate limit logged at WARN level
-- **WHEN** an API key rate limit is triggered
+- **WHEN** an API key rate limit is triggered (429 returned)
 - **THEN** the event SHALL be logged at WARN level with client IP (consistent with REQ-RL-5)
 
-#### Scenario: Nginx edge rate limiting on API key paths
-- **WHEN** a client IP sends more than 20 requests per minute to `/api/v1/` with `X-API-Key` header
-- **THEN** nginx SHALL return 429 before the request reaches the JVM
+#### Scenario: Nginx edge rate limiting on API paths
+- **WHEN** a client IP sends more than 60 requests per minute to `/api/`
+- **THEN** nginx SHALL return 429 before the request reaches the JVM (burst=20)
 
-#### Scenario: Different IPs have independent API key rate limits
-- **WHEN** IP-A has been rate-limited on API key failures
-- **AND** IP-B sends a request with an invalid API key
-- **THEN** IP-B SHALL not be rate-limited (independent counters)
+#### Scenario: Different IPs have independent rate limits
+- **WHEN** IP-A has been rate-limited
+- **AND** IP-B sends a request with an API key
+- **THEN** IP-B SHALL not be affected (independent Caffeine-cached buckets)
+
+#### Scenario: Rate limit buckets do not grow unbounded
+- **WHEN** 100,000+ unique IPs send API key requests
+- **THEN** the bucket cache SHALL not exceed 10,000 entries (Caffeine eviction)
+- **AND** idle buckets SHALL be evicted after 10 minutes
+
+#### Scenario: Client IP resolved from X-Real-IP header
+- **WHEN** the request arrives via nginx proxy
+- **THEN** the rate limiter SHALL use the `X-Real-IP` header value (set by nginx)
+- **AND** SHALL fall back to `getRemoteAddr()` if the header is absent
 
 ### Requirement: Webhook subscription delete
 

@@ -38,17 +38,21 @@ POST /api/v1/api-keys/{id}/rotate generates a new key. The old key hash is prese
 
 **Two-layer defense** matching the existing auth rate limiting pattern:
 
-**Layer 1 — Nginx (edge):** Add `limit_req` zone for API-key-bearing requests. New zone `api_key_auth` in `00-rate-limit.conf`: 20 requests/minute per IP with burst=10. This stops volumetric brute-force before it reaches the JVM. Applied to all `/api/v1/` paths that accept `X-API-Key` header.
+**Layer 1 — Nginx (edge):** `limit_req_zone api_edge` at 1 req/sec (60/min) per IP with burst=20. Applied to all `/api/` paths. Catches volumetric brute-force before JVM. Generous enough for normal authenticated use — the Bucket4j layer handles fine-grained control.
 
-**Layer 2 — Bucket4j (application):** Separate rate limit filter for failed API key attempts. Track per-IP, 5 failed attempts per minute. On exceeding: return 429 with `Retry-After` header and `{"error":"rate_limited"}` body. Consistent with existing Bucket4j patterns (login: 10/15min, password: 5/15min).
+**Layer 2 — Bucket4j (application):** Programmatic Bucket4j in `ApiKeyAuthenticationFilter`. Single atomic `tryConsumeAndReturnRemaining(1)` per request bearing `X-API-Key`. Both valid and invalid keys consume tokens (5/min per IP). This is intentional — attacker cannot distinguish valid from invalid based on rate limit behavior.
 
-**Implementation approach:** The `ApiKeyAuthenticationFilter` already processes every request with an `X-API-Key` header. On validation failure (key not found or inactive), it currently silently proceeds to the next filter. Change: on failed validation, increment a Bucket4j counter. If counter exhausted, return 429 directly from the filter before the request reaches the controller. Log at WARN level (consistent with REQ-RL-5).
+**Implementation decisions (revised after principal + security review):**
 
-**Why both layers:**
-- Nginx layer: protects against volumetric attacks that could overwhelm JVM memory (Bucket4j stores counters in-memory)
-- Bucket4j layer: fine-grained per-IP tracking with business logic (distinguishes valid vs. invalid keys, logs failures)
+1. **Single atomic call** — `tryConsumeAndReturnRemaining(1)` replaces the broken `tryConsume(0)` + `tryConsume(1)` pattern. `tryConsume(0)` always returns true (requests zero tokens). The atomic call provides consume result, remaining count, and retry-after timing in one CAS operation.
 
-**What about rate limiting valid API key requests?** Deferred — valid key usage limits (per-key quotas) are a future enhancement. The immediate concern is brute-force protection on the authentication path.
+2. **Caffeine cache for buckets** — `Caffeine.newBuilder().maximumSize(10_000).expireAfterAccess(10 min)` replaces unbounded `ConcurrentHashMap`. Prevents memory DoS from IP rotation attacks (millions of unique IPs). Caffeine already a dependency (Bucket4j JCache backend).
+
+3. **Client IP from `X-Real-IP`** — nginx sets this from `$remote_addr` (container nginx sees the upstream proxy IP). In production behind Cloudflare, the host nginx should set `X-Real-IP` from `CF-Connecting-IP` for true client IP. Falls back to `getRemoteAddr()` for local dev. Trust model: iptables restricts 80/443 to Cloudflare IPs, so direct header forgery is blocked at the network level.
+
+4. **`X-RateLimit-*` response headers** on all API-key-bearing responses: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`. Values from `ConsumptionProbe`. Enables client self-throttling (Stripe/GitHub pattern).
+
+5. **Both valid and invalid keys consume** — the rate limit is per-IP, not per-key. An IP gets 5 attempts/min regardless of key validity. This prevents information leakage (attacker can't tell if a key exists by whether it consumed a token or not).
 
 ### D2: Webhook subscription pause/resume
 

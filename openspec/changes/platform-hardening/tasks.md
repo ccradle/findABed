@@ -19,19 +19,23 @@
 - [x] T-5c: Grace period expiry pushed to SQL — `findByOldKeyHashWithinGracePeriod` includes `AND old_key_expires_at > NOW()`. No unnecessary DB round-trips.
 - [x] T-5d: Remove unused `ConditionalOnProperty` import.
 - [x] T-5e: Add ShedLock comment on `@Scheduled` cleanup for future multi-instance deployments.
-- [ ] T-5f: Integration test — revoke during active grace period: old key no longer authenticates
-- [ ] T-5g: Integration test — expired grace period old key rejected even if cleanup hasn't run (use short grace period in test, sleep, verify)
-- [ ] T-5h: Integration test — rotated key is 64 hex chars (256 bits)
+- [x] T-5f: Integration test — revoke during active grace period: both old and new keys fail (deactivate clears grace)
+- [x] T-5g: Integration test — expired grace period old key rejected (DB manipulation to expire, SQL-level check)
+- [x] T-5h: Integration test — created and rotated keys are 64 hex chars (256 bits)
+- [x] T-5i: Fix existing test_apiKeyAuth_keyRotation — old key now works during grace period (was asserting UNAUTHORIZED)
 
 ### Backend — API Key Brute-Force Rate Limiting
 
-- [ ] T-RL-1: Add Bucket4j filter config for API key failures: `cache-name: rate-limit-api-key`, url pattern matching `X-API-Key` header presence, 5 failed attempts per minute per IP
-- [ ] T-RL-2: Modify `ApiKeyAuthenticationFilter` — on validation failure, increment Bucket4j counter. If exhausted, return 429 with `Retry-After` and `{"error":"rate_limited"}` body. Log at WARN.
-- [ ] T-RL-3: Add nginx `limit_req_zone api_key_auth` in `00-rate-limit.conf` — 20 req/min per IP for `/api/v1/` paths with `X-API-Key`
-- [ ] T-RL-4: Integration test (positive): valid API key succeeds after failed attempts from different IP
-- [ ] T-RL-5: Integration test (positive): 5 invalid keys from same IP → 6th returns 429 with Retry-After header
-- [ ] T-RL-6: Integration test (negative): valid API key from rate-limited IP still authenticates (failure counter separate from success)
-- [ ] T-RL-7: Integration test (negative): rate limit does not cross IPs (IP-A limited, IP-B succeeds)
+- [x] T-RL-1: Programmatic Bucket4j in `ApiKeyAuthenticationFilter` — Caffeine cache (10K max, 10m TTL), single atomic `tryConsumeAndReturnRemaining(1)` per request. Both valid + invalid keys consume tokens.
+- [x] T-RL-2: Return 429 with `Retry-After` (from ConsumptionProbe), `X-RateLimit-Limit/Remaining/Reset` headers, `{"error":"rate_limited"}` body. Log at WARN.
+- [x] T-RL-3: Nginx `limit_req_zone api_edge:1m rate=1r/s` (60/min) in `00-rate-limit.conf`, applied to `/api/` location with burst=20 nodelay.
+- [x] T-RL-3a: Client IP resolved from `X-Real-IP` header (set by nginx), falls back to `getRemoteAddr()`. Documented trust model (iptables restricts to Cloudflare IPs).
+- [x] T-RL-3b: Fix principal review: Caffeine cache replaces unbounded ConcurrentHashMap, atomic tryConsumeAndReturnRemaining replaces broken tryConsume(0)+tryConsume(1), X-RateLimit-* headers added.
+- [ ] T-RL-4: Integration test (positive): 5 API key requests succeed, 6th returns 429 with Retry-After and X-RateLimit-Remaining: 0
+- [ ] T-RL-5: Integration test (positive): X-RateLimit-Limit and X-RateLimit-Remaining headers present on successful API key response
+- [ ] T-RL-6: Integration test (negative): rate limit does not cross IPs (IP-A exhausted, IP-B independent)
+- [ ] T-RL-7: Integration test (negative): rate limit recovery — after window refill, previously limited IP can make requests again
+- [ ] T-RL-8: Integration test (performance): Caffeine eviction — verify cache doesn't grow beyond bounds under simulated IP rotation
 
 ### Backend — Webhook Management (Flyway range: V34–V35)
 

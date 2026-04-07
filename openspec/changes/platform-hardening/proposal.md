@@ -5,7 +5,7 @@ The admin panel creates API keys and webhook subscriptions but cannot manage the
 ## What Changes
 
 - **API key lifecycle**: revoke button (confirmation, immediate invalidation — clears grace period), rotate with grace period (old key hash preserved in `old_key_hash` with `old_key_expires_at`, default 24h, Stripe model), 256-bit key entropy, SQL-level expiry validation, metadata display (last used, status badge, expiry).
-- **API key brute-force rate limiting**: Two-layer defense — nginx `limit_req` zone (20/min per IP) + Bucket4j per-IP failed attempt tracking (5/min). Returns 429 with `Retry-After`. Consistent with existing auth rate limiting pattern.
+- **API key rate limiting**: Two-layer defense — nginx edge (1r/s, burst=20) + Bucket4j per-IP (5/min, Caffeine-cached, atomic `tryConsumeAndReturnRemaining`). Both valid and invalid keys consume tokens (no info leak). `X-RateLimit-*` headers on all responses (Stripe/GitHub pattern). Client IP from `X-Real-IP` (nginx-set).
 - **Webhook subscription management**: delete button (confirmation), pause/resume toggle, send test event button with event-type dropdown, recent delivery log table (last 20 deliveries per subscription). Webhook HTTP client: 10s connect timeout, 30s read timeout. Response body truncated to 1KB in delivery log.
 - **Server-side retry on 409**: spring-retry with @Retryable on availability update for advisory lock contention. 3 attempts, 50ms backoff × 2. Eliminates 409 from client perspective.
 - **SSE slow-client protection**: bounded per-client event queue (max 10) with drop-oldest on overflow. Gatling simulation with 200 SSE connections + bed search.
