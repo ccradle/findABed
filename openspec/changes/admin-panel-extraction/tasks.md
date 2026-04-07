@@ -40,6 +40,7 @@
 - [ ] 4.16 Verify `npm run build` passes
 - [ ] 4.17 Create `admin/tabs/HmisExportTab.tsx` — extract HmisExportTab, default export
 - [ ] 4.18 Verify `npm run build` passes
+- [ ] 4.19 Add code comment in AdminPanel.tsx TABS array: "Future: filter by user role for per-tab permissions (see design D5)"
 
 ## 5. Update Orchestrator
 
@@ -62,8 +63,16 @@
 - [ ] 7.3 Run full Playwright suite through nginx — all existing admin tests pass
 - [ ] 7.4 Run axe-core accessibility tests — zero new violations
 - [ ] 7.5 Verify admin panel loads in dark mode (no broken styles from extraction)
+- [ ] 7.6 Verify AdminPanel.tsx is under 150 lines (spec requirement)
+- [ ] 7.7 Verify Vite build output shows separate chunks for lazy-loaded tabs (`ls dist/assets/ | grep -c chunk`)
+- [ ] 7.8 Add `<ErrorBoundary>` per tab — verify a failing tab shows error message, not blank panel, and tab bar stays functional
 
-## 8. Documentation
+## 8. Documentation & Deploy
 
 - [ ] 8.1 Add CHANGELOG entry
 - [ ] 8.2 Version bump in pom.xml (patch)
+- [ ] 8.3 Commit, push, create PR, wait for CI green
+- [ ] 8.4 Merge to main, tag, create release
+- [ ] 8.5 Deploy to Oracle VM (frontend-only: `npm run build` + docker rebuild frontend + restart)
+- [ ] 8.6 Run deploy-verify script against live site — verify admin panel loads, all tabs render
+- [ ] 8.7 Manual spot check: click through each admin tab on findabed.org (incognito)

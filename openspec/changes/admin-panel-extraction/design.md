@@ -81,8 +81,19 @@ Extract in dependency order:
 
 This order ensures each file compiles before the next is extracted.
 
+### D5: Future-proofing for conditional tab visibility
+
+Each tab is a separate `default export` component. This enables per-tab role gating in the future:
+```tsx
+const UsersTab = lazy(() => import('./tabs/UsersTab'));
+// Future: {user.roles.includes('PLATFORM_ADMIN') && activeTab === 'oauth2Providers' && ...}
+```
+
+The orchestrator's `TABS` array can be filtered by role before rendering. Each tab component can also independently check permissions and return null if unauthorized. This design point is NOT implemented in this refactor — it's documented so the platform-hardening frontend work or future RBAC changes can add it without restructuring.
+
 ## Risks / Trade-offs
 
 - **Import path changes**: Each tab now imports from `../../services/api` instead of same-directory. Search-and-replace.
 - **Existing Playwright tests**: Should pass unchanged — they test URLs and DOM, not file structure. Run full suite after extraction.
 - **Separate Spring context for AnalyticsTab**: The existing `<Suspense>` around AnalyticsTab uses a different lazy pattern — verify it still works after the refactor.
+- **Lazy load failure**: If a tab chunk fails to download (network error), the user sees a blank tab panel. Mitigate with `<ErrorBoundary>` per tab that shows a "Failed to load, try refreshing" message.
