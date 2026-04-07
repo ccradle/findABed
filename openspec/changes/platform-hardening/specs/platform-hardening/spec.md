@@ -115,13 +115,23 @@ The admin panel SHALL allow deleting webhook subscriptions.
 
 ### Requirement: Webhook subscription pause/resume
 
-The system SHALL support pausing and resuming webhook delivery.
+The system SHALL support pausing and resuming webhook delivery via the existing `status` field (PAUSED value). No separate `active` boolean — single source of truth.
 
 #### Scenario: Admin pauses a subscription
+- **WHEN** an admin sends PATCH /api/v1/subscriptions/{id}/status with `{"status": "PAUSED"}`
+- **THEN** the subscription status SHALL change to PAUSED
+- **AND** events matching the subscription SHALL not be delivered until resumed
+- **AND** events during the pause period SHALL be dropped (not queued)
 
-- **WHEN** an admin toggles a subscription to "Paused"
-- **THEN** events matching the subscription are not delivered until resumed
-- **AND** events during the pause period are dropped (not queued)
+#### Scenario: Admin resumes a paused subscription
+- **WHEN** an admin sends PATCH /api/v1/subscriptions/{id}/status with `{"status": "ACTIVE"}`
+- **THEN** the subscription status SHALL change to ACTIVE
+- **AND** delivery SHALL resume on the next matching event
+
+#### Scenario: Invalid status transition rejected
+- **WHEN** an admin attempts to set status to an invalid value (e.g., "FAILING" or "DELETED")
+- **THEN** the system SHALL return 400 Bad Request
+- **AND** only ACTIVE and PAUSED SHALL be accepted as admin-settable values
 
 ### Requirement: Webhook test event
 
@@ -160,10 +170,12 @@ The system SHALL record recent webhook deliveries for admin visibility.
 
 #### Scenario: Auto-disable on consecutive failures
 - **WHEN** a subscription has 5 consecutive delivery failures
-- **THEN** the subscription is automatically paused and the admin is notified
+- **THEN** the subscription status SHALL change to DEACTIVATED (not PAUSED — distinguishes auto-disable from admin pause)
+- **AND** the admin SHALL be notified via SSE
 
 #### Scenario: Admin re-enables auto-disabled subscription
-- **WHEN** an admin resumes a subscription that was auto-disabled
+- **WHEN** an admin sends PATCH /api/v1/subscriptions/{id}/status with `{"status": "ACTIVE"}`
+- **AND** the subscription was previously DEACTIVATED
 - **THEN** the consecutive failure counter SHALL reset to 0
 - **AND** delivery attempts SHALL resume on the next matching event
 

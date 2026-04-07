@@ -54,9 +54,24 @@ POST /api/v1/api-keys/{id}/rotate generates a new key. The old key hash is prese
 
 5. **Both valid and invalid keys consume** — the rate limit is per-IP, not per-key. An IP gets 5 attempts/min regardless of key validity. This prevents information leakage (attacker can't tell if a key exists by whether it consumed a token or not).
 
-### D2: Webhook subscription pause/resume
+### D2: Webhook subscription pause/resume (revised — use existing status field)
 
-New `active BOOLEAN DEFAULT true` on `subscription` table. PATCH /api/v1/subscriptions/{id}/status with `{active: true|false}`. WebhookDeliveryService checks `active` flag before delivery. Paused subscriptions remain visible in the list with "Paused" badge. Events during pause are dropped (not queued) — documented in UI tooltip.
+**No new `active BOOLEAN` column.** The subscription entity already has a `status VARCHAR` field with values: ACTIVE, CANCELLED, FAILING, DEACTIVATED. Add `PAUSED` to represent admin-initiated pause. This avoids dual-state ambiguity (`active=false` + `status=ACTIVE` would be contradictory).
+
+PATCH /api/v1/subscriptions/{id}/status with `{"status": "PAUSED"}` or `{"status": "ACTIVE"}`. WebhookDeliveryService checks `status = 'ACTIVE'` before delivery (already does via `findActiveByEventType`). Paused subscriptions remain visible in the list with "Paused" badge. Events during pause are dropped (not queued) — documented in UI tooltip.
+
+**Subscription state machine:**
+```
+ACTIVE → PAUSED    (admin toggle)
+ACTIVE → FAILING   (delivery failure detected)
+ACTIVE → CANCELLED (admin delete — soft delete)
+PAUSED → ACTIVE    (admin toggle / re-enable)
+FAILING → ACTIVE   (successful delivery resets)
+FAILING → DEACTIVATED (5 consecutive failures — auto-disable)
+DEACTIVATED → ACTIVE  (admin re-enables)
+```
+
+**Flyway impact:** No migration needed for pause/resume — the status column already exists as VARCHAR. V34 is freed for webhook_delivery_log.
 
 ### D3: Webhook test event
 
@@ -68,7 +83,7 @@ New `webhook_delivery_log` table: `id UUID`, `subscription_id UUID`, `event_type
 
 ### D5: Auto-disable on consecutive failures
 
-After 5 consecutive delivery failures to the same subscription, set `active=false` and publish a notification event to the tenant's admin users. The admin can re-enable after fixing the endpoint. This prevents resource waste on dead endpoints.
+After 5 consecutive delivery failures to the same subscription, set `status='DEACTIVATED'` and publish a notification event to the tenant's admin users. The admin can re-enable (set status back to ACTIVE) after fixing the endpoint. This prevents resource waste on dead endpoints.
 
 ### D6: Server-side retry with Spring Retry
 

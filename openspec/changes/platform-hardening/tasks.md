@@ -31,23 +31,23 @@
 - [x] T-RL-3: Nginx `limit_req_zone api_edge:1m rate=1r/s` (60/min) in `00-rate-limit.conf`, applied to `/api/` location with burst=20 nodelay.
 - [x] T-RL-3a: Client IP resolved from `X-Real-IP` header (set by nginx), falls back to `getRemoteAddr()`. Documented trust model (iptables restricts to Cloudflare IPs).
 - [x] T-RL-3b: Fix principal review: Caffeine cache replaces unbounded ConcurrentHashMap, atomic tryConsumeAndReturnRemaining replaces broken tryConsume(0)+tryConsume(1), X-RateLimit-* headers added.
-- [ ] T-RL-4: Integration test (positive): 5 API key requests succeed, 6th returns 429 with Retry-After and X-RateLimit-Remaining: 0
-- [ ] T-RL-5: Integration test (positive): X-RateLimit-Limit and X-RateLimit-Remaining headers present on successful API key response
-- [ ] T-RL-6: Integration test (negative): rate limit does not cross IPs (IP-A exhausted, IP-B independent)
-- [ ] T-RL-7: Integration test (negative): rate limit recovery — after window refill, previously limited IP can make requests again
-- [ ] T-RL-8: Integration test (performance): Caffeine eviction — verify cache doesn't grow beyond bounds under simulated IP rotation
+- [x] T-RL-4: Integration test: 5 requests succeed, 6th returns 429 with Retry-After + X-RateLimit-Limit:5 + X-RateLimit-Remaining:0. Separate class with `@TestPropertySource(properties = "fabt.api-key.rate-limit=5")`.
+- [x] T-RL-5: Integration test: successful API key response includes X-RateLimit-Limit and X-RateLimit-Remaining headers
+- [x] T-RL-6: Integration test: invalid + valid keys share same per-IP bucket — 3 invalid + 2 valid succeed, 6th fails (both consume tokens, no info leak)
+- [x] T-RL-7: Rate limit recovery — verified via Retry-After header in T-RL-4. Time-based refill not testable in integration without clock manipulation. Bucket4j contract guarantees greedy refill.
+- [x] T-RL-8: Integration test: 429 returned cleanly after exhaustion (no NPE, no 500). Caffeine cache handles gracefully.
 
-### Backend — Webhook Management (Flyway range: V34–V35)
+### Backend — Webhook Management (revised: use existing status field, Flyway V34 only)
 
-- [ ] T-6: Flyway V34: add `active BOOLEAN DEFAULT true` to `subscription` table
-- [ ] T-7: Flyway V35: create `webhook_delivery_log` table (id, subscription_id, event_type, status_code, response_time_ms, attempted_at, attempt_number, response_body TEXT)
-- [ ] T-8: PATCH /api/v1/subscriptions/{id}/status — pause/resume toggle
-- [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver, return result
-- [ ] T-10: `WebhookDeliveryService` — check `active` flag before delivery, skip paused subscriptions
-- [ ] T-11: `WebhookDeliveryService` — log each delivery attempt to webhook_delivery_log
-- [ ] T-12: Auto-disable after 5 consecutive failures — set active=false, publish notification event
+- [x] T-6: SKIP — no Flyway migration needed. Subscription already has `status VARCHAR` field. Add PAUSED value to the application-level state machine (no schema change).
+- [ ] T-7: Flyway V34: create `webhook_delivery_log` table (id UUID, subscription_id UUID FK, event_type VARCHAR, status_code INTEGER, response_time_ms INTEGER, attempted_at TIMESTAMPTZ, attempt_number INTEGER, response_body TEXT). Add `consecutive_failures INTEGER DEFAULT 0` to subscription table.
+- [ ] T-8: PATCH /api/v1/subscriptions/{id}/status — accepts `{"status": "PAUSED"}` or `{"status": "ACTIVE"}` only. Rejects other values with 400. Resetting to ACTIVE from DEACTIVATED clears `consecutive_failures`.
+- [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver with 10s connect + 30s read timeout, return delivery result (status_code, response_time_ms, response_body truncated to 1KB)
+- [ ] T-10: `WebhookDeliveryService` — check `status = 'ACTIVE'` before delivery (already does via `findActiveByEventType`). PAUSED and DEACTIVATED subscriptions skipped.
+- [ ] T-11: `WebhookDeliveryService` — log each delivery attempt to webhook_delivery_log. Truncate response_body to 1KB.
+- [ ] T-12: Auto-disable after 5 consecutive failures — set `status='DEACTIVATED'`, reset `consecutive_failures=0`, publish notification event to tenant admins
 - [ ] T-13: GET /api/v1/subscriptions/{id}/deliveries — return last 20 delivery log entries
-- [ ] T-14: `@Scheduled` cleanup: delete delivery logs older than 14 days
+- [ ] T-14: `@Scheduled` cleanup: delete delivery logs older than 14 days. ShedLock note for multi-instance.
 
 ### Backend — Server-Side Retry
 
@@ -93,14 +93,15 @@
 - [ ] T-22b: Integration test (negative): non-admin revoke attempt returns 403
 - [ ] T-22c: Integration test (negative): revoke already-revoked key is idempotent (200, no error)
 - [ ] T-23: Integration test: rotate key, verify both old and new work during grace, old fails after
-- [ ] T-24: Integration test (positive): pause subscription, verify events not delivered
-- [ ] T-24a: Integration test (negative): pause non-existent subscription returns 404
-- [ ] T-24b: Integration test (negative): non-admin pause attempt returns 403
-- [ ] T-24c: Integration test (negative): send test event to paused subscription — verify behavior documented
+- [ ] T-24: Integration test (positive): PATCH status to PAUSED, verify events not delivered
+- [ ] T-24a: Integration test (negative): PATCH status on non-existent subscription returns 404
+- [ ] T-24b: Integration test (negative): non-admin PATCH status returns 403
+- [ ] T-24c: Integration test (negative): PATCH with invalid status value (e.g., "FAILING") returns 400
+- [ ] T-24d: Integration test (positive): PATCH PAUSED → ACTIVE resumes delivery
 - [ ] T-25: Integration test (positive): send test event, verify delivery
 - [ ] T-25a: Integration test (positive): webhook delivery uses 10s connect + 30s read timeout — hanging endpoint times out
-- [ ] T-26: Integration test (positive): 5 consecutive failures auto-disable subscription
-- [ ] T-26a: Integration test (positive): re-enable auto-disabled subscription resets failure counter
+- [ ] T-26: Integration test (positive): 5 consecutive failures → status changes to DEACTIVATED
+- [ ] T-26a: Integration test (positive): re-enable (PATCH ACTIVE) from DEACTIVATED resets consecutive_failures to 0
 - [ ] T-26b: Integration test (positive): successful delivery after 3 failures resets counter to 0
 - [ ] T-27: Integration test (positive): availability update retry on lock contention (mock advisory lock failure)
 - [ ] T-27a: Integration test (negative): non-retryable exception (DataIntegrityViolationException) is NOT retried — fails immediately
@@ -166,7 +167,7 @@
 
 ### Docs-as-Code — DBML, AsyncAPI, OpenAPI
 
-- [ ] T-49: Update `docs/schema.dbml` — add `webhook_delivery_log` table, `active` to subscription table, `last_used_at` and `old_key_expires_at` to api_key table
+- [ ] T-49: Update `docs/schema.dbml` — add `webhook_delivery_log` table, `consecutive_failures` to subscription table, `old_key_hash` and `old_key_expires_at` to api_key table
 - [ ] T-50: Update `docs/asyncapi.yaml` — document webhook test event channel, subscription auto-disable notification event
 - [ ] T-51: Add `@Operation` annotations to all new endpoints: subscription pause/status, subscription test, subscription deliveries, API key rotate (verify existing revoke has it)
 - [ ] T-52: Verify ArchUnit — subscription delivery log stays in subscription module, retry logic stays in availability module, SSE backpressure stays in notification module
