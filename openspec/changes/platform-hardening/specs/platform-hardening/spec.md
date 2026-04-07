@@ -24,6 +24,21 @@ The admin panel SHALL allow revoking API keys with immediate effect.
 - **WHEN** an admin revokes a key that is already revoked
 - **THEN** the system SHALL return 200 (no error)
 
+#### Scenario: Revoke during grace period clears old key hash
+- **WHEN** an admin revokes a key that has an active grace period (recently rotated)
+- **THEN** the key SHALL be immediately deactivated
+- **AND** the old key hash and grace period expiry SHALL be cleared
+- **AND** neither the current nor the old key SHALL authenticate
+
+### Requirement: API key entropy
+
+API keys SHALL be generated with at least 256 bits of entropy using a cryptographically secure random number generator.
+
+#### Scenario: Generated key has sufficient entropy
+- **WHEN** a new API key is created or rotated
+- **THEN** the plaintext key SHALL be at least 64 hex characters (256 bits)
+- **AND** the key SHALL be generated using SecureRandom
+
 ### Requirement: API key rotation with grace period
 
 The system SHALL support key rotation with configurable overlap.
@@ -38,6 +53,11 @@ The system SHALL support key rotation with configurable overlap.
 
 - **WHEN** the grace period elapses after key rotation
 - **THEN** the old key is automatically invalidated
+
+#### Scenario: Expired old key rejected at validation time (not just cleanup)
+- **WHEN** a request uses an old key whose grace period has expired
+- **AND** the @Scheduled cleanup has not yet run
+- **THEN** the system SHALL still reject the key (expiry checked in SQL query, not dependent on cleanup)
 
 ### Requirement: Webhook subscription delete
 

@@ -21,7 +21,17 @@ API keys can be created but not revoked or rotated. Webhook subscriptions can be
 
 ### D1: API key rotation with grace period
 
-POST /api/v1/api-keys/{id}/rotate generates a new key. The old key remains valid for a configurable grace period (default 24 hours, tenant-configurable). Both keys authenticate successfully during overlap. After the grace period, the old key is automatically invalidated by a @Scheduled cleanup task. Frontend shows both keys during grace period with countdown.
+POST /api/v1/api-keys/{id}/rotate generates a new key. The old key hash is preserved in `old_key_hash` with `old_key_expires_at` set to +24h. Both current and old keys authenticate during overlap. `validate()` checks current key first, then old key with SQL-level expiry filter (`old_key_expires_at > NOW()`). After the grace period, a @Scheduled cleanup nulls the old hash. Frontend shows both keys during grace period with countdown.
+
+### D1a: API key security decisions (principal review, 2026-04-07)
+
+1. **Key entropy: 256 bits (32 bytes)** — industry standard. 128 bits was used initially but doubled at no cost. Matches Stripe/GitHub.
+2. **SHA-256 for hashing** — correct for high-entropy machine-generated keys. bcrypt/argon2 would be a DoS vector. Hash comparison happens in PostgreSQL (btree index lookup), not in Java — no timing attack surface.
+3. **Revoke clears grace period** — `deactivate()` nulls `oldKeyHash` and `oldKeyExpiresAt` to prevent any authentication path for a revoked key.
+4. **Grace period expiry checked in SQL** — `findByOldKeyHashWithinGracePeriod` includes `AND old_key_expires_at > NOW()` in the query, avoiding unnecessary database round-trips for expired old keys.
+5. **@Scheduled cleanup is supplemental, not the security boundary** — `validate()` always checks expiry inline. Cleanup is hygiene for database size.
+6. **ShedLock deferred** — cleanup is idempotent, acceptable for single-instance `lite` profile. Comment added noting ShedLock needed for multi-instance.
+7. **Timing attack note** — all hash comparison happens database-side via btree index. If future caching moves comparison to Java, must use `MessageDigest.isEqual()` (constant-time). Documented for future.
 
 ### D2: Webhook subscription pause/resume
 

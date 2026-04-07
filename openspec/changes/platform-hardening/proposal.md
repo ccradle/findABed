@@ -4,7 +4,7 @@ The admin panel creates API keys and webhook subscriptions but cannot manage the
 
 ## What Changes
 
-- **API key lifecycle**: revoke button (confirmation, immediate invalidation), rotate with grace period (new key + old key valid for configurable window, default 24h), metadata display (last used, status badge, expiry).
+- **API key lifecycle**: revoke button (confirmation, immediate invalidation — clears grace period), rotate with grace period (old key hash preserved in `old_key_hash` with `old_key_expires_at`, default 24h, Stripe model), 256-bit key entropy, SQL-level expiry validation, metadata display (last used, status badge, expiry).
 - **Webhook subscription management**: delete button (confirmation), pause/resume toggle, send test event button with event-type dropdown, recent delivery log table (last 20 deliveries per subscription).
 - **Server-side retry on 409**: spring-retry with @Retryable on availability update for advisory lock contention. 3 attempts, 50ms backoff × 2. Eliminates 409 from client perspective.
 - **SSE slow-client protection**: bounded per-client event queue (max 10) with drop-oldest on overflow. Gatling simulation with 200 SSE connections + bed search.

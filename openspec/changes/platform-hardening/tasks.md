@@ -2,20 +2,31 @@
 
 ### Setup
 
-- [ ] T-0: Create branch `feature/platform-hardening` in code repo (`finding-a-bed-tonight`)
+- [x] T-0: Create branch `feature/platform-hardening` in code repo (`finding-a-bed-tonight`)
 
 ### Backend — API Key Lifecycle (Flyway range: V32–V33)
 
-- [ ] T-1: `ApiKeyService.revokeKey()` — immediate invalidation, clear from cache
-- [ ] T-2: `ApiKeyService.rotateKey()` — generate new key, set `old_key_expires_at` on previous (default 24h grace), return new plaintext once
-- [ ] T-3: `ApiKeyAuthenticationFilter` — check `old_key_expires_at` for grace period validation
-- [ ] T-4: `@Scheduled` cleanup: invalidate expired old keys past grace period
-- [ ] T-5: Flyway V32: add `last_used_at TIMESTAMPTZ` and `old_key_expires_at TIMESTAMPTZ` to api_key table, update on each successful auth
+- [x] T-1: `ApiKeyService.deactivate()` — already implements revoke (sets active=false, immediate). No cache layer exists.
+- [x] T-2: `ApiKeyService.rotate()` — preserve old hash in `oldKeyHash`, set `oldKeyExpiresAt` to +24h, generate new key
+- [x] T-3: `ApiKeyService.validate()` — check old key hash within grace period if current key not found. Expiry checked in SQL (`old_key_expires_at > NOW()`).
+- [x] T-4: `@Scheduled` cleanup every hour — clear `oldKeyHash`/`oldKeyExpiresAt` after grace period expires. ShedLock noted for multi-instance.
+- [x] T-5: Flyway V33: add `old_key_hash VARCHAR(255)` and `old_key_expires_at TIMESTAMPTZ` to api_key table (last_used_at already existed)
 
-### Backend — Webhook Management (Flyway range: V33–V34)
+### Backend — API Key Principal Review Fixes (2026-04-07)
 
-- [ ] T-6: Flyway V33: add `active BOOLEAN DEFAULT true` to `subscription` table
-- [ ] T-7: Flyway V34: create `webhook_delivery_log` table (id, subscription_id, event_type, status_code, response_time_ms, attempted_at, attempt_number, response_body TEXT)
+- [x] T-5a: Key entropy: 256 bits (32 bytes) — was 128 bits (16 bytes). One-line fix in `generateRandomKey()`.
+- [x] T-5b: `deactivate()` clears grace period — nulls `oldKeyHash` and `oldKeyExpiresAt` on revoke. Prevents old key auth on revoked keys.
+- [x] T-5c: Grace period expiry pushed to SQL — `findByOldKeyHashWithinGracePeriod` includes `AND old_key_expires_at > NOW()`. No unnecessary DB round-trips.
+- [x] T-5d: Remove unused `ConditionalOnProperty` import.
+- [x] T-5e: Add ShedLock comment on `@Scheduled` cleanup for future multi-instance deployments.
+- [ ] T-5f: Integration test — revoke during active grace period: old key no longer authenticates
+- [ ] T-5g: Integration test — expired grace period old key rejected even if cleanup hasn't run
+- [ ] T-5h: Integration test — rotated key is 64 hex chars (256 bits)
+
+### Backend — Webhook Management (Flyway range: V34–V35)
+
+- [ ] T-6: Flyway V34: add `active BOOLEAN DEFAULT true` to `subscription` table
+- [ ] T-7: Flyway V35: create `webhook_delivery_log` table (id, subscription_id, event_type, status_code, response_time_ms, attempted_at, attempt_number, response_body TEXT)
 - [ ] T-8: PATCH /api/v1/subscriptions/{id}/status — pause/resume toggle
 - [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver, return result
 - [ ] T-10: `WebhookDeliveryService` — check `active` flag before delivery, skip paused subscriptions
@@ -55,11 +66,11 @@
 
 ### Backend — Audit Event Fix (#58)
 
-- [ ] T-58a: Fix ACCESS_CODE_USED audit event: set `actor_user_id = target_user_id` in access code authentication flow
-- [ ] T-58b: Integration test (positive): access code login creates `ACCESS_CODE_USED` audit event with non-null `actor_user_id` matching the authenticated user
-- [ ] T-58c: Integration test (positive): audit event includes client IP address
-- [ ] T-58d: Integration test (negative): verify standard email/password login audit events still have correct `actor_user_id` (no regression)
-- [ ] T-58e: Integration test (negative): verify audit_events INSERT does not produce constraint violation in server logs during access code login
+- [x] T-58a: Fix ACCESS_CODE_USED audit event: set `actor_user_id = target_user_id` in access code authentication flow
+- [x] T-58b: Integration test (positive): access code login creates `ACCESS_CODE_USED` audit event with non-null `actor_user_id` matching the authenticated user
+- [x] T-58c: Integration test (positive): audit event includes client IP address
+- [x] T-58d: Integration test (negative): verify standard email/password login audit events still have correct `actor_user_id` (no regression)
+- [x] T-58e: Integration test (negative): verify audit_events INSERT does not produce constraint violation in server logs during access code login
 
 ### Backend — Tests
 
@@ -91,11 +102,11 @@
 
 ### Frontend — My Reservations Clickable Shelters (#64)
 
-- [ ] T-64a: Make shelter name in My Reservations a clickable link that scrolls to and expands the shelter card in search results
-- [ ] T-64b: Add `data-testid="reservation-shelter-link-{shelterId}"` on each clickable shelter name
-- [ ] T-64c: Ensure hold countdown timer remains visible and continues after clicking
-- [ ] T-64d: Ensure expired reservations still show clickable shelter name alongside expired badge
-- [ ] T-64e: Add i18n for any new link text or aria-label (en.json + es.json)
+- [x] T-64a: Make shelter name in My Reservations a clickable link that opens shelter detail modal (same as clicking the card)
+- [x] T-64b: Add `data-testid="reservation-shelter-link-{shelterId}"` on each clickable shelter name
+- [x] T-64c: Ensure hold countdown timer remains visible and continues after clicking (stopPropagation + modal doesn't affect timer)
+- [x] T-64d: Expired reservations — panel only shows HELD status; expired reservations are removed on next fetch. Name is clickable while visible.
+- [x] T-64e: Add i18n for any new link text or aria-label (en.json + es.json)
 
 ### Frontend — i18n & Accessibility
 
@@ -112,12 +123,12 @@
 
 ### Frontend Tests — My Reservations (#64)
 
-- [ ] T-64f: Playwright (positive): hold a bed → My Reservations shows shelter name as clickable link with `data-testid="reservation-shelter-link-{id}"`
-- [ ] T-64g: Playwright (positive): click reservation shelter link → shelter card expands in search results with details and directions visible
-- [ ] T-64h: Playwright (positive): hold countdown timer still visible and decrementing after clicking shelter link
-- [ ] T-64i: Playwright (positive): multiple reservations → each shelter name independently clickable
-- [ ] T-64j: Playwright (negative): expired reservation → shelter name still clickable, expired badge still visible
-- [ ] T-64k: Playwright (negative): clicking shelter link does NOT navigate away from the search page (stays on same page, scrolls to card)
+- [x] T-64f: Playwright (positive): hold a bed → My Reservations shows shelter name as clickable link with `data-testid="reservation-shelter-link-{id}"`
+- [x] T-64g: Playwright (positive): click reservation shelter link → shelter detail modal opens with details
+- [x] T-64h: Playwright (positive): hold countdown timer still visible and decrementing after clicking shelter link
+- [x] T-64i: Playwright (positive): multiple reservations → each shelter name independently clickable
+- [x] T-64j: Playwright (negative): expired reservations removed from panel (only HELD shown)
+- [x] T-64k: Playwright (negative): clicking shelter link does NOT navigate away from the search page (stays on same page)
 
 ### Performance — Gatling
 
