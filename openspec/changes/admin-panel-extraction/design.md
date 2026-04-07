@@ -23,7 +23,7 @@ AdminPanel.tsx: 2,136 lines, 14 function components, 10 interfaces, shared style
 ```
 frontend/src/pages/admin/
   AdminPanel.tsx           # Orchestrator: tab bar, lazy imports, Suspense
-  types.ts                 # Shared interfaces (ApiKeyRow, SubscriptionRow, User, etc.)
+  types.ts                 # SHARED interfaces only (User, ShelterListItem, ApiKeyRow, ApiKeyCreateResponse, ImportRow, SubscriptionRow, TabKey)
   styles.ts                # Shared style objects (tableStyle, thStyle, tdStyle, inputStyle, primaryBtnStyle)
   components/
     StatusBadge.tsx
@@ -42,7 +42,10 @@ frontend/src/pages/admin/
     ObservabilityTab.tsx
     OAuth2ProvidersTab.tsx
     HmisExportTab.tsx
+    AnalyticsTab.tsx          # Moved from pages/ for consistency
 ```
+
+Tab-specific types (ObservabilityConfig, TemperatureStatus, OAuth2ProviderRow, HmisInventoryRecord, HmisAuditEntry, HmisVendorStatus, HmisStatus) stay in their respective tab files — not in shared `types.ts`.
 
 ### D2: Lazy loading pattern
 

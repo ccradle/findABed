@@ -11,7 +11,7 @@ Impact: PR diffs for any tab change show the entire file. Devon (training) can't
 - **Extract shared types** (ApiKeyRow, SubscriptionRow, User, etc.) into `frontend/src/pages/admin/types.ts`
 - **Lazy-load all tabs** via `React.lazy()` + `<Suspense>` in the orchestrator — same pattern as existing AnalyticsTab
 - **AdminPanel.tsx** shrinks to ~80-100 lines: tab bar + lazy imports + Suspense boundaries
-- **Pure refactor** — zero behavior changes, zero API changes, zero visual changes
+- **Pure refactor** — zero API changes, zero visual changes. One small behavior improvement: ErrorBoundary per tab prevents a failing tab from crashing the entire admin panel.
 
 ## Capabilities
 

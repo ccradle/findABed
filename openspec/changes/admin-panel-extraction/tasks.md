@@ -5,7 +5,7 @@
 
 ## 2. Extract Types and Styles
 
-- [ ] 2.1 Create `admin/types.ts` — extract all interfaces: User, ShelterListItem, ApiKeyRow, ApiKeyCreateResponse, ImportRow, SubscriptionRow, TabKey, and any other shared types
+- [ ] 2.1 Create `admin/types.ts` — extract SHARED interfaces only: User, ShelterListItem, ApiKeyRow, ApiKeyCreateResponse, ImportRow, SubscriptionRow, TabKey. Tab-specific types (ObservabilityConfig, TemperatureStatus, OAuth2ProviderRow, HmisInventoryRecord, HmisAuditEntry, HmisVendorStatus, HmisStatus) stay in their respective tab files.
 - [ ] 2.2 Create `admin/styles.ts` — extract shared style objects: tableStyle, thStyle, tdStyle, inputStyle, primaryBtnStyle, and any other reused style constants
 - [ ] 2.3 Verify `npm run build` passes after extraction
 
@@ -40,7 +40,9 @@
 - [ ] 4.16 Verify `npm run build` passes
 - [ ] 4.17 Create `admin/tabs/HmisExportTab.tsx` — extract HmisExportTab, default export
 - [ ] 4.18 Verify `npm run build` passes
-- [ ] 4.19 Add code comment in AdminPanel.tsx TABS array: "Future: filter by user role for per-tab permissions (see design D5)"
+- [ ] 4.19 Move existing `AnalyticsTab.tsx` from `pages/` to `admin/tabs/AnalyticsTab.tsx` — update lazy import path in orchestrator
+- [ ] 4.20 Verify `npm run build` passes after AnalyticsTab move
+- [ ] 4.21 Add code comment in AdminPanel.tsx TABS array: "Future: filter by user role for per-tab permissions (see design D5)"
 
 ## 5. Update Orchestrator
 
@@ -53,8 +55,9 @@
 
 ## 6. Update Existing Import Paths
 
-- [ ] 6.1 If AnalyticsTab already imports from a different path, verify it still works with the new structure
-- [ ] 6.2 Check if any other files import from AdminPanel.tsx (e.g., test files, page registry) — update paths
+- [ ] 6.1 AnalyticsTab moved to admin/tabs/ in task 4.19 — verify lazy import path in orchestrator is correct
+- [ ] 6.2 Update `App.tsx` (or route config) import path from `./pages/AdminPanel` to `./pages/admin/AdminPanel`
+- [ ] 6.3 Search for any other files importing from AdminPanel.tsx (`grep -r "AdminPanel" frontend/src/`) — update all paths
 
 ## 7. Testing
 
@@ -65,7 +68,7 @@
 - [ ] 7.5 Verify admin panel loads in dark mode (no broken styles from extraction)
 - [ ] 7.6 Verify AdminPanel.tsx is under 150 lines (spec requirement)
 - [ ] 7.7 Verify Vite build output shows separate chunks for lazy-loaded tabs (`ls dist/assets/ | grep -c chunk`)
-- [ ] 7.8 Add `<ErrorBoundary>` per tab — verify a failing tab shows error message, not blank panel, and tab bar stays functional
+- [ ] 7.8 Add `<ErrorBoundary>` per tab — verify a failing tab shows error message, not blank panel, and tab bar stays functional. (Note: this is a small behavior improvement bundled with the refactor — existing behavior crashes the whole page on tab error.)
 
 ## 8. Documentation & Deploy
 
