@@ -212,25 +212,28 @@ The system SHALL record recent webhook deliveries for admin visibility.
 - **WHEN** a delivery succeeds after 3 consecutive failures
 - **THEN** the consecutive failure counter SHALL reset to 0
 
-### Requirement: Server-side retry on availability update conflict
+### Requirement: Server-side retry on transient availability update failures
 
-The system SHALL retry availability updates on transient lock contention.
+The system SHALL retry availability updates on transient DataAccessException using Spring Framework 7 native @Retryable. No external dependency (spring-retry is maintenance mode).
 
-#### Scenario: Advisory lock contention is retried transparently
-
-- **WHEN** an availability update encounters a PessimisticLockingFailureException
-- **THEN** the operation is retried up to 3 times with exponential backoff (50ms × 2)
-- **AND** the client receives 200 if any retry succeeds
+#### Scenario: Transient DataAccessException retried transparently
+- **WHEN** an availability update encounters a transient DataAccessException (connection pool exhaustion, PessimisticLockingFailureException, etc.)
+- **THEN** the operation SHALL be retried up to 2 times (3 total attempts) with exponential backoff (100ms initial, multiplier 2, max 1s)
+- **AND** the client SHALL receive 200 if any attempt succeeds
 
 #### Scenario: All retries exhausted returns 409
+- **WHEN** all 3 attempts fail with DataAccessException
+- **THEN** the client SHALL receive 409 Conflict (via GlobalExceptionHandler mapping)
 
-- **WHEN** all 3 retry attempts fail
-- **THEN** the client receives 409 Conflict
-
-#### Scenario: Non-retryable exception is not retried
-- **WHEN** an availability update encounters a DataIntegrityViolationException (or other non-retryable exception)
+#### Scenario: Business logic exceptions are NOT retried
+- **WHEN** an availability update encounters AvailabilityInvariantViolation or NoSuchElementException
 - **THEN** the exception SHALL propagate immediately without retry
-- **AND** the client receives the appropriate error response (400 or 500)
+- **AND** the client SHALL receive the appropriate error response (422 or 404)
+
+#### Scenario: Retry wrapper is outside @Transactional boundary
+- **WHEN** the first attempt fails and a retry occurs
+- **THEN** the retry SHALL execute in a fresh transaction (not a rolled-back one)
+- **AND** domain events SHALL be published only from the successful attempt
 
 ### Requirement: ACCESS_CODE_USED audit event has correct actor (#58)
 

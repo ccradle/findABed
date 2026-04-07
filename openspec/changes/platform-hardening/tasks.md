@@ -42,7 +42,7 @@
 - [x] T-6: SKIP — no Flyway migration needed. Subscription already has `status VARCHAR` field. Add PAUSED value to the application-level state machine (no schema change).
 - [x] T-7: Flyway V34: `webhook_delivery_log` table + `consecutive_failures` column on subscription.
 - [x] T-8: PATCH /api/v1/subscriptions/{id}/status — ACTIVE/PAUSED only, 400 on invalid. Resets consecutive_failures on re-enable from DEACTIVATED/FAILING.
-- [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver with 10s connect + 30s read timeout, return delivery result
+- [x] T-9: POST /api/v1/subscriptions/{id}/test — `sendTestEvent()` in WebhookDeliveryService. 10s connect timeout via JdkClientHttpRequestFactory. Returns TestDeliveryResult(statusCode, responseTimeMs, responseBody). Logged via recordDelivery().
 - [x] T-10: `findActiveByEventType` already filters by status='ACTIVE'. PAUSED/DEACTIVATED/CANCELLED automatically excluded.
 - [x] T-11: `recordDelivery()` in SubscriptionService — logs to webhook_delivery_log with 1KB truncation in entity constructor.
 - [x] T-12: Auto-disable: `recordDelivery()` increments consecutiveFailures, sets DEACTIVATED at 5. Successful delivery resets counter + clears FAILING status.
@@ -51,12 +51,13 @@
 
 ### Backend — Server-Side Retry
 
-- [ ] T-15: Add `spring-retry` dependency to pom.xml
-- [ ] T-16: `@EnableRetry` on Application or config class
-- [ ] T-17: `@Retryable` on availability update — retryFor PessimisticLockingFailureException, maxAttempts=3, backoff 50ms×2. **CRITICAL: `@Retryable` MUST be OUTSIDE the `@Transactional` boundary** (on the controller or a non-transactional wrapper). If retry wraps a @Transactional method, the second attempt inherits a rolled-back transaction.
-- [ ] T-18: `@Recover` method: log exhausted retries, return 409
-- [ ] T-18a: Integration test — retry succeeds on second attempt, verify only ONE domain event is published (not one per attempt)
-- [ ] T-18b: Integration test — verify @Retryable is outside @Transactional by confirming second attempt gets a fresh transaction (not rollback-only)
+- [x] T-15: SKIP — no new dependency. Spring Framework 7 native @Retryable in spring-core. spring-retry is maintenance mode.
+- [x] T-16: `ResilienceConfig.java` with `@EnableResilientMethods` — enables Framework 7 native @Retryable
+- [x] T-17: `createSnapshotWithRetry()` wrapper — non-transactional, `@Retryable(includes = DataAccessException.class, maxRetries = 2, delay = 100, multiplier = 2, maxDelay = 1000)`. Controller updated to call wrapper.
+- [x] T-18: `DataAccessException` → 409 Conflict in GlobalExceptionHandler. Placed after DuplicateKeyException (which extends DataAccessException — more specific first).
+- [ ] T-18a: Integration test — mock DataAccessException on first call, verify retry succeeds on second attempt, only ONE domain event published
+- [ ] T-18b: Integration test — verify retry executes in fresh transaction (not rollback-only)
+- [ ] T-18c: Integration test — AvailabilityInvariantViolation is NOT retried (propagates immediately as 422)
 
 ### Backend — SSE Backpressure (PHASE 2 — after all other tasks green)
 

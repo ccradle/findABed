@@ -91,9 +91,17 @@ New `webhook_delivery_log` table: `id UUID`, `subscription_id UUID`, `event_type
 
 After 5 consecutive delivery failures to the same subscription, set `status='DEACTIVATED'` and publish a notification event to the tenant's admin users. The admin can re-enable (set status back to ACTIVE) after fixing the endpoint. This prevents resource waste on dead endpoints.
 
-### D6: Server-side retry with Spring Retry
+### D6: Server-side retry with Spring Framework 7 native @Retryable (revised)
 
-Add `spring-retry` dependency. `@Retryable` on `AvailabilityService.createSnapshot()` for `PessimisticLockingFailureException` and `CannotAcquireLockException`. Max 3 attempts, 50ms initial backoff, multiplier 2. The client never sees 409 — the server absorbs transient lock contention. Recovery method logs and returns 409 only if all retries exhausted.
+**No new dependency.** Spring Framework 7 (shipped with Boot 4.0) includes `org.springframework.resilience.annotation.Retryable` in spring-core. The old `spring-retry` library is maintenance mode — superseded by Framework 7's native implementation. resilience4j remains for circuit breakers only.
+
+`@Retryable` on a non-transactional wrapper method in `AvailabilityService` for transient `DataAccessException` (parent of `PessimisticLockingFailureException`, `CannotAcquireLockException`, connection pool exhaustion, etc.). Excludes `AvailabilityInvariantViolation` and `NoSuchElementException` (business logic errors — never retry).
+
+Config: `maxRetries=2` (3 total attempts), `delay=100`, `multiplier=2`, `maxDelay=1000`. Client receives 200 if any attempt succeeds. If all retries exhausted, `DataAccessException` propagates to `GlobalExceptionHandler` → 409 Conflict.
+
+**Revised understanding (code review 2026-04-07):** The original 2.05% Gatling KO was attributed to advisory lock contention, but `createSnapshot()` doesn't use advisory locks — it uses `ON CONFLICT DO NOTHING`. The KO is from transient DB issues under concurrent load. Retry on `DataAccessException` (not just `PessimisticLockingFailureException`) is the correct broader fix.
+
+Requires `@EnableResilientMethods` on a `@Configuration` class — one-time setup, no YAML config needed.
 
 ### D7: SSE bounded event queue — PHASED IMPLEMENTATION
 
