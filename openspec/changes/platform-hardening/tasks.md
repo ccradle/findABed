@@ -20,8 +20,18 @@
 - [x] T-5d: Remove unused `ConditionalOnProperty` import.
 - [x] T-5e: Add ShedLock comment on `@Scheduled` cleanup for future multi-instance deployments.
 - [ ] T-5f: Integration test — revoke during active grace period: old key no longer authenticates
-- [ ] T-5g: Integration test — expired grace period old key rejected even if cleanup hasn't run
+- [ ] T-5g: Integration test — expired grace period old key rejected even if cleanup hasn't run (use short grace period in test, sleep, verify)
 - [ ] T-5h: Integration test — rotated key is 64 hex chars (256 bits)
+
+### Backend — API Key Brute-Force Rate Limiting
+
+- [ ] T-RL-1: Add Bucket4j filter config for API key failures: `cache-name: rate-limit-api-key`, url pattern matching `X-API-Key` header presence, 5 failed attempts per minute per IP
+- [ ] T-RL-2: Modify `ApiKeyAuthenticationFilter` — on validation failure, increment Bucket4j counter. If exhausted, return 429 with `Retry-After` and `{"error":"rate_limited"}` body. Log at WARN.
+- [ ] T-RL-3: Add nginx `limit_req_zone api_key_auth` in `00-rate-limit.conf` — 20 req/min per IP for `/api/v1/` paths with `X-API-Key`
+- [ ] T-RL-4: Integration test (positive): valid API key succeeds after failed attempts from different IP
+- [ ] T-RL-5: Integration test (positive): 5 invalid keys from same IP → 6th returns 429 with Retry-After header
+- [ ] T-RL-6: Integration test (negative): valid API key from rate-limited IP still authenticates (failure counter separate from success)
+- [ ] T-RL-7: Integration test (negative): rate limit does not cross IPs (IP-A limited, IP-B succeeds)
 
 ### Backend — Webhook Management (Flyway range: V34–V35)
 
@@ -79,13 +89,19 @@
 - [ ] T-22b: Integration test (negative): non-admin revoke attempt returns 403
 - [ ] T-22c: Integration test (negative): revoke already-revoked key is idempotent (200, no error)
 - [ ] T-23: Integration test: rotate key, verify both old and new work during grace, old fails after
-- [ ] T-24: Integration test: pause subscription, verify events not delivered
-- [ ] T-25: Integration test: send test event, verify delivery
+- [ ] T-24: Integration test (positive): pause subscription, verify events not delivered
+- [ ] T-24a: Integration test (negative): pause non-existent subscription returns 404
+- [ ] T-24b: Integration test (negative): non-admin pause attempt returns 403
+- [ ] T-24c: Integration test (negative): send test event to paused subscription — verify behavior documented
+- [ ] T-25: Integration test (positive): send test event, verify delivery
+- [ ] T-25a: Integration test (positive): webhook delivery uses 10s connect + 30s read timeout — hanging endpoint times out
 - [ ] T-26: Integration test (positive): 5 consecutive failures auto-disable subscription
 - [ ] T-26a: Integration test (positive): re-enable auto-disabled subscription resets failure counter
 - [ ] T-26b: Integration test (positive): successful delivery after 3 failures resets counter to 0
-- [ ] T-27: Integration test: availability update retry on lock contention (mock advisory lock failure)
-- [ ] T-28: Integration test: delivery log persisted on webhook send
+- [ ] T-27: Integration test (positive): availability update retry on lock contention (mock advisory lock failure)
+- [ ] T-27a: Integration test (negative): non-retryable exception (DataIntegrityViolationException) is NOT retried — fails immediately
+- [ ] T-28: Integration test (positive): delivery log persisted on webhook send
+- [ ] T-28a: Integration test (positive): delivery log response_body truncated to 1KB for long responses
 
 ### Frontend — API Keys Tab
 
@@ -129,10 +145,11 @@
 - [x] T-64i: Playwright (positive): multiple reservations → each shelter name independently clickable
 - [x] T-64j: Playwright (negative): expired reservations removed from panel (only HELD shown)
 - [x] T-64k: Playwright (negative): clicking shelter link does NOT navigate away from the search page (stays on same page)
+- [ ] T-64l: Playwright (negative): reservation for shelter not in current filter — click still opens detail modal (fetches by ID regardless of filter)
 
 ### Performance — Gatling
 
-- [ ] T-43: Re-run Gatling AvailabilityUpdate with server-side retry — verify KO < 1%
+- [ ] T-43: Re-run Gatling AvailabilityUpdate with server-side retry — verify KO < 1%. Also verify API key validation latency unchanged (grace period adds potential second query).
 - [ ] T-44: New Gatling simulation: 200 SSE connections + bed search concurrent load (PHASE 2 — after SSE backpressure)
 - [ ] T-44a: Gatling SSE slow-client scenario: 200 connections, 10 deliberately throttled (sleep 2s per event read). Verify fast clients receive events within p95 < 500ms. (PHASE 2)
 - [ ] T-45: Verify bed search p99 stays under SLO with 200 SSE connections (PHASE 2)

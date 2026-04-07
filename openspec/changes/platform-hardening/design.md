@@ -6,6 +6,7 @@ API keys can be created but not revoked or rotated. Webhook subscriptions can be
 
 **Goals:**
 - Complete API key lifecycle (revoke, rotate with grace period)
+- Rate limit API key authentication to prevent brute-force attacks
 - Complete webhook subscription lifecycle (delete, pause, test, delivery log)
 - Eliminate 409 Conflict from client perspective via server-side retry
 - Protect SSE from slow-client accumulation
@@ -33,13 +34,29 @@ POST /api/v1/api-keys/{id}/rotate generates a new key. The old key hash is prese
 6. **ShedLock deferred** — cleanup is idempotent, acceptable for single-instance `lite` profile. Comment added noting ShedLock needed for multi-instance.
 7. **Timing attack note** — all hash comparison happens database-side via btree index. If future caching moves comparison to Java, must use `MessageDigest.isEqual()` (constant-time). Documented for future.
 
+### D1b: API key brute-force rate limiting
+
+**Two-layer defense** matching the existing auth rate limiting pattern:
+
+**Layer 1 — Nginx (edge):** Add `limit_req` zone for API-key-bearing requests. New zone `api_key_auth` in `00-rate-limit.conf`: 20 requests/minute per IP with burst=10. This stops volumetric brute-force before it reaches the JVM. Applied to all `/api/v1/` paths that accept `X-API-Key` header.
+
+**Layer 2 — Bucket4j (application):** Separate rate limit filter for failed API key attempts. Track per-IP, 5 failed attempts per minute. On exceeding: return 429 with `Retry-After` header and `{"error":"rate_limited"}` body. Consistent with existing Bucket4j patterns (login: 10/15min, password: 5/15min).
+
+**Implementation approach:** The `ApiKeyAuthenticationFilter` already processes every request with an `X-API-Key` header. On validation failure (key not found or inactive), it currently silently proceeds to the next filter. Change: on failed validation, increment a Bucket4j counter. If counter exhausted, return 429 directly from the filter before the request reaches the controller. Log at WARN level (consistent with REQ-RL-5).
+
+**Why both layers:**
+- Nginx layer: protects against volumetric attacks that could overwhelm JVM memory (Bucket4j stores counters in-memory)
+- Bucket4j layer: fine-grained per-IP tracking with business logic (distinguishes valid vs. invalid keys, logs failures)
+
+**What about rate limiting valid API key requests?** Deferred — valid key usage limits (per-key quotas) are a future enhancement. The immediate concern is brute-force protection on the authentication path.
+
 ### D2: Webhook subscription pause/resume
 
 New `active BOOLEAN DEFAULT true` on `subscription` table. PATCH /api/v1/subscriptions/{id}/status with `{active: true|false}`. WebhookDeliveryService checks `active` flag before delivery. Paused subscriptions remain visible in the list with "Paused" badge. Events during pause are dropped (not queued) — documented in UI tooltip.
 
 ### D3: Webhook test event
 
-POST /api/v1/subscriptions/{id}/test with `{eventType}`. Server generates a synthetic DomainEvent with test flag and delivers it to the subscription endpoint. Response includes the delivery result (status code, response time). Frontend shows the result inline after clicking "Send Test."
+POST /api/v1/subscriptions/{id}/test with `{eventType}`. Server generates a synthetic DomainEvent with test flag and delivers it to the subscription endpoint. Response includes the delivery result (status code, response time). Frontend shows the result inline after clicking "Send Test." HTTP client uses 10s connect timeout and 30s read timeout — a hanging endpoint will not block the delivery thread indefinitely.
 
 ### D4: Webhook delivery log
 

@@ -59,14 +59,49 @@ The system SHALL support key rotation with configurable overlap.
 - **AND** the @Scheduled cleanup has not yet run
 - **THEN** the system SHALL still reject the key (expiry checked in SQL query, not dependent on cleanup)
 
+### Requirement: API key brute-force rate limiting
+
+The system SHALL rate limit failed API key authentication attempts to prevent brute-force key guessing.
+
+#### Scenario: Invalid API key attempts are rate limited per IP
+- **WHEN** a client IP sends more than 5 requests with invalid API keys within 1 minute
+- **THEN** subsequent requests with `X-API-Key` header SHALL return 429 Too Many Requests
+- **AND** the response SHALL include a `Retry-After` header
+- **AND** the response body SHALL be `{"error":"rate_limited"}`
+
+#### Scenario: Valid API key requests are not affected by failure rate limit
+- **WHEN** a client IP has been rate-limited due to failed API key attempts
+- **AND** the same IP sends a request with a VALID API key
+- **THEN** the valid request SHALL still be processed (failure counter is separate from success path)
+
+#### Scenario: Rate limit logged at WARN level
+- **WHEN** an API key rate limit is triggered
+- **THEN** the event SHALL be logged at WARN level with client IP (consistent with REQ-RL-5)
+
+#### Scenario: Nginx edge rate limiting on API key paths
+- **WHEN** a client IP sends more than 20 requests per minute to `/api/v1/` with `X-API-Key` header
+- **THEN** nginx SHALL return 429 before the request reaches the JVM
+
+#### Scenario: Different IPs have independent API key rate limits
+- **WHEN** IP-A has been rate-limited on API key failures
+- **AND** IP-B sends a request with an invalid API key
+- **THEN** IP-B SHALL not be rate-limited (independent counters)
+
 ### Requirement: Webhook subscription delete
 
 The admin panel SHALL allow deleting webhook subscriptions.
 
 #### Scenario: Admin deletes a subscription
-
 - **WHEN** an admin clicks "Delete" on a subscription row and confirms
 - **THEN** the subscription is removed and no further deliveries are attempted
+
+#### Scenario: Delete non-existent subscription returns 404
+- **WHEN** an admin attempts to delete a subscription that does not exist
+- **THEN** the system SHALL return 404 Not Found
+
+#### Scenario: Non-admin cannot delete subscription
+- **WHEN** a COORDINATOR or OUTREACH_WORKER attempts to delete a subscription
+- **THEN** the system SHALL return 403 Forbidden
 
 ### Requirement: Webhook subscription pause/resume
 
@@ -88,14 +123,30 @@ The system SHALL allow sending test events to a subscription endpoint.
 - **THEN** a synthetic event is delivered to the subscription endpoint
 - **AND** the delivery result (status code, response time) is shown inline
 
+### Requirement: Webhook delivery timeout
+
+Webhook delivery HTTP calls SHALL have connection and read timeouts to prevent thread blocking on hanging endpoints.
+
+#### Scenario: Webhook endpoint hangs
+- **WHEN** a webhook delivery endpoint does not respond within 30 seconds
+- **THEN** the delivery SHALL timeout and be recorded as a failure in the delivery log
+- **AND** the failure SHALL count toward the consecutive failure counter
+
+#### Scenario: Webhook endpoint unreachable
+- **WHEN** a webhook delivery cannot establish a TCP connection within 10 seconds
+- **THEN** the delivery SHALL timeout and be recorded as a failure
+
 ### Requirement: Webhook delivery log
 
 The system SHALL record recent webhook deliveries for admin visibility.
 
 #### Scenario: Admin views delivery log
-
 - **WHEN** an admin expands a subscription's delivery log
 - **THEN** the last 20 deliveries are shown with: event type, status code, response time, timestamp, attempt number
+
+#### Scenario: Delivery log response body truncated
+- **WHEN** a webhook endpoint returns a response body longer than 1KB
+- **THEN** the stored response_body SHALL be truncated to 1KB
 
 #### Scenario: Auto-disable on consecutive failures
 - **WHEN** a subscription has 5 consecutive delivery failures
@@ -124,6 +175,11 @@ The system SHALL retry availability updates on transient lock contention.
 
 - **WHEN** all 3 retry attempts fail
 - **THEN** the client receives 409 Conflict
+
+#### Scenario: Non-retryable exception is not retried
+- **WHEN** an availability update encounters a DataIntegrityViolationException (or other non-retryable exception)
+- **THEN** the exception SHALL propagate immediately without retry
+- **AND** the client receives the appropriate error response (400 or 500)
 
 ### Requirement: ACCESS_CODE_USED audit event has correct actor (#58)
 
