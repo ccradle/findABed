@@ -79,7 +79,13 @@ POST /api/v1/subscriptions/{id}/test with `{eventType}`. Server generates a synt
 
 ### D4: Webhook delivery log
 
-New `webhook_delivery_log` table: `id UUID`, `subscription_id UUID`, `event_type VARCHAR`, `status_code INTEGER`, `response_time_ms INTEGER`, `attempted_at TIMESTAMPTZ`, `attempt_number INTEGER`, `response_body TEXT` (truncated to 1KB). WebhookDeliveryService logs each attempt. Retained for 14 days (scheduled cleanup). Frontend shows last 20 deliveries per subscription in an expandable panel.
+New `webhook_delivery_log` table: `id UUID`, `subscription_id UUID`, `event_type VARCHAR`, `status_code INTEGER`, `response_time_ms INTEGER`, `attempted_at TIMESTAMPTZ`, `attempt_number INTEGER`, `response_body TEXT` (truncated to 1KB, redacted via `WebhookResponseRedactor`). WebhookDeliveryService logs each attempt. Retained for 14 days (scheduled cleanup). Frontend shows last 20 deliveries per subscription in an expandable panel.
+
+### D4a: Response body redaction (added after security review)
+
+`WebhookResponseRedactor` applies regex-based redaction BEFORE persistence — secrets are never written to the database. Patterns: Bearer tokens, AWS access keys, generic API key/token/secret values, email addresses, US SSNs, credit card numbers. Applied in `recordDelivery()` before constructing the log entity. Truncation (1KB) in entity constructor applies after redaction.
+
+**Why regex and not Phileas/NER:** For webhook response bodies, the primary concern is leaked credentials/tokens (deterministic patterns), not person names (requires NLP). Regex adds no dependency and handles the high-confidence cases. For future DV/shelter PII detection, evaluate Phileas (ai.philterd:phileas).
 
 ### D5: Auto-disable on consecutive failures
 

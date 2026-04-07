@@ -40,14 +40,14 @@
 ### Backend — Webhook Management (revised: use existing status field, Flyway V34 only)
 
 - [x] T-6: SKIP — no Flyway migration needed. Subscription already has `status VARCHAR` field. Add PAUSED value to the application-level state machine (no schema change).
-- [ ] T-7: Flyway V34: create `webhook_delivery_log` table (id UUID, subscription_id UUID FK, event_type VARCHAR, status_code INTEGER, response_time_ms INTEGER, attempted_at TIMESTAMPTZ, attempt_number INTEGER, response_body TEXT). Add `consecutive_failures INTEGER DEFAULT 0` to subscription table.
-- [ ] T-8: PATCH /api/v1/subscriptions/{id}/status — accepts `{"status": "PAUSED"}` or `{"status": "ACTIVE"}` only. Rejects other values with 400. Resetting to ACTIVE from DEACTIVATED clears `consecutive_failures`.
-- [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver with 10s connect + 30s read timeout, return delivery result (status_code, response_time_ms, response_body truncated to 1KB)
-- [ ] T-10: `WebhookDeliveryService` — check `status = 'ACTIVE'` before delivery (already does via `findActiveByEventType`). PAUSED and DEACTIVATED subscriptions skipped.
-- [ ] T-11: `WebhookDeliveryService` — log each delivery attempt to webhook_delivery_log. Truncate response_body to 1KB.
-- [ ] T-12: Auto-disable after 5 consecutive failures — set `status='DEACTIVATED'`, reset `consecutive_failures=0`, publish notification event to tenant admins
-- [ ] T-13: GET /api/v1/subscriptions/{id}/deliveries — return last 20 delivery log entries
-- [ ] T-14: `@Scheduled` cleanup: delete delivery logs older than 14 days. ShedLock note for multi-instance.
+- [x] T-7: Flyway V34: `webhook_delivery_log` table + `consecutive_failures` column on subscription.
+- [x] T-8: PATCH /api/v1/subscriptions/{id}/status — ACTIVE/PAUSED only, 400 on invalid. Resets consecutive_failures on re-enable from DEACTIVATED/FAILING.
+- [ ] T-9: POST /api/v1/subscriptions/{id}/test — generate synthetic event, deliver with 10s connect + 30s read timeout, return delivery result
+- [x] T-10: `findActiveByEventType` already filters by status='ACTIVE'. PAUSED/DEACTIVATED/CANCELLED automatically excluded.
+- [x] T-11: `recordDelivery()` in SubscriptionService — logs to webhook_delivery_log with 1KB truncation in entity constructor.
+- [x] T-12: Auto-disable: `recordDelivery()` increments consecutiveFailures, sets DEACTIVATED at 5. Successful delivery resets counter + clears FAILING status.
+- [x] T-13: GET /api/v1/subscriptions/{id}/deliveries — returns last 20 via `findRecentBySubscriptionId`.
+- [x] T-14: `@Scheduled` daily cleanup — `deleteOlderThan14Days()`. ShedLock note in Javadoc.
 
 ### Backend — Server-Side Retry
 
@@ -98,6 +98,9 @@
 - [ ] T-24b: Integration test (negative): non-admin PATCH status returns 403
 - [ ] T-24c: Integration test (negative): PATCH with invalid status value (e.g., "FAILING") returns 400
 - [ ] T-24d: Integration test (positive): PATCH PAUSED → ACTIVE resumes delivery
+- [ ] T-24e: Integration test (negative): PATCH on CANCELLED subscription returns 409
+- [ ] T-24f: Integration test (negative): PATCH PAUSED on DEACTIVATED subscription returns 409 (re-enable first)
+- [ ] T-24g: Integration test (negative): PATCH/GET deliveries cross-tenant returns 404
 - [ ] T-25: Integration test (positive): send test event, verify delivery
 - [ ] T-25a: Integration test (positive): webhook delivery uses 10s connect + 30s read timeout — hanging endpoint times out
 - [ ] T-26: Integration test (positive): 5 consecutive failures → status changes to DEACTIVATED
@@ -107,6 +110,8 @@
 - [ ] T-27a: Integration test (negative): non-retryable exception (DataIntegrityViolationException) is NOT retried — fails immediately
 - [ ] T-28: Integration test (positive): delivery log persisted on webhook send
 - [ ] T-28a: Integration test (positive): delivery log response_body truncated to 1KB for long responses
+- [ ] T-28b: Integration test (positive): Bearer token in response body is redacted to [REDACTED]
+- [ ] T-28c: Integration test (positive): email in response body is redacted to [REDACTED]
 
 ### Frontend — API Keys Tab
 

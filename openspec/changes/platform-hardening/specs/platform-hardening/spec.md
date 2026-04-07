@@ -133,6 +133,35 @@ The system SHALL support pausing and resuming webhook delivery via the existing 
 - **THEN** the system SHALL return 400 Bad Request
 - **AND** only ACTIVE and PAUSED SHALL be accepted as admin-settable values
 
+#### Scenario: CANCELLED subscription cannot be modified
+- **WHEN** an admin attempts to PATCH status on a CANCELLED subscription
+- **THEN** the system SHALL return 409 Conflict
+- **AND** the subscription SHALL remain CANCELLED
+
+#### Scenario: PAUSED only allowed from ACTIVE
+- **WHEN** an admin attempts to PATCH status to PAUSED on a DEACTIVATED or FAILING subscription
+- **THEN** the system SHALL return 409 Conflict (re-enable to ACTIVE first, then pause)
+
+#### Scenario: Cross-tenant subscription access returns 404
+- **WHEN** an admin from Tenant A attempts to PATCH or GET deliveries for a Tenant B subscription
+- **THEN** the system SHALL return 404 (not 403 — avoid confirming cross-tenant existence)
+
+### Requirement: Webhook delivery response redaction
+
+Response bodies stored in the delivery log SHALL be redacted for secrets and PII before persistence.
+
+#### Scenario: Bearer token in response body is redacted
+- **WHEN** a webhook endpoint returns a response containing "Bearer eyJhbGci..."
+- **THEN** the stored response_body SHALL contain "[REDACTED]" in place of the token
+
+#### Scenario: Email in response body is redacted
+- **WHEN** a webhook endpoint returns a response containing "user@example.com"
+- **THEN** the stored response_body SHALL contain "[REDACTED]" in place of the email
+
+#### Scenario: Redaction applied before truncation
+- **WHEN** a webhook endpoint returns a 2KB response with secrets
+- **THEN** secrets SHALL be redacted first, THEN the body SHALL be truncated to 1KB
+
 ### Requirement: Webhook test event
 
 The system SHALL allow sending test events to a subscription endpoint.
