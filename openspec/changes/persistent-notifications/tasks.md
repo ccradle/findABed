@@ -45,6 +45,19 @@
 - [ ] T-20: Integration test: create referral → verify notification row exists for coordinator
 - [ ] T-21: Integration test: accept referral → verify notification row exists for outreach worker
 
+### Backend — Surge Activation Notification
+
+- [ ] T-SRG-1: When surge is activated, call `NotificationPersistenceService.send()` to ALL coordinators in the CoC with type `surge.activated`, severity `CRITICAL`, payload {surgeEventId, reason}
+- [ ] T-SRG-2: When surge is deactivated, send INFO notification to all coordinators
+- [ ] T-SRG-3: Integration test: activate surge → verify CRITICAL notification exists for every coordinator in tenant
+- [ ] T-SRG-4: i18n: "White Flag activated — open overflow capacity" (en + es)
+
+### Backend — Reservation Expiry Notification
+
+- [ ] T-RES-1: When reservation expires (existing `@Scheduled` expiry job), call `NotificationPersistenceService.send()` to the outreach worker who created the hold with type `reservation.expired`, severity `ACTION_REQUIRED`, payload {reservationId, shelterId, shelterName}
+- [ ] T-RES-2: Integration test: create reservation, let it expire → verify notification exists for the outreach worker
+- [ ] T-RES-3: i18n: "Your bed hold at {shelter} has expired" (en + es)
+
 ### Backend — DV Referral Escalation
 
 - [ ] T-22: `@Scheduled` job (every 5 minutes): scan PENDING referrals, create escalation notifications at thresholds
