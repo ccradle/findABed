@@ -134,3 +134,9 @@
 - [ ] T-66: Full backend test suite — all green
 - [ ] T-67: Full Playwright suite through nginx — all green
 - [ ] T-68: Merge to main, tag, release, deploy
+
+### Post-Deploy Communications (after successful deploy + sanity checks)
+
+- [ ] T-COM-1: GitHub Discussion post — "Design: Persistent Notifications for Time-Sensitive Referrals." Frame as design decision, not feature announcement. Use "designed to" language, "time-sensitive" not "safety-critical." Link to spec. Do NOT detail DV-specific flow — keep at feature level. Include: problem statement, approach (PostgreSQL + SSE catch-up, no new services), escalation concept, link to issue #77.
+- [ ] T-COM-2: Update findabed.org homepage feature list — add "Persistent notifications with escalation for time-sensitive referrals" to capabilities section. Use person-centered framing: "Coordinators see pending referrals the moment they log in — even if requests arrived while they were away."
+- [ ] T-COM-3: Update findabed.org changelog page — version entry with summary of notification framework, surge alerts, reservation expiry notifications. Link to GitHub release.
