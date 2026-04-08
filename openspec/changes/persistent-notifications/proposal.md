@@ -12,7 +12,7 @@ Additionally, the coordinator dashboard only shows pending referral badges after
 - **Bell badge from DB** — notification count sourced from persistent store, survives logout/login
 - **Coordinator dashboard referral banner** — on mount, fetch pending referral count across all coordinator's DV shelters; show persistent banner ("2 referrals waiting for review") on collapsed view
 - **DV referral escalation** — `@Scheduled` aging alerts: 1h reminder, 2h CoC admin escalation, 3.5h expiry warning, 4h expired notification
-- **Notification payload privacy** — zero PII in any notification (VAWA/FVPSA). JSONB stores referralId and status only, never client information
+- **Notification payload privacy** — designed to support VAWA/FVPSA: no PII in notification payloads. JSONB stores only opaque identifiers (referralId, status), never client information
 
 ## Capabilities
 

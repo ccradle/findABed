@@ -34,7 +34,7 @@ Notification payload uses JSONB for flexibility but stores only opaque identifie
 
 | Severity | UX Treatment | Examples |
 |----------|-------------|---------|
-| CRITICAL | Red banner at top of page, modal interrupt on login if unread | DV referral expiring in <1h, referral pending >2h |
+| CRITICAL | Persistent red banner at top of page on login if unread (not a modal — user must navigate to act, banner stays until acted on) | DV referral expiring in <1h, referral pending >2h, surge activated |
 | ACTION_REQUIRED | Orange badge on bell, toast on arrival | New DV referral pending review, referral accepted/rejected |
 | INFO | Badge count increment only | Availability update, referral acknowledged |
 
@@ -57,7 +57,7 @@ DV referral escalation runs on a fixed schedule (every 5 minutes), scanning for 
 | T+1h | Create ACTION_REQUIRED notification to assigned coordinator |
 | T+2h | Create CRITICAL notification to CoC admin (escalation) |
 | T+3.5h | Create CRITICAL notification to coordinator + outreach worker (30-min expiry warning) |
-| T+4h | Referral expires → INFO notification to outreach worker |
+| T+4h | Referral expires → ACTION_REQUIRED notification to outreach worker (family may be waiting) |
 
 ### D7: Coordinator Dashboard Pending Count
 

@@ -44,6 +44,24 @@ JSONB payload SHALL contain zero PII — only opaque identifiers (referralId, sh
 - **WHEN** any notification is created
 - **THEN** the JSONB payload SHALL NOT contain names, addresses, phone numbers, or demographic data
 
+### Requirement: notification-surge-activation
+When a surge event is activated, a CRITICAL notification SHALL be created for ALL coordinators in the CoC. When deactivated, an INFO notification SHALL be created.
+
+#### Scenario: Surge activated notifies all coordinators
+- **GIVEN** a CoC with 5 coordinators, 2 currently logged out
+- **WHEN** a surge is activated
+- **THEN** CRITICAL notification rows SHALL exist for all 5 coordinators
+- **AND** the 2 logged-out coordinators SHALL see the notification on next login via catch-up
+
+### Requirement: notification-reservation-expiry
+When a bed reservation expires, an ACTION_REQUIRED notification SHALL be created for the outreach worker who created the hold.
+
+#### Scenario: Expired hold notifies outreach worker
+- **GIVEN** an outreach worker held a bed 80 minutes ago and logged out
+- **WHEN** the reservation expires
+- **THEN** an ACTION_REQUIRED notification SHALL exist for that worker
+- **AND** the worker SHALL see it on next login: "Your bed hold at {shelter} has expired"
+
 ### Requirement: notification-cleanup
 A `@Scheduled` daily job SHALL delete notifications where read_at IS NOT NULL AND created_at older than 90 days. Unread CRITICAL notifications SHALL never be auto-deleted.
 
