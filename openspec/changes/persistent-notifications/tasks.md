@@ -2,10 +2,10 @@
 
 ### Legal Language CI Gate
 
-- [ ] T-LG-1: Create `infra/scripts/legal-language-scan.sh` — grep for overclaimed keywords (compliant, certified, guarantees, ensures compliance, zero downtime, no way to, equivalent to, 100% uptime, enterprise-ready). Scans .md, .tsx, .ts, .java, .html. Supports `.legal-allowlist` file for known-good matches. Exit 1 on unallowlisted matches.
-- [ ] T-LG-2: Test locally — run scan against both repos, verify it catches known issues (e.g., archived dv-opaque-referral "no way to identify") and passes on already-fixed files. Build the initial allowlist from legitimate matches.
-- [ ] T-LG-3: Add `legal-language` job to code repo `.github/workflows/ci.yml` — runs on push/PR to main, uses the scan script. Warning annotations on matches.
-- [ ] T-LG-4: Create `.github/workflows/ci.yml` in docs repo (`findABed`) — minimal workflow with the same legal language scan on push/PR to main.
+- [x] T-LG-1: Create `infra/scripts/legal-language-scan.sh` — grep for overclaimed keywords (compliant, certified, guarantees, ensures compliance, zero downtime, no way to, equivalent to, 100% uptime, enterprise-ready). Scans .md, .tsx, .ts, .java, .html. Supports `.legal-allowlist` file for known-good matches. Exit 1 on unallowlisted matches.
+- [x] T-LG-2: Test locally — run scan against both repos, verify it catches known issues (e.g., archived dv-opaque-referral "no way to identify") and passes on already-fixed files. Build the initial allowlist from legitimate matches. Code repo: 28 total, 21 allowlisted, 7 real issues (known from Casey's audit). Docs repo: 119 total (includes code repo subdirectory), needs scoped allowlist at CI level.
+- [x] T-LG-3: Add `legal-language` job to code repo `.github/workflows/ci.yml` — runs on push/PR to main, uses the scan script. Warning annotations on matches.
+- [x] T-LG-4: Create `.github/workflows/ci.yml` in docs repo (`findABed`) — minimal workflow with the same legal language scan on push/PR to main.
 - [ ] T-LG-5: Verify both CI workflows pass on current main before proceeding.
 
 ### Setup

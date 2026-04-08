@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  legal-language:
+    name: Legal Language Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for overclaimed compliance language
+        run: |
+          # Scan openspec specs, proposals, and designs for overclaimed language.
+          # Patterns that require human review.
+          PATTERNS=(
+            '\bcompliant\b'
+            '\bcertified\b'
+            '\bguarantees\b'
+            '\bensures compliance\b'
+            '\bzero downtime\b'
+            '\bno way to\b'
+            '\bequivalent to\b'
+            '\b100% uptime\b'
+            '\benterprise-ready\b'
+            '\bproduction-grade\b'
+          )
+
+          # Allowlist patterns (known-good matches)
+          ALLOW=(
+            "not certified"
+            "has not been independently certified"
+            "OIDC-compliant"
+            "standards-compliant"
+            "WCAG 1.4.12 compliant"
+            "legal-language-scan.sh"
+          )
+
+          is_allowlisted() {
+            local line="$1"
+            for pattern in "${ALLOW[@]}"; do
+              [[ "$line" == *"$pattern"* ]] && return 0
+            done
+            return 1
+          }
+
+          FOUND=0
+          for pattern in "${PATTERNS[@]}"; do
+            MATCHES=$(grep -rn -i -E "$pattern" --include="*.md" --include="*.yaml" --include="*.yml" \
+              --exclude-dir=.git --exclude-dir=node_modules openspec/ . 2>/dev/null || true)
+            if [[ -n "$MATCHES" ]]; then
+              while IFS= read -r line; do
+                if ! is_allowlisted "$line"; then
+                  echo "::warning::[$pattern] $line"
+                  FOUND=$((FOUND + 1))
+                fi
+              done <<< "$MATCHES"
+            fi
+          done
+
+          if [[ $FOUND -gt 0 ]]; then
+            echo ""
+            echo "⚠  $FOUND match(es) require review."
+            echo "Use 'designed to support' instead of 'compliant'."
+            exit 1
+          fi
+          echo "✅ No overclaimed compliance language found."
