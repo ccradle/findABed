@@ -32,7 +32,7 @@ The FOR-RESEARCHERS document describes what data exists and how to access it. It
 
 | Tier | Content | Access | IRB Implication |
 |------|---------|--------|----------------|
-| **Open** | Bed availability snapshots, daily utilization summaries, search demand logs (zero-result counts), surge events, shelter metadata (no phone numbers) | CoC admin export, analytics dashboard | Likely exempt — de-identified aggregate, no human subjects |
+| **Open** | Bed availability snapshots, daily utilization summaries, search demand logs (zero-result counts), surge events, shelter metadata (no phone numbers, DV shelter addresses excluded) | CoC admin export, analytics dashboard | Likely exempt — de-identified aggregate, no human subjects |
 | **Protected** | Reservation lifecycle data (conversion/expiry rates by population type), referral aggregates (urgency splits, response times), audit event counts | CoC admin export with minimum cell size (n≥5) | May require expedited review — aggregate but population-type-specific |
 | **Restricted** | DV shelter identities, free-text fields (notes, special_needs, rejection_reason), individual referral records within 24h retention window | DV protocol + CoC DV committee approval + researcher IRB full review | Full IRB review required; data use agreement mandatory |
 

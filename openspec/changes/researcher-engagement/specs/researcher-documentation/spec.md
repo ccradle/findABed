@@ -14,7 +14,7 @@ The data inventory SHALL cover every user-facing table with: table name, columns
 
 #### Scenario: Data inventory covers all tables
 - **WHEN** a researcher reads the data inventory
-- **THEN** it SHALL include: bed_availability, daily_utilization_summary, bed_search_log, reservation, referral_token, surge_event, shelter, shelter_constraints, audit_events, hmis_outbox, hmis_audit_log, coordinator_assignment, and import_log
+- **THEN** it SHALL include: bed_availability, daily_utilization_summary, bed_search_log, reservation, referral_token, surge_event, shelter (no phone numbers, DV shelter addresses excluded from Open tier), shelter_constraints, audit_events, hmis_outbox, hmis_audit_log, coordinator_assignment, and import_log
 - **AND** each entry SHALL state what the table captures, what it does NOT capture, and any data quality caveats
 
 ### Requirement: three-access-tiers

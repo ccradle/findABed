@@ -2,7 +2,7 @@
 
 ### FOR-RESEARCHERS.md — Data Inventory
 
-- [ ] T-1: Create `docs/FOR-RESEARCHERS.md` with document structure: Introduction, What FABT Captures, Data Access Tiers, Honest Limitations, IRB Guidance, Pilot Partnership Pathway, Free-Text Field Warning
+- [ ] T-1: Create `docs/FOR-RESEARCHERS.md` with document structure: Introduction, What FABT Captures, Data Access Tiers, Honest Limitations, IRB Guidance, Pilot Partnership Pathway, Free-Text Field Warning, Related Systems (DVBeds, Shelter Ready/San Diego, LAHSA real-time database — positioning without competitive claims)
 - [ ] T-2: Write data inventory — Tier 1 (Open): bed_availability, daily_utilization_summary, bed_search_log, surge_event, shelter (no phone), shelter_constraints. For each: what it captures, sample research questions it could support, what it cannot answer, retention policy.
 - [ ] T-3: Write data inventory — Tier 2 (Protected): reservation lifecycle, referral_token aggregates, audit_events aggregates, coordinator_assignment, import_log. Include minimum cell size (n≥5) note.
 - [ ] T-4: Write data inventory — Tier 3 (Restricted): DV shelter identities, free-text fields (notes, special_needs, rejection_reason), individual referral records (24h window). Include DV protocol + IRB + data use agreement requirements.
@@ -18,13 +18,13 @@
 - [ ] T-11: Add fifth row to README.md "Who It's For" table: "Researcher or evaluator → For Researchers — data inventory, access tiers, IRB guidance"
 - [ ] T-12: Create findabed.org static HTML page for researchers — mirrors FOR-RESEARCHERS.md content, SEO-optimized
 - [ ] T-13: Add researcher card to findabed.org landing page "Who It's For" section
-- [ ] T-14: Add schema.org Dataset structured data (JSON-LD) to researcher page — title, description, distribution format, license
+- [ ] T-14: Add schema.org Dataset structured data (JSON-LD) to researcher page — title, description, distribution format, license. Also add Google Scholar citation meta tags (citation_title, citation_author, citation_publication_date) for academic indexing.
 - [ ] T-15: SEO: meta title "Emergency Shelter Bed Availability Data for Researchers | Finding A Bed Tonight", meta description targeting long-tail academic keywords
 
 ### Verification
 
 - [ ] T-16: Persona review — Dr. Yemi Okafor: does the document describe data without prescribing research? Dr. Kenji Watanabe: are HUD data standards correctly referenced? Casey: no legal claims? Nadia Petrova: SEO keywords present?
-- [ ] T-17: Legal language scan — run `infra/scripts/legal-language-scan.sh` against the new document
+- [ ] T-17: Legal language scan — run `infra/scripts/legal-language-scan.sh` against the new document. Dependency: requires T-LG-1 from persistent-notifications. If that change hasn't shipped yet, run manual grep for: compliant, certified, guarantees, ensures compliance, zero PII (unqualified).
 - [ ] T-18: Verify findabed.org researcher page renders correctly, links work, dark mode compatible
 - [ ] T-19: Google Search Console — submit new page for indexing after deploy
 - [ ] T-20: Commit, push, deploy static content to findabed.org
