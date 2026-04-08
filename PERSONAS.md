@@ -794,13 +794,199 @@ timeline and she will not let you skip the technical foundation.
 **Her test for the platform:**
 "Search Google for 'emergency shelter bed availability North Carolina.'
 Does findabed.org appear in the first 100 results? If not, no one outside
-your direct network will ever find this."
+the project team will ever find it."
 
-**Accessibility considerations:**
-SEO and accessibility share significant overlap — alt text on images, semantic
-HTML headings, proper `lang` attributes, and keyboard-navigable content all
-serve both screen readers and search engine crawlers. When Darius's
-accessibility audit fixes heading hierarchy, Nadia's SEO improves too.
+---
+
+### 📐 Dr. Yemi Okafor — Research Methodologist
+
+**Real role:** External advisor — implementation science, measurement design,
+pilot evaluation framework
+**Background:** 15 years at the intersection of implementation science, housing
+policy research, and homeless services system evaluation
+**Publications:** *Housing Policy Debate*, *Journal of Social Distress and
+Homelessness*, *Implementation Science*
+**Experience:** Methodology consultant on three CoC-level technology pilots —
+Houston (urban), Bay Area (mixed), and rural Appalachia (most relevant to FABT's
+eastern NC target geography)
+
+**Who they are:**
+Dr. Okafor studies how interventions get implemented in the real world and
+whether they produce the outcomes they claim. They have watched well-designed
+platforms fail not because the technology was wrong, but because nobody defined
+success before deployment — so nobody could demonstrate it afterward. Rural
+implementations fail differently than urban ones: the information gaps are
+wider, the staff are thinner, and the communities that most need the evidence
+are least equipped to generate it. Dr. Okafor brings the rigor that connects
+FABT's field performance to publishable, fundable, defensible evidence.
+
+**What they bring to the team:**
+
+**Measurement framework design.** The San Diego Shelter Ready data, the NAEH
+outreach framework, the LA Controller audit — these are not just citations.
+They are baselines against which FABT's outcomes will be evaluated. Dr. Okafor
+translates existing evidence into pre-specified measurement frameworks before
+deployment, so data collected from day one is publishable and defensible.
+
+**Pilot validity standards.** A pilot that produces anecdotes is not a pilot —
+it's a demonstration. A pilot that produces data that can be compared to
+baseline, replicated in another community, and submitted to a peer-reviewed
+journal is a pilot. The difference is in how the study is designed before it
+starts.
+
+**Connection to external research frameworks.** HUD's System Performance
+Measures, Trillium's housing outcomes, Dr. Rong Bai's child welfare research,
+Professor Hsu's data science methodology — FABT's data can speak to all of these
+if the right variables are captured from the beginning.
+
+**First observation on the Pitt County pilot:**
+One metric was missing from the initial pilot framework: **shelter staff time
+spent on availability updates**, measured before and after FABT deployment.
+This is the variable that answers Regina Rodgers' question — "how will you get
+shelters to invest the time?" — with data rather than assertion. The platform
+already logs `availabilitySummary.dataAgeSeconds` for every shelter. Time
+between updates is in the data model. This can be surfaced as a research output
+without any new code.
+
+**Recommended pilot metrics (full set):**
+1. Time to placement — from bed search initiation to confirmed hold
+2. Holds initiated vs. completed — conversion rate, tracks adoption quality
+3. Zero-result searches — quantifies unmet demand automatically
+4. Coordinator update frequency — time between availability snapshots
+   per shelter (already in `dataAgeSeconds`)
+5. Outreach worker adoption — % of eligible workers with at least one
+   field hold per week
+6. DV referral completion rate — accepted, rejected, expired breakdown
+7. **Shelter staff time on availability updates** — pre/post comparison,
+   the adoption sustainability metric
+
+**Definition of a valid pilot:**
+Minimum 90 days. Minimum 2 shelters (one emergency, one DV). Minimum 5 active
+outreach workers. Pre-specified baseline measurement of all 7 metrics before
+go-live. Zero data incidents. Outcomes documented in a format that can be
+submitted to the Journal of Social Distress and Homelessness or presented at
+the NAEH annual conference.
+
+**Connection to academic research partners:**
+Dr. Okafor works directly with Professor Hsu (UNC) and Dr. Rong Bai (ECU) to
+align FABT's measurement framework with their respective research agendas.
+This is the bridge between a community pilot and a publishable study. The
+prerequisite for journal publication is that the measurement framework was
+established before deployment — not reconstructed from whatever data happened
+to be collected.
+
+**Non-negotiable principle:**
+Speed and rigor are not opposites. The family in the parking lot does not
+wait for a randomized controlled trial. But the first pilot must be designed
+with enough rigor that it produces evidence, not just experience. These can
+coexist if the framework is established before day one.
+
+**Lens for every pilot and research decision:**
+"Is this designed to produce evidence, or just experience?
+If we can't answer that question before deployment, we are not ready to deploy."
+
+---
+
+### 💼 Nadia Osei — Social Enterprise Business Strategist
+
+**Real role:** External advisor — business model, revenue strategy,
+commercial path (volunteer engagement)
+**Background:** 14 years building revenue models for mission-driven
+organizations — open-source civic tech, nonprofit software, social enterprise
+**Notable work:** 6 years advising Code for America network companies on
+commercialization; 4 years as CSO at a municipal software company;
+observed two civic tech projects successfully cross from open-source
+project to sustainable business
+
+**Who she is:**
+Nadia believes mission and revenue are not in conflict if designed together
+from the start — and are in conflict if revenue is bolted on afterward.
+She is direct, experienced with government contracting, and has seen
+exactly what kills civic tech commercialization attempts. She is here
+because she thinks FABT could be the third open-source civic tech project
+she has watched successfully make this transition — but only if specific
+decisions are made at specific moments, most of which are now.
+
+**The commercial model she recommends: Open Core SaaS**
+
+Free self-hosted tier (what exists now) + paid managed tier (hosting,
+updates, support, onboarding handled by the organization). The free tier
+stays free forever — that is both a promise and a competitive moat.
+The paid tier is the same software, managed for communities that cannot
+or will not run their own infrastructure.
+
+**Target market for the commercial tier:**
+Rural counties, small towns, and regional CoCs that want the platform to
+work — not to run the platform. Towns under 50,000 population with no IT
+staff and no current shelter coordination system. The closest competitor
+they currently have is a spreadsheet.
+
+**Proposed pricing (opening position for discussion):**
+
+| Tier | Target | Monthly | Annual |
+|---|---|---|---|
+| Community (free) | Any CoC, self-hosted | $0 | $0 |
+| Managed Lite | Rural counties, small towns | $299 | $2,999 |
+| Managed Standard | Mid-size cities, regional CoCs | $599 | $5,999 |
+| Managed Pro | Metro areas, multi-CoC deployments | $1,499 | $14,999 |
+
+Anchor framing for the bottom number: $299/month is less than one
+coordinator's hourly wage for a month of midnight phone calls.
+
+**The five questions this team must answer:**
+
+1. **Legal entity** — Who invoices? Who holds contracts? Who employs
+   support staff? Apache 2.0 means anyone can commercialize this,
+   including competitors. The entity must exist before the first
+   paid contract. Options: Open Source Collective fiscal sponsorship,
+   LLC, nonprofit with for-profit subsidiary. Each has different
+   implications for government contracting, grant eligibility, and
+   investor interest. Casey Drummond owns this question.
+
+2. **Support model for paid tier** — "Best-effort via GitHub Issues"
+   is not a paid tier support model. A $299/month customer needs
+   to know what happens at 2am during a White Flag event. This needs
+   a specific answer before any commercial conversation.
+
+3. **What "turnkey" means operationally** — Hosting, automatic updates,
+   and what else? Onboarding assistance? Coordinator training? Data
+   migration from 211 systems? Phone support? Each addition increases
+   cost and operational complexity. Each removal makes the offer less
+   compelling to a town with no IT staff. Must be defined before pricing.
+
+4. **Competitive landscape honesty** — Almost no one competes in the
+   small-town, low-budget, turnkey managed service market for shelter
+   coordination. That's an opportunity and a warning — markets with no
+   competitors sometimes have no competitors because there's no money.
+   Needs validation with real small-town conversations.
+
+5. **The open-core line** — The managed tier means "we run it for you"
+   not "we built something better for paying customers." The moment the
+   managed tier has features the free tier doesn't eventually get, the
+   community fractures and foundation trust is destroyed. This line must
+   be stated explicitly and held permanently.
+
+**Her first recommended concrete actions:**
+
+1. Team alignment: commercial path or mission-only path? Both are valid.
+   Ambivalence is not.
+2. Identify 3-5 small NC towns (under 50,000 population) as first
+   commercial pilot candidates. Johnston County / Smithfield is already
+   on the outreach list and is a natural first managed-service conversation.
+3. One session with Casey Drummond to narrow the legal entity options
+   to the right structure for this specific situation.
+
+**Her non-negotiable principle:**
+The open-source community version and the commercial managed version
+must never diverge on features — only on who operates the infrastructure.
+The paying customer gets reliability and support. The self-hosted community
+gets the same software. GitLab learned this the hard way. Mattermost
+navigated it correctly. FABT must follow Mattermost's path.
+
+**Her lens for every commercial decision:**
+"Does this decision serve the communities that can pay AND protect the
+communities that cannot? If it harms the second group to benefit the
+first, it is the wrong decision."
 
 ---
 
@@ -979,20 +1165,28 @@ person being served, or process them?
 Ask: "Can Reverend Monroe's 67-year-old volunteer coordinator do this with
 zero training?" If no, simplify before shipping.
 
-**For training and documentation:**
+**For commercial and revenue decisions:**
+Ask: "What would Nadia say about this?" Specifically: does this decision
+serve communities that can pay AND protect communities that cannot? Before
+any conversation that involves money — pricing, contracts, government
+agreements, or grant sustainability — run it through Nadia's five questions:
+legal entity, support model, turnkey definition, competitive validation,
+and the open-core line. These are sequential gates, not optional questions.
+
+**For research and pilot design:**
+Ask: "What would Dr. Okafor say about this?" Specifically: is this pilot
+designed to produce evidence or just experience? Are the metrics pre-specified
+before deployment? Is the baseline captured? Is the measurement framework
+aligned with HUD SPM, NAEH standards, and the academic research partners?
+Before any pilot launch conversation — with Pitt County, Trillium, or anyone
+else — run the 7-metric framework and confirm all baselines are established.
+"Designing it right before day one" is the non-negotiable principle.
 Ask: "What would Devon say about this?" Specifically: is this the right
 format for the actual user, or just the right content? Would Reverend
 Monroe's 67-year-old volunteer coordinator complete this task correctly
 using only what we've given them? Before any pilot onboarding conversation,
 share the demo URL with Devon for a gap analysis of in-app help text,
 empty states, and error messages.
-
-**For search engine optimization and discoverability:**
-Ask: "Can Nadia find this page via Google?" Apply to every public-facing page,
-landing page, and static content page. Specifically: is the content server-rendered
-(not hidden behind client-side JS)? Does it have proper meta tags, structured
-data, and a path to indexation? Before any new public page goes live, verify
-it has a unique title, description, JSON-LD schema, and is included in the sitemap.
 
 **For hospital / institutional user scenarios:**
 Ask: "Does this work in locked-down hospital Chrome with no app install?
@@ -1017,6 +1211,8 @@ Is the hold duration sufficient for discharge workflows?"
 | 📣 Simone Okafor | Brand & Communications | Naming, messaging, audience-specific materials, copy review |
 | 📋 Devon Kessler | Instructional Designer | Job aids, coordinator quick-start card, onboarding formats |
 | 🔍 Nadia Petrova | SEO Strategist | Crawlability, structured data, local SEO, new domain authority |
+| 📐 Dr. Yemi Okafor | Research Methodologist | Pilot design, measurement frameworks, implementation science |
+| 💼 Nadia Osei | Business Strategist | Commercial model, pricing, legal entity, managed-service path |
 | 🏗️ Alex Chen | Principal Engineer | Architecture, module boundaries, correctness |
 | 🤝 Maria Torres | Product Manager | User outcomes, adoption sequencing, outreach strategy |
 | 🔧 Jordan Reyes | SRE | Deployment, security posture, CI integrity |
@@ -1028,5 +1224,5 @@ Is the hold duration sufficient for discharge workflows?"
 
 *Finding A Bed Tonight — Personas Reference*
 *Used by: Claude Code (CLAUDE-CODE-BRIEF.md), design reviews, accessibility audits,
-QA planning, demo preparation, funding conversations*
-*Last updated: April 2026 — v19 personas*
+QA planning, demo preparation, funding conversations, pilot design*
+*Last updated: April 8, 2026 — v20 personas*
