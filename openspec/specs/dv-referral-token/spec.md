@@ -1,11 +1,11 @@
 ## Purpose
 
-Opaque referral token lifecycle for DV shelter bed requests — zero PII storage, automatic purge of terminal tokens.
+Opaque referral token lifecycle for DV shelter bed requests — structured fields contain no client PII (names, DOB, SSN, address); free-text special needs field subject to staff guidelines. Automatic purge of terminal tokens.
 
 ## ADDED Requirements
 
 ### Requirement: referral-token-lifecycle
-The system SHALL support a referral token lifecycle (PENDING → ACCEPTED/REJECTED/EXPIRED) for DV shelter bed requests. Tokens contain zero client PII. All terminal-state tokens are hard-deleted within 24 hours.
+The system SHALL support a referral token lifecycle (PENDING → ACCEPTED/REJECTED/EXPIRED) for DV shelter bed requests. Tokens contain no structured client PII (names, DOB, SSN, phone, address). The special needs field may contain user-entered text subject to staff guidelines. All terminal-state tokens are hard-deleted within 24 hours.
 
 #### Scenario: Outreach worker creates referral token
 - **WHEN** an outreach worker with `dvAccess=true` submits a referral request for a DV shelter
