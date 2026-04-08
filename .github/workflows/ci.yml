@@ -75,8 +75,10 @@ jobs:
 
           if [[ $FOUND -gt 0 ]]; then
             echo ""
-            echo "⚠  $FOUND match(es) require review."
-            echo "Use 'designed to support' instead of 'compliant'."
-            exit 1
+            echo "⚠  $FOUND match(es) flagged for review (advisory — does not block merge)."
+            echo "Use 'designed to support' instead of 'compliant' for new content."
+            # Advisory only — docs repo contains prose discussing legal concepts.
+            # The code repo scan (finding-a-bed-tonight) is the hard gate.
+            exit 0
           fi
           echo "✅ No overclaimed compliance language found."
