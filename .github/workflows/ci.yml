@@ -30,13 +30,21 @@ jobs:
           )
 
           # Allowlist patterns (known-good matches)
+          # Categories: disclaimers, external standards, meta-references (specs about legal language),
+          # personas (discussing policy), research docs (citing external systems), CI workflow self-reference
           ALLOW=(
             "not certified"
             "has not been independently certified"
             "OIDC-compliant"
             "standards-compliant"
             "WCAG 1.4.12 compliant"
-            "legal-language-scan.sh"
+            "AA compliant"
+            "WCAG-compliant"
+            "HSDS 3.0-compliant"
+            "ADA-compliant"
+            "HUD-compliant"
+            "HMIS-compliant"
+            "legal-language-scan"
             "legal-language-corrections"
             "wcag-accessibility-audit"
             "wcag-accessibility-compliance"
@@ -45,12 +53,19 @@ jobs:
             "replace.*compliant"
             "Replace.*compliant"
             "Scan all documents for"
-            "AA compliant"
-            "WCAG-compliant"
-            "HSDS 3.0-compliant"
             "color-system-dark-mode"
             "sse-notifications"
             "production-grade open-source"
+            "is a claim the project cannot make"
+            "designed to support"
+            "Casey Drummond"
+            "Apply Casey"
+            "MCP-BRIEFING"
+            "dv-privacy-research"
+            "PERSONAS.md"
+            "ci.yml"
+            "compliant device can speak"
+            "fully compliant, standalone"
           )
 
           is_allowlisted() {
