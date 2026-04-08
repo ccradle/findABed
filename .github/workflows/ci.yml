@@ -37,6 +37,20 @@ jobs:
             "standards-compliant"
             "WCAG 1.4.12 compliant"
             "legal-language-scan.sh"
+            "legal-language-corrections"
+            "wcag-accessibility-audit"
+            "wcag-accessibility-compliance"
+            "No documents claim"
+            "no document uses"
+            "replace.*compliant"
+            "Replace.*compliant"
+            "Scan all documents for"
+            "AA compliant"
+            "WCAG-compliant"
+            "HSDS 3.0-compliant"
+            "color-system-dark-mode"
+            "sse-notifications"
+            "production-grade open-source"
           )
 
           is_allowlisted() {
