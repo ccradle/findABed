@@ -1,15 +1,6 @@
-## Purpose
+## MODIFIED Requirements
 
-Password recovery mechanisms for locked-out users: admin-generated one-time access codes (primary path, always available), and email-based self-service reset (secondary path, gated by SMTP configuration). Both honor the DV-user safeguard: a forgotten-password flow that emails a reset link is suppressed for `dvAccess=true` users because an email to a compromised inbox would reveal the user has an account on a DV-serving platform. Admin-generated access codes remain the safe recovery path for DV users. Includes `PasswordChangeRequiredFilter` (forces password change after access-code login) and the OTT cleanup scheduler.
-
-## ADDED Requirements
-
-### Requirement: Admin-generated temporary access code
-
-The system SHALL allow admins to generate time-limited access codes for locked-out users. Codes are bcrypt-hashed, 15-minute expiry, single-use. DV safeguard: generating code for dvAccess user requires dvAccess admin.
-
-### Requirement: Email forgot-password endpoint
-
+### Requirement: email-forgot-password (MODIFIED — was stub)
 `POST /api/v1/auth/forgot-password` SHALL generate a SHA-256 hashed reset token with 30-minute expiry and send a reset email when SMTP is configured. Always returns 200 regardless of email existence (no account enumeration).
 
 #### Scenario: Valid email with SMTP configured
@@ -26,7 +17,7 @@ The system SHALL allow admins to generate time-limited access codes for locked-o
 - **AND** no token SHALL be created, no email SHALL be sent
 - **AND** response time SHALL be consistent with the valid-email case
 
-#### Scenario: DV user blocked
+#### Scenario: DV user blocked (D3)
 - **GIVEN** a user with dvAccess=true
 - **WHEN** POST /api/v1/auth/forgot-password with their email
 - **THEN** response SHALL be 200 with the same message (no enumeration)
@@ -45,8 +36,7 @@ The system SHALL allow admins to generate time-limited access codes for locked-o
 - **AND** response SHALL be 200 with the same message (no error leak)
 - **AND** the failure SHALL be logged at ERROR level
 
-### Requirement: Email reset-password endpoint
-
+### Requirement: email-reset-password (MODIFIED — was 503 stub)
 `POST /api/v1/auth/reset-password` SHALL validate a reset token and set a new password. Invalidates token and all existing JWTs.
 
 #### Scenario: Valid token resets password
@@ -77,8 +67,7 @@ The system SHALL allow admins to generate time-limited access codes for locked-o
 - **WHEN** POST /api/v1/auth/reset-password with newPassword of 5 characters
 - **THEN** response SHALL be 400 with validation error (minimum 12 characters)
 
-### Requirement: TOTP intact after email reset
-
+### Requirement: totp-intact-after-reset (ADDED)
 Email-based password reset SHALL NOT modify TOTP enrollment, TOTP secret, or recovery codes. The user's next login SHALL require both the new password AND their TOTP code.
 
 #### Scenario: TOTP user resets password via email
@@ -87,8 +76,7 @@ Email-based password reset SHALL NOT modify TOTP enrollment, TOTP secret, or rec
 - **THEN** the login response SHALL contain `mfaRequired: true`
 - **AND** the user must provide their TOTP code to complete login
 
-### Requirement: DV user email reset blocked
-
+### Requirement: dv-user-email-reset-blocked (ADDED)
 Users with dvAccess=true SHALL NOT receive password reset emails. The forgotPassword endpoint SHALL silently succeed (no account enumeration) but SHALL NOT generate a token or send an email.
 
 #### Scenario: DV user's email is invisible to reset flow
@@ -97,8 +85,7 @@ Users with dvAccess=true SHALL NOT receive password reset emails. The forgotPass
 - **THEN** both responses SHALL be identical (200, same message, same timing)
 - **AND** only the non-DV user SHALL receive an email
 
-### Requirement: Token version increment on password change
-
+### Requirement: token-version-increment-on-password-change (ADDED — bug fix)
 All password change operations SHALL increment tokenVersion to invalidate existing JWTs immediately. This includes self-service password change, admin password reset, and email-based password reset.
 
 #### Scenario: Self-service password change invalidates old JWTs
@@ -107,8 +94,7 @@ All password change operations SHALL increment tokenVersion to invalidate existi
 - **THEN** tokenVersion SHALL be incremented
 - **AND** the old access token SHALL be rejected on the next request
 
-### Requirement: Generic password reset email content
-
+### Requirement: generic-email-content (ADDED)
 Password reset emails SHALL NOT contain the platform name, organization name, or any language identifying the platform as a shelter/homelessness/DV service. Subject line SHALL be "Password Reset Request" only.
 
 #### Scenario: Email does not reveal platform purpose
@@ -116,8 +102,7 @@ Password reset emails SHALL NOT contain the platform name, organization name, or
 - **THEN** the subject SHALL be "Password Reset Request"
 - **AND** the body SHALL NOT contain "Finding A Bed Tonight", "shelter", "bed", "homelessness", or "domestic violence"
 
-### Requirement: Password reset token schema
-
+### Requirement: password-reset-token-schema (ADDED)
 A `password_reset_token` table SHALL store email reset tokens with SHA-256 hashing. Flyway V39.
 
 #### Scenario: Token stored with SHA-256 hash
@@ -125,11 +110,3 @@ A `password_reset_token` table SHALL store email reset tokens with SHA-256 hashi
 - **THEN** the plaintext token SHALL NOT be stored in the database
 - **AND** the SHA-256 hex digest of the token SHALL be stored in `token_hash`
 - **AND** validation SHALL use direct hash lookup (WHERE token_hash = SHA-256(input))
-
-### Requirement: Password change required after access code login
-
-After access-code login, PasswordChangeRequiredFilter blocks all API calls except PUT /api/v1/auth/password with 403 `password_change_required`. JWT carries `mustChangePassword: true` claim.
-
-### Requirement: OTT token cleanup
-
-Expired one-time tokens cleaned up hourly by AccessCodeCleanupScheduler.
