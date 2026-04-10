@@ -60,25 +60,21 @@
 - [x] T-18b: Integration test — same spy pattern, verifies data persisted (fresh transaction, not rollback-only)
 - [x] T-18c: Integration test — beds_occupied > beds_total → 422 immediately, verify createSnapshot called only once (not retried)
 
-### Backend — SSE Backpressure (PHASE 2 — after all other tasks green)
+### Backend — SSE Backpressure (MOVED to sse-backpressure-phase2)
 
-**Do NOT start these until Phase 1 verification (T-55 through T-59) passes.**
+**Spun off 2026-04-10** into `openspec/changes/sse-backpressure-phase2/` with persona-validated design (Alex Chen, Sam Okafor, Marcus Webb, Riley Cho, Keisha Thompson). Tracking issue: **ccradle/finding-a-bed-tonight#97**.
 
-- [ ] T-SSE-B1: Run full `SseNotificationIntegrationTest` + `SseStabilityTest` — save baseline output to `logs/sse-baseline-pre-backpressure.log`
-- [ ] T-SSE-B2: Run `sse-cache-regression` Playwright tests through nginx — save baseline to `logs/sse-playwright-baseline.log`
-- [ ] T-SSE-B3: Verify `sse.connections.active` gauge is flat on local nginx (3 users, 5 min wait)
-- [ ] T-19: Replace direct `emitter.send()` with bounded per-client `LinkedBlockingQueue<SseEvent>` (max 10). Use virtual threads for sender (not platform threads)
-- [ ] T-20: Background sender thread per emitter — ONLY writer to `emitter.send()`. On IOException: remove emitter from registry FIRST, then completeWithError, then exit thread. Preserve v0.29.2 remove-before-complete pattern.
-- [ ] T-20a: Sender thread lifecycle — poison pill on emitter removal, thread naming `sse-sender-{userId}`, clean exit on shutdown (@PreDestroy completes all within 5 seconds)
-- [ ] T-21: On queue overflow, drop oldest event. Heartbeats have lower priority than real events (drop heartbeat first). Log at DEBUG.
-- [ ] T-21a: Heartbeat scheduler enqueues to the per-client queue — does NOT call `emitter.send()` directly
-- [ ] T-SSE-R1: Re-run full `SseNotificationIntegrationTest` + `SseStabilityTest` — compare to baseline, zero regressions
-- [ ] T-SSE-R2: Re-run `sse-cache-regression` Playwright tests through nginx — compare to baseline
-- [ ] T-SSE-R3: Verify `sse.connections.active` gauge flat (not sawtooth) on local nginx (3 users, 5 min wait)
-- [ ] T-SSE-R4: Integration test — sender thread terminates when emitter is removed (no thread leak)
-- [ ] T-SSE-R5: Integration test — IOException in sender triggers cleanup AND thread exit, no cascading errors
-- [ ] T-SSE-R6: Integration test — concurrent heartbeat enqueue + event enqueue on same client — no race condition
-- [ ] T-SSE-R7: Integration test — graceful shutdown completes all sender threads within 5 seconds
+The original task list (T-SSE-B1..3, T-19, T-20, T-20a, T-21, T-21a, T-SSE-R1..7) was superseded by a more comprehensive 39-task plan based on a 2026-04-10 codebase audit and external research. The new plan adds:
+
+- A `NotificationEmitter` wrapper class enforcing single-writer at the type system, not by convention
+- Priority-aware enqueue (CRITICAL evicts NORMAL; never silently drops)
+- Per-user connection cap with FIFO eviction (default 5, configurable)
+- Spring Framework 7 `@ConcurrencyLimit(REJECT)` on the broadcast publisher (default 10, configurable)
+- Forced periodic reconnect with jitter (Netflix Zuul Push pattern)
+- Feature flag `fabt.sse.transport=sse|polling` as kill-switch
+- Memory-capture acceptance criteria on the Gatling tasks (Sam Okafor's lens)
+
+See the new change for details.
 
 ### Backend — Audit Event Fix (#58)
 
@@ -163,15 +159,13 @@
 ### Performance — Gatling
 
 - [x] T-43: Gatling AvailabilityUpdate with server-side retry — **0% KO rate** (was 14.1% → 2.05% → 0%), p95 59ms, p99 116ms (SLO p95 <200ms, KO <1%). Test executed 2026-04-03 20:12 UTC, 390 PATCH requests across two scenarios (multi-shelter + same-shelter contention). Log: `logs/gatling-availability-test.log`. Both SLO assertions passed. Server-side retry implementation: `AvailabilityRetryService.createSnapshotWithRetry()` with `@Retryable(includes = DataAccessException.class, maxRetries = 2)` on Spring Framework 7 native annotation.
-- [ ] T-44: New Gatling simulation: 200 SSE connections + bed search concurrent load (PHASE 2 — after SSE backpressure)
-- [ ] T-44a: Gatling SSE slow-client scenario: 200 connections, 10 deliberately throttled (sleep 2s per event read). Verify fast clients receive events within p95 < 500ms. (PHASE 2)
-- [ ] T-45: Verify bed search p99 stays under SLO with 200 SSE connections (PHASE 2)
+- [~] T-44, T-44a, T-45: MOVED 2026-04-10 to `sse-backpressure-phase2` (tasks T-25, T-26, T-27 in the new change). Tracking issue: **ccradle/finding-a-bed-tonight#97**.
 
 ### Seed Data & Screenshots
 
 - [x] T-46: Add API key with last_used_at timestamp for screenshot
 - [x] T-47: Add subscription with delivery log entries for screenshot
-- [ ] T-48: Capture screenshots: API key management, subscription management, delivery log
+- [~] T-48: REJECTED 2026-04-10 — deferred to a separate polish change. The Playwright tests for these features (T-38..T-42) already exercise the UI; screenshot capture is documentation polish, not a verification gap. Will be picked up alongside other documentation work for the v0.33.0 release notes.
 
 ### Docs-as-Code — DBML, AsyncAPI, OpenAPI
 
@@ -214,8 +208,10 @@
 
 Issue #51 verification surfaced gaps after the v0.30.0 ship. Most were spec/code drift (T-24b, T-64l, T-43, T-PD-2 — see status updates above). One was a real bug:
 
-- [x] T-FU-1: **Read timeout bug fix** — see T-9a above. `WebhookDeliveryService` was missing the documented 30s read timeout. Fixed and made configurable. Branch: `feature/platform-hardening`.
+- [x] T-FU-1: **Read timeout bug fix** — see T-9a above. `WebhookDeliveryService` was missing the documented 30s read timeout. Fixed and made configurable. Branch: `feature/platform-hardening`. Merged in PR #96 (commit 6dba57a).
 - [x] T-FU-2: **Add WireMock 3.13.2 test dependency** — `org.wiremock:wiremock-standalone` (test scope). Spring Framework explicitly recommends mock web servers over `MockRestServiceServer` for RestClient testing because they exercise the real transport layer and can simulate timeouts. Validated against Java 25 / Spring Boot 4 — no compatibility issues.
-- [x] T-FU-3: **T-25 / T-25a tests** — see T-25 and T-25a above. 6 tests total, all green.
-- [ ] T-FU-4: **T-48 screenshots** — capture API key + webhook management screenshots via Playwright (deferred — runnable independently).
-- [ ] T-FU-5: **CHANGELOG entry** — document the read timeout fix and new tests in v0.32.x or v0.33.0.
+- [x] T-FU-3: **T-25 / T-25a tests** — see T-25 and T-25a above. 6 tests total, all green. Backend suite at 502 passed (up from 425).
+- [x] T-FU-4: **PR #96 merged with all 11 scans green** — Backend (Java 25 + Maven), Frontend (Node 20 + Vite), DV Access Control Canary, CodeQL × 3, Legal Language Scan, E2E (Playwright + Karate), and CodeQL meta. Merge commit: 6dba57a, 2026-04-10 10:09 UTC.
+- [~] T-FU-5: **T-48 screenshots** — REJECTED 2026-04-10 (deferred to a polish change later; not blocking issue #51 or this archive).
+- [~] T-FU-6: **CHANGELOG entry** — DONE in PR #96 under `[Unreleased]`. Will be promoted to a real version when v0.33.0 is tagged (which will bundle this fix with the SSE backpressure work from `sse-backpressure-phase2`).
+- [~] T-FU-7: **Spin off Phase 2 SSE work** — DONE 2026-04-10. New OpenSpec change `sse-backpressure-phase2` created with persona-validated design (Alex Chen, Sam Okafor, Marcus Webb, Riley Cho, Keisha Thompson). Tracking issue: **ccradle/finding-a-bed-tonight#97**.
