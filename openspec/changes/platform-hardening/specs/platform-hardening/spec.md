@@ -174,16 +174,26 @@ The system SHALL allow sending test events to a subscription endpoint.
 
 ### Requirement: Webhook delivery timeout
 
-Webhook delivery HTTP calls SHALL have connection and read timeouts to prevent thread blocking on hanging endpoints.
+Webhook delivery HTTP calls SHALL have configurable connection and read timeouts to prevent thread blocking on hanging endpoints. Both timeouts SHALL default to the values from design D3 (10s connect, 30s read).
 
 #### Scenario: Webhook endpoint hangs
-- **WHEN** a webhook delivery endpoint does not respond within 30 seconds
+- **WHEN** a webhook delivery endpoint does not respond within the configured read timeout (default 30 seconds)
 - **THEN** the delivery SHALL timeout and be recorded as a failure in the delivery log
 - **AND** the failure SHALL count toward the consecutive failure counter
+- **AND** the result envelope SHALL NOT report the upstream's would-be success status code
 
 #### Scenario: Webhook endpoint unreachable
-- **WHEN** a webhook delivery cannot establish a TCP connection within 10 seconds
+- **WHEN** a webhook delivery cannot establish a TCP connection within the configured connect timeout (default 10 seconds)
 - **THEN** the delivery SHALL timeout and be recorded as a failure
+
+#### Scenario: Read timeout is configurable
+- **WHEN** `fabt.webhook.read-timeout-seconds` (env: `FABT_WEBHOOK_READ_TIMEOUT_SECONDS`) is overridden
+- **THEN** the new value SHALL be applied to subsequent outbound webhook deliveries via `JdkClientHttpRequestFactory.setReadTimeout()`
+- **AND** existing in-flight requests SHALL complete under their original timeout
+
+#### Scenario: Connect timeout is configurable
+- **WHEN** `fabt.webhook.connect-timeout-seconds` (env: `FABT_WEBHOOK_CONNECT_TIMEOUT_SECONDS`) is overridden
+- **THEN** the new value SHALL be applied to subsequent outbound webhook deliveries via `HttpClient.Builder.connectTimeout()`
 
 ### Requirement: Webhook delivery log
 
@@ -296,49 +306,10 @@ Each shelter entry in the My Reservations panel SHALL be a clickable link that n
 - **THEN** the shelter name SHALL still be clickable
 - **AND** clicking it SHALL clear the filter or show a message that the shelter is not in current results
 
-### Requirement: SSE bounded event queue (PHASE 2)
+<!-- SSE bounded event queue requirement MOVED 2026-04-10 to
+     openspec/changes/sse-backpressure-phase2/specs/sse-backpressure-phase2/spec.md
+     where it is captured by 10 ADDED requirements with more detail
+     (single-writer wrapper, priority-aware enqueue, per-user cap,
+     broadcast concurrency limit, forced reconnect, shutdown deadline,
+     transport flag). Tracking issue: ccradle/finding-a-bed-tonight#97. -->
 
-The system SHALL protect against slow SSE clients. This requirement is implemented in Phase 2, after all other platform-hardening tasks are verified green.
-
-#### Scenario: Slow client event queue overflow
-- **WHEN** a client's SSE event queue reaches 10 pending events
-- **THEN** the oldest event is dropped to make room for the new event
-- **AND** the client can catch up via REST on reconnection
-
-#### Scenario: Heartbeats have lower priority than real events
-- **WHEN** a slow client's queue is full
-- **AND** a new real event arrives (availability.updated, dv-referral.*)
-- **THEN** the system SHALL drop a heartbeat from the queue before dropping a real event
-
-#### Scenario: Only the sender thread writes to the emitter
-- **WHEN** events are queued for delivery to a client
-- **THEN** only the per-emitter sender thread SHALL call `emitter.send()`
-- **AND** the heartbeat scheduler SHALL enqueue heartbeats, not send directly
-
-#### Scenario: Sender thread cleans up on IOException
-- **WHEN** the sender thread encounters an IOException during `emitter.send()`
-- **THEN** the emitter SHALL be removed from the registry BEFORE calling `completeWithError()`
-- **AND** the sender thread SHALL terminate cleanly
-- **AND** no `IllegalStateException` or cascading callback errors SHALL occur
-
-#### Scenario: Sender thread exits on emitter removal
-- **WHEN** an emitter is removed (user disconnect, shutdown, heartbeat failure detection)
-- **THEN** the corresponding sender thread SHALL receive a poison pill and exit
-- **AND** no thread leak SHALL occur
-
-#### Scenario: Graceful shutdown completes all sender threads
-- **WHEN** the application shuts down (@PreDestroy)
-- **THEN** all sender threads SHALL terminate within 5 seconds
-- **AND** all emitters SHALL be completed
-
-#### Scenario: SSE regression — existing tests pass after backpressure change
-- **WHEN** the bounded queue implementation is complete
-- **THEN** all existing `SseNotificationIntegrationTest` tests SHALL pass
-- **AND** all existing `SseStabilityTest` tests SHALL pass
-- **AND** all `sse-cache-regression` Playwright tests SHALL pass through nginx
-- **AND** the `sse.connections.active` Grafana gauge SHALL be flat (not sawtooth) after 5 minutes
-
-#### Scenario: Fast clients unaffected under load with slow clients present
-- **WHEN** 200 SSE clients are connected and 10 are deliberately throttled
-- **THEN** the remaining 190 fast clients SHALL receive events within normal SLO (p95 < 500ms)
-- **AND** heartbeat delivery to fast clients SHALL not be delayed by slow client queues
