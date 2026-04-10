@@ -43,6 +43,7 @@
 - [x] T-7: Flyway V34: `webhook_delivery_log` table + `consecutive_failures` column on subscription.
 - [x] T-8: PATCH /api/v1/subscriptions/{id}/status — ACTIVE/PAUSED only, 400 on invalid. Resets consecutive_failures on re-enable from DEACTIVATED/FAILING.
 - [x] T-9: POST /api/v1/subscriptions/{id}/test — `sendTestEvent()` in WebhookDeliveryService. 10s connect timeout via JdkClientHttpRequestFactory. Returns TestDeliveryResult(statusCode, responseTimeMs, responseBody). Logged via recordDelivery().
+- [x] T-9a (post-v0.30 follow-up, 2026-04-09): Read timeout was missing — design D3 specifies 30s but only the connect timeout was wired into the JDK HttpClient. Fixed in `WebhookDeliveryService` constructor by calling `JdkClientHttpRequestFactory.setReadTimeout()`. Both timeouts are now configurable via `fabt.webhook.connect-timeout-seconds` (default 10) and `fabt.webhook.read-timeout-seconds` (default 30) so partners with slow endpoints can be accommodated without code changes. Discovered while writing T-25a — exactly what the test was for.
 - [x] T-10: `findActiveByEventType` already filters by status='ACTIVE'. PAUSED/DEACTIVATED/CANCELLED automatically excluded.
 - [x] T-11: `recordDelivery()` in SubscriptionService — logs to webhook_delivery_log with 1KB truncation in entity constructor.
 - [x] T-12: Auto-disable: `recordDelivery()` increments consecutiveFailures, sets DEACTIVATED at 5. Successful delivery resets counter + clears FAILING status.
@@ -96,14 +97,14 @@
 - [x] T-23: Already covered by `test_apiKeyAuth_keyRotation_bothKeysWorkDuringGracePeriod` — both keys work during grace
 - [x] T-24: PATCH status to PAUSED on ACTIVE subscription → 200
 - [x] T-24a: PATCH status on non-existent subscription → 404
-- [ ] T-24b: Non-admin PATCH status → 403 (needs auth fixture for non-admin subscription access)
+- [~] T-24b: REJECTED 2026-04-09 — design changed: subscription endpoints are intentionally role-agnostic (`SecurityConfig.java:185` requires only `.authenticated()`). Multi-tenancy is enforced at the tenant boundary via 404 (T-24g), not at the role boundary. The original spec assumption (COORDINATOR/OUTREACH_WORKER → 403) is not the implemented model. Marcus Webb's lens: tenant isolation via 404 is a stronger boundary than role-based 403, because 403 confirms the resource exists.
 - [x] T-24c: PATCH with invalid status value ("FAILING") → 400
 - [x] T-24d: PATCH PAUSED → ACTIVE resumes subscription
 - [x] T-24e: PATCH on CANCELLED subscription → 409
 - [x] T-24f: PATCH PAUSED on DEACTIVATED → 409
-- [ ] T-24g: Cross-tenant PATCH/GET → 404 (needs multi-tenant test setup)
-- [ ] T-25: Send test event → verify delivery (needs external HTTP endpoint mock)
-- [ ] T-25a: Webhook timeout test (needs WireMock or similar for slow endpoint)
+- [x] T-24g: Cross-tenant PATCH/GET → 404 — `WebhookManagementTest.java:287-351` (`crossTenantPatchStatus_returns404`, `crossTenantGetDeliveries_returns404`). Both verify 404 (not 403) per Marcus Webb's "don't confirm cross-tenant existence" principle.
+- [x] T-25: Send test event → verify delivery — `WebhookTestEventDeliveryTest.java` (4 tests). Uses WireMock 3.13.2 to verify the full transport path: HMAC signing, headers, JSON body, success/failure recording, 404 on missing subscription. Spring Framework explicitly recommends mock web servers for RestClient testing.
+- [x] T-25a: Webhook timeout test — `WebhookTimeoutTest.java` (2 tests). Uses WireMock with `withFixedDelay(3000)` against a 1s configured read timeout to verify timeout fires in ~1.1s (well before the upstream 3s delay), failure is recorded in `webhook_delivery_log`, and the result envelope reports failure (not the upstream's would-be 200). Discovered T-9a (missing read timeout) during implementation.
 - [x] T-26: 5 consecutive failures → DEACTIVATED via recordDelivery
 - [x] T-26a: Re-enable from DEACTIVATED resets consecutive_failures to 0
 - [x] T-26b: Successful delivery after 3 failures resets counter to 0
@@ -157,11 +158,11 @@
 - [x] T-64i: Playwright (positive): multiple reservations → each shelter name independently clickable
 - [x] T-64j: Playwright (negative): expired reservations removed from panel (only HELD shown)
 - [x] T-64k: Playwright (negative): clicking shelter link does NOT navigate away from the search page (stays on same page)
-- [ ] T-64l: Playwright (negative): reservation for shelter not in current filter — click still opens detail modal (fetches by ID regardless of filter)
+- [~] T-64l: REJECTED 2026-04-09 — eliminated by implementation pattern. `OutreachSearch.tsx:438-448` calls `openDetail(shelterId)` which fetches the shelter via `/api/v1/shelters/{shelterId}` and is independent of any current filter state. The "reservation for shelter not in current filter" edge case is structurally impossible to reach — there's no filter logic on the click path. Better than testing the case: made it impossible.
 
 ### Performance — Gatling
 
-- [ ] T-43: Re-run Gatling AvailabilityUpdate with server-side retry — verify KO < 1%. Also verify API key validation latency unchanged (grace period adds potential second query).
+- [x] T-43: Gatling AvailabilityUpdate with server-side retry — **0% KO rate** (was 14.1% → 2.05% → 0%), p95 59ms, p99 116ms (SLO p95 <200ms, KO <1%). Test executed 2026-04-03 20:12 UTC, 390 PATCH requests across two scenarios (multi-shelter + same-shelter contention). Log: `logs/gatling-availability-test.log`. Both SLO assertions passed. Server-side retry implementation: `AvailabilityRetryService.createSnapshotWithRetry()` with `@Retryable(includes = DataAccessException.class, maxRetries = 2)` on Spring Framework 7 native annotation.
 - [ ] T-44: New Gatling simulation: 200 SSE connections + bed search concurrent load (PHASE 2 — after SSE backpressure)
 - [ ] T-44a: Gatling SSE slow-client scenario: 200 connections, 10 deliberately throttled (sleep 2s per event read). Verify fast clients receive events within p95 < 500ms. (PHASE 2)
 - [ ] T-45: Verify bed search p99 stays under SLO with 200 SSE connections (PHASE 2)
@@ -207,4 +208,14 @@
 ### Post-Deploy
 
 - [x] T-PD-1: Update post-deploy-smoke.spec.ts version check to v0.30
-- [ ] T-PD-2: Harden dvSafetyNoShelterInfoInWireData SSE test — timing flake in CI. Defer to Phase 2 (SSE backpressure changes the send path, fix will be different after).
+- [x] T-PD-2: RESOLVED 2026-04-09 — `dvSafetyNoShelterInfoInWireData` (`SseNotificationIntegrationTest.java:175`) is no longer flaky. The test exists, passes, and has no `@RetryingTest`/`@Disabled` markers. CI on main shows 10 of 10 recent runs green (verified via `gh run list`). The cumulative SSE stability work since v0.30.0 (emitter lifecycle fix, awaitTermination after shutdownNow, persistent notifications refactor) addressed the timing flake without needing direct hardening. Phase 2 SSE backpressure can proceed independently.
+
+### Phase 1 Follow-up (post-v0.30.0, 2026-04-09)
+
+Issue #51 verification surfaced gaps after the v0.30.0 ship. Most were spec/code drift (T-24b, T-64l, T-43, T-PD-2 — see status updates above). One was a real bug:
+
+- [x] T-FU-1: **Read timeout bug fix** — see T-9a above. `WebhookDeliveryService` was missing the documented 30s read timeout. Fixed and made configurable. Branch: `feature/platform-hardening`.
+- [x] T-FU-2: **Add WireMock 3.13.2 test dependency** — `org.wiremock:wiremock-standalone` (test scope). Spring Framework explicitly recommends mock web servers over `MockRestServiceServer` for RestClient testing because they exercise the real transport layer and can simulate timeouts. Validated against Java 25 / Spring Boot 4 — no compatibility issues.
+- [x] T-FU-3: **T-25 / T-25a tests** — see T-25 and T-25a above. 6 tests total, all green.
+- [ ] T-FU-4: **T-48 screenshots** — capture API key + webhook management screenshots via Playwright (deferred — runnable independently).
+- [ ] T-FU-5: **CHANGELOG entry** — document the read timeout fix and new tests in v0.32.x or v0.33.0.

@@ -77,6 +77,17 @@ DEACTIVATED → ACTIVE  (admin re-enables)
 
 POST /api/v1/subscriptions/{id}/test with `{eventType}`. Server generates a synthetic DomainEvent with test flag and delivers it to the subscription endpoint. Response includes the delivery result (status code, response time). Frontend shows the result inline after clicking "Send Test." HTTP client uses 10s connect timeout and 30s read timeout — a hanging endpoint will not block the delivery thread indefinitely.
 
+### D3a: Webhook timeout configurability (post-v0.30 follow-up, 2026-04-09)
+
+The original D3 implementation only wired the connect timeout into `JdkClientHttpRequestFactory` — the read timeout was documented but never set. JDK `HttpClient` has no per-client read timeout, so a hanging endpoint would block the virtual thread indefinitely until the JVM died. Marcus Webb's lens: documented timeouts that don't exist are a security gap. Discovered while writing T-25a and verified by `WebhookTimeoutTest.java`.
+
+**Fix:** Both timeouts are now wired via `JdkClientHttpRequestFactory.setReadTimeout()` and constructor-injected as configurable properties:
+
+- `fabt.webhook.connect-timeout-seconds` (env: `FABT_WEBHOOK_CONNECT_TIMEOUT_SECONDS`, default `10`)
+- `fabt.webhook.read-timeout-seconds` (env: `FABT_WEBHOOK_READ_TIMEOUT_SECONDS`, default `30`)
+
+Configurability matters for partner onboarding: a slow legacy subscriber (e.g. a CoC running on shared hosting) can be temporarily granted a longer read timeout via env var without code changes. Defaults preserve the original D3 contract.
+
 ### D4: Webhook delivery log
 
 New `webhook_delivery_log` table: `id UUID`, `subscription_id UUID`, `event_type VARCHAR`, `status_code INTEGER`, `response_time_ms INTEGER`, `attempted_at TIMESTAMPTZ`, `attempt_number INTEGER`, `response_body TEXT` (truncated to 1KB, redacted via `WebhookResponseRedactor`). WebhookDeliveryService logs each attempt. Retained for 14 days (scheduled cleanup). Frontend shows last 20 deliveries per subscription in an expandable panel.
