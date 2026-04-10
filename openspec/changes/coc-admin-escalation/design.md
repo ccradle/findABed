@@ -166,18 +166,29 @@ ALTER TABLE referral_token
 
 ### D8: All admin escalation actions write to audit_events
 
-Five new audit event types in the existing `audit_events` table:
+Six new audit event types in the existing `audit_events` table (the table introduces six rows even though the original count said five — the seventh action `auto-release` reuses the `DV_REFERRAL_RELEASED` type with `actor_user_id = system`):
 
 | Type | Trigger | Detail blob |
 |---|---|---|
 | `DV_REFERRAL_CLAIMED` | `POST /claim` | `{referral_id, claimed_until}` |
-| `DV_REFERRAL_RELEASED` | `POST /release` or auto-release | `{referral_id, reason: "manual\|timeout"}` |
+| `DV_REFERRAL_RELEASED` | `POST /release` or auto-release (`actor_user_id = system` for auto) | `{referral_id, reason: "manual\|timeout"}` |
 | `DV_REFERRAL_REASSIGNED` | `POST /reassign` | `{referral_id, target_type, target_id, previous_assignee_id}` |
 | `DV_REFERRAL_ADMIN_ACCEPTED` | `PATCH /accept` by COC_ADMIN+ | `{referral_id, shelter_id}` |
 | `DV_REFERRAL_ADMIN_REJECTED` | `PATCH /reject` by COC_ADMIN+ | `{referral_id, shelter_id, reason}` |
 | `ESCALATION_POLICY_UPDATED` | `PATCH /escalation-policy` | `{policy_id, event_type, version, previous_version}` |
 
 Zero PII in the detail blob — only IDs, roles, and structured metadata. The actor_user_id, IP address, and timestamp are recorded by the existing audit infrastructure. Casey Drummond's chain-of-custody is satisfied.
+
+**Implementation form (added Session 1, 2026-04-10 — tech-lead round-table review):** the 6 type strings live in `org.fabt.shared.audit.AuditEventTypes` as `public static final String` constants on a `final class` with a private constructor (Effective Java Item 4 utility-class pattern). The original tasks.md T-6 wording assumed an `AuditEventType` Java `enum` already existed; investigation in Session 1 confirmed it does not — the existing codebase passes audit type strings as bare `String` literals (e.g. `"ROLE_CHANGED"` in `UserService:100`). The constants-class form was chosen consciously over a true enum because:
+
+1. **Additive Session 1 scope.** A true enum would require migrating every existing `String` call site at once, refactoring `AuditEventRecord` (whose `action` field is `String`), and touching `UserService`, `AuthController`, `PasswordController`, etc. Out of scope for the schema-only first chunk.
+2. **New code in Sessions 3-4 still gets compile-time discoverability** by referencing `AuditEventTypes.DV_REFERRAL_CLAIMED` instead of bare strings.
+3. **Riley Cho's contract-pin test** (`AuditEventTypesTest`) locks the string values against accidental refactor — guards against the "someone shortens the constant value and breaks every audit query" failure mode that constants alone don't prevent.
+4. **A future cleanup change** should migrate all audit type strings (not just these six) from `String` to a true enum. Tracked as a separate follow-up issue, not in this change. Alex Chen's "do it for real or don't bother" stance acknowledged but explicitly deferred.
+
+Trade-offs accepted:
+- Constants do NOT enforce that `AuditEventService.publish(actorId, targetId, "TYPO", null, ip)` is rejected at compile time. Existing call sites with bare strings remain typo-vulnerable until the future enum migration.
+- The class lives in `org.fabt.shared.audit` (cross-cutting infrastructure), not in `org.fabt.dv.audit` or similar. This is correct because `audit_events` is a cross-module concern; coupling shared infrastructure to a single domain would constrain future audit consumers.
 
 ### D9: SSE event types and live queue updates
 
