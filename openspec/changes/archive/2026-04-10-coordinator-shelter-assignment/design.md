@@ -50,3 +50,15 @@ The user edit drawer shows "Assigned Shelters" as a list of shelter name chips. 
 ### D6: No New Database Schema
 
 `coordinator_assignment` table already has the correct schema (composite PK: user_id + shelter_id). No migration needed.
+
+### D7: DV Referral Expiry Fix — Remove @Transactional from Scheduled Methods
+
+`@Transactional` on `@Scheduled` methods that call `TenantContext.runWithContext()` internally is incompatible with the RLS-aware DataSource. Spring's `DataSourceTransactionManager.doBegin()` eagerly acquires a JDBC connection BEFORE the method body runs. The `RlsAwareDataSource` reads `TenantContext.getDvAccess()` at connection-acquisition time — which is false because `runWithContext()` hasn't been called yet.
+
+The correct pattern is demonstrated by `BatchJobScheduler.runJob()`: set TenantContext BEFORE any transaction starts. For simple `@Scheduled` methods with single-statement SQL (already atomic), the fix is to remove `@Transactional` so JdbcTemplate acquires the connection lazily inside `runWithContext`.
+
+Defense-in-depth: add a fail-fast assertion (`if (!TenantContext.getDvAccess()) throw`) so any future regression crashes loudly instead of silently returning zero rows. Add diagnostic logging so every run is visible in logs.
+
+Affected methods:
+- `ReferralTokenService.expireTokens()` — UPDATE RETURNING (atomic)
+- `ReferralTokenPurgeService.purgeTerminalTokens()` — DELETE (atomic)

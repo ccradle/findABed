@@ -19,9 +19,15 @@ Clarity Human Services (the dominant HMIS platform) handles staff-to-program ass
 ### Modified Capabilities
 - `notification-rest-api`: No spec change, but the coordinator pending count endpoint now becomes useful once assignments are manageable via UI.
 
+## Bundled Fix: DV Referral Token Expiry (Critical)
+
+Discovered during pre-implementation investigation: DV referral tokens are never expired by the `@Scheduled` job. Root cause: `@Transactional` on `expireTokens()` eagerly acquires a JDBC connection before `TenantContext.runWithContext()` sets dvAccess=true. The RLS-aware DataSource reads dvAccess=false, making DV shelters (and their referral tokens) invisible. Same bug exists in `purgeTerminalTokens()`.
+
+Reproduced on live demo site (3 stuck PENDING tokens, oldest 7 days) and locally via integration test. Fix: remove `@Transactional` (single-statement SQL is already atomic), add fail-fast assertion, add diagnostic logging. Proven by new `DvReferralExpiryRlsTest`.
+
 ## Impact
 
 - **Frontend**: New combobox+chips component in `ShelterForm.tsx`, read-only chips in `UserEditDrawer.tsx`. No new dependencies (built with existing design tokens, inline styles).
-- **Backend**: One new endpoint: `GET /api/v1/users/{id}/shelters`. Write endpoints already exist.
-- **Database**: No schema changes — `coordinator_assignment` table already exists.
-- **Security**: Assignment changes restricted to COC_ADMIN and PLATFORM_ADMIN roles (existing authorization on shelter coordinator endpoints).
+- **Backend**: One new endpoint: `GET /api/v1/users/{id}/shelters`. Write endpoints already exist. Fix: `@Transactional` removed from `expireTokens()` and `purgeTerminalTokens()`, fail-fast assertions and diagnostic logging added.
+- **Database**: No schema changes — `coordinator_assignment` table already exists. Manual cleanup of 3 stuck PENDING referral tokens on demo site.
+- **Security**: Assignment changes restricted to COC_ADMIN and PLATFORM_ADMIN roles. DV referral expiry fix restores defense-in-depth for referral lifecycle.

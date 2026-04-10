@@ -83,3 +83,47 @@ The system SHALL record audit events for all admin actions on user accounts.
 - **WHEN** an admin queries audit events for a target user
 - **THEN** all audit events for that user are returned in reverse chronological order
 
+### Requirement: User edit drawer shows assigned shelters
+
+The user edit drawer SHALL show an "Assigned Shelters" section displaying the user's current shelter assignments as a read-only chip list.
+
+#### Scenario: Coordinator with 3 assigned shelters
+- **GIVEN** a coordinator assigned to Safe Haven, Harbor House, and Bridges to Safety
+- **WHEN** an admin opens the user edit drawer for this coordinator
+- **THEN** 3 shelter name chips SHALL be displayed under "Assigned Shelters"
+- **AND** the chips SHALL NOT have remove buttons (read-only)
+
+#### Scenario: User with no assignments
+- **GIVEN** a coordinator not assigned to any shelters
+- **WHEN** an admin opens the user edit drawer
+- **THEN** the "Assigned Shelters" section SHALL show "No shelters assigned"
+
+### Requirement: Assigned shelter chips link to shelter edit
+
+Each shelter chip in the read-only view SHALL link to the shelter edit page.
+
+#### Scenario: Click shelter chip navigates to edit
+- **GIVEN** a coordinator assigned to Safe Haven
+- **WHEN** the admin clicks the "Safe Haven" chip
+- **THEN** the browser SHALL navigate to `/coordinator/shelters/{id}/edit?from=/admin`
+
+### Requirement: User shelters API endpoint
+
+A `GET /api/v1/users/{id}/shelters` endpoint SHALL return the shelters assigned to a user. Authorization: COC_ADMIN+.
+
+#### Scenario: API returns assigned shelters
+- **GIVEN** a coordinator assigned to 2 shelters
+- **WHEN** GET /api/v1/users/{id}/shelters is called
+- **THEN** response SHALL contain 2 shelter objects with id and name
+- **AND** response SHALL return 200
+
+#### Scenario: Non-coordinator returns empty
+- **GIVEN** an outreach worker with no assignments
+- **WHEN** GET /api/v1/users/{id}/shelters is called
+- **THEN** response SHALL return an empty array and 200
+
+#### Scenario: Outreach worker rejected with 403
+- **GIVEN** a non-admin user
+- **WHEN** they call GET /api/v1/users/{id}/shelters
+- **THEN** response SHALL return 403 Forbidden
+

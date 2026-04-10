@@ -84,3 +84,48 @@ Seed data and test infrastructure SHALL include a DV-authorized outreach worker 
 
 ### Requirement: DV referrals intentionally not queued offline
 DV referral requests SHALL NOT be queued in the offline IndexedDB queue. Referral data (callback number, household size, special needs) persisted on-device undermines the zero-PII threat model. No DV service platform in the sector has an offline referral workflow (NNEDV Safety Net, 2026).
+
+### Requirement: Scheduled expiry job RLS context handling
+
+The `expireTokens()` scheduled method SHALL NOT use `@Transactional`. The underlying SQL is a single atomic UPDATE RETURNING statement. `@Transactional` eagerly acquires a JDBC connection before `TenantContext.runWithContext()` sets dvAccess=true, making DV shelter referral tokens invisible via RLS. Discovered v0.31.2 incident: 3 stuck PENDING DV tokens on demo site, oldest 7 days old.
+
+#### Scenario: DV referral token expired by scheduled job
+- **GIVEN** a PENDING DV referral token with expires_at in the past
+- **WHEN** `expireTokens()` runs via @Scheduled (no outer TenantContext)
+- **THEN** the token status SHALL change to EXPIRED
+- **AND** a `dv-referral.expired` domain event SHALL be published
+
+#### Scenario: Fail-fast on missing dvAccess
+- **GIVEN** `expireTokens()` is called
+- **WHEN** `TenantContext.getDvAccess()` returns false inside `runWithContext`
+- **THEN** an IllegalStateException SHALL be thrown (never silently return zero rows)
+
+### Requirement: Scheduled purge job RLS context handling
+
+The `purgeTerminalTokens()` scheduled method SHALL NOT use `@Transactional`. Same root cause as `expireTokens()`: single atomic DELETE, `@Transactional` breaks RLS context by acquiring a connection before `runWithContext` sets dvAccess.
+
+#### Scenario: DV terminal tokens purged by scheduled job
+- **GIVEN** an EXPIRED DV referral token older than 24 hours
+- **WHEN** `purgeTerminalTokens()` runs via @Scheduled (no outer TenantContext)
+- **THEN** the token SHALL be hard-deleted
+
+### Requirement: Scheduled job diagnostic logging
+
+Both `expireTokens()` and `purgeTerminalTokens()` SHALL log on every invocation (not just when rows are affected). Logs SHALL include the dvAccess state and the count of affected rows. Discovered as a defense-in-depth measure during the v0.31.2 incident: silent zero-row results were the failure mode that took 7 days to detect.
+
+#### Scenario: Expiry job logs every run
+- **WHEN** `expireTokens()` runs and finds 0 expired tokens
+- **THEN** the log SHALL contain `expireTokens: dvAccess=true, expired=0`
+
+#### Scenario: Purge job logs every run
+- **WHEN** `purgeTerminalTokens()` runs and finds 0 terminal tokens
+- **THEN** the log SHALL contain `purgeTerminalTokens: dvAccess=true, purged=0`
+
+### Requirement: Scheduled job test pattern (no outer TenantContext)
+
+Integration tests for `expireTokens()` and `purgeTerminalTokens()` SHALL call the methods WITHOUT an outer `TenantContext` — matching the production `@Scheduled` invocation. Tests that wrap these methods in `TenantContext.runWithContext()` mask the RLS context bug that the v0.31.2 incident exposed.
+
+#### Scenario: Test calls expireTokens like @Scheduled does
+- **GIVEN** a DV referral with expires_at in the past
+- **WHEN** `expireTokens()` is called directly (no TenantContext wrapper)
+- **THEN** the token SHALL be EXPIRED (proving the fix works in production conditions)
