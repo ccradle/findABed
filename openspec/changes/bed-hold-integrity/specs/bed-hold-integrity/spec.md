@@ -94,7 +94,7 @@ The system SHALL run a Spring Batch reconciliation job every 5 minutes that dete
 - **WHEN** the reconciliation tasklet runs
 - **THEN** the tasklet SHALL complete without inserting any snapshots
 - **AND** the tasklet SHALL NOT write any audit rows
-- **AND** the tasklet SHALL log "Reconciliation complete: 0 corrections" at INFO level
+- **AND** the tasklet SHALL log "Bed holds reconciliation complete: 0 corrections" at INFO level (the "Bed holds" prefix disambiguates from other batch jobs in the codebase)
 
 #### Scenario: tasklet sees DV shelter rows under RLS
 - **GIVEN** a DV shelter with `beds_on_hold = 2` in the latest snapshot and zero HELD reservations
@@ -179,4 +179,5 @@ The `BedHoldsInvariantTest` integration test class SHALL exist and SHALL assert 
 #### Scenario: invariant holds after reconciliation tasklet runs
 - **GIVEN** a shelter with seeded drift
 - **WHEN** the reconciliation tasklet runs and writes a corrective snapshot
-- **THEN** `BedHoldsInvariantTest.invariant_after_reconciliation` SHALL pass
+- **THEN** `BedHoldsReconciliationJobTest.reconciliation_corrects_seeded_drift` SHALL pass, verifying the corrective snapshot exists with `beds_on_hold = COUNT(HELD)` (the invariant by construction)
+- **AND** the underlying recompute code path — which the tasklet delegates to via `ReservationService.recomputeBedsOnHold` — SHALL be covered by `BedHoldsInvariantTest.invariant_after_recompute_via_public_api`
