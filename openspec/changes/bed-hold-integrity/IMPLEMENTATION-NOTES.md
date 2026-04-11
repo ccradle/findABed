@@ -53,19 +53,30 @@ branches eventually land in main. Better to fix it now.
 
 **Resolution — renumber:**
 
-- **`V44__backfill_phantom_beds_on_hold.sql`** (was V40) — append-only
-  one-time backfill, idempotent, tagged `updated_by = 'V44-rca-backfill'`.
-  Slots in after coc-admin-escalation's V43.
-- **`V45__audit_events_allow_null_actor.sql`** (was V41) — drops the
-  `NOT NULL` constraint on `audit_events.actor_user_id`.
-  coc-admin-escalation's V42 makes the same schema change for the same
-  reason. `ALTER COLUMN ... DROP NOT NULL` is a Postgres no-op when
-  the column is already nullable, so V45 is safe regardless of which
-  branch merges first. The migration's header comment documents the
-  idempotency.
+- **`V44__audit_events_allow_null_actor.sql`** (was V41 → V45 →
+  finally V44 after the war-room swap) — drops the `NOT NULL`
+  constraint on `audit_events.actor_user_id`. coc-admin-escalation's
+  V42 makes the same schema change for the same reason. `ALTER
+  COLUMN ... DROP NOT NULL` is a Postgres no-op when the column is
+  already nullable, so V44 is safe regardless of which branch merges
+  first. The migration's header comment documents the idempotency.
+- **`V45__backfill_phantom_beds_on_hold.sql`** (was V40 → V44 →
+  finally V45 after the war-room swap) — append-only one-time
+  backfill with per-correction audit row writes, idempotent, tagged
+  `updated_by = 'V45-rca-backfill'`. Slots in after coc-admin-
+  escalation's V43. Writes `BED_HOLDS_RECONCILED` audit rows with
+  `actor_user_id = NULL` per Casey Drummond's chain-of-custody
+  requirement (war room 2026-04-11); this is why V44 (the NOT NULL
+  drop) must run first.
+
+**Why the swap:** the original V44 was the backfill and the original
+V45 was the schema change. But the war room's Casey-Drummond ask
+(write audit rows from the backfill migration) required the NOT NULL
+drop to run BEFORE the backfill, not after. Swapping the two file
+numbers preserves the intent while making the ordering correct.
 
 Discovered 2026-04-11 evening during the local backfill smoke test.
-Backend regression re-ran with the renumber: 517 / 517 still pass.
+Swap landed later the same evening after the war-room review.
 
 ### 3. `AuditEventTypes` had to be created from scratch
 
@@ -187,40 +198,132 @@ all pass against the new code.
 
 ## Known wrinkles + follow-ups
 
-### A. Coordinator-assigned-via-HTTP test wrinkle
+### A. SecurityConfig filter rule gap — ROOT-CAUSED and FIXED (war room 2026-04-11)
 
-`OfflineHoldEndpointTest` was originally going to exercise the
-"assigned coordinator can create offline hold via the HTTP path" success
-case. In the integration-test environment, the controller's
-`coordinatorAssignmentRepository.isAssigned(userId, shelterId)` returned
-`false` even when the assignment row was visible to the test thread
-immediately after `assign()` (verified via a sanity assertion). The 403
-returned by the controller was clearly the
-`AccessDeniedException("Coordinator is not assigned to this shelter")`
-branch, not the Spring Security `@PreAuthorize` denial.
+An earlier draft of this document described a "coordinator-assigned-via-HTTP
+test infrastructure wrinkle" in which the `OfflineHoldEndpointTest`
+success-path test couldn't use real coordinator headers. That framing
+was **wrong**. The root cause was not test infra — it was a real
+production bug in `SecurityConfig.java:172`:
 
-This is a test-infrastructure wrinkle that has not previously been
-exercised in the codebase: looking at `BedAvailabilityHardeningTest` —
-the only other test of an endpoint with the coordinator+assignment
-pattern — it cheats by storing `cocAdminHeaders()` in a field named
-`coordHeaders` and never actually exercises the coordinator role.
+```java
+// BEFORE (bug):
+.requestMatchers(HttpMethod.POST, "/api/v1/shelters/**").hasAnyRole("COC_ADMIN", "PLATFORM_ADMIN")
+```
 
-**Mitigation in this change:** the success-path tests in
-`OfflineHoldEndpointTest` use `cocAdminHeaders()` (admins bypass the
-assignment check); the negative coordinator path
-(`coordinator_not_assigned_to_shelter_403`) still validates via
-coordinator headers. Plus `BedHoldsInvariantTest.invariant_after_offline_hold`
-exercises the manual-hold endpoint via cocAdmin.
+`COORDINATOR` was missing from the role list on the `POST
+/api/v1/shelters/**` catch-all. The new `POST /api/v1/shelters/{id}/manual-hold`
+endpoint matched this wildcard, so Spring Security's filter chain
+rejected every coordinator call at the filter level — **before**
+`@PreAuthorize` or the controller's `isAssigned()` check could run. The
+403 response body came from the inline `accessDeniedHandler` at
+`SecurityConfig.java:195-200`, which writes the same JSON shape
+(`{"error":"access_denied","message":"Insufficient permissions","status":403}`)
+as `GlobalExceptionHandler.handleAccessDenied`. Because the two response
+bodies were indistinguishable, the integration test couldn't tell which
+branch rejected the request, and the "wrinkle" framing slipped past
+code review.
 
-**Follow-up:** open a separate GH issue to investigate the coordinator
-+assigned-shelter test infrastructure path. Hypotheses: (a) the user_id
-in the JWT differs from the assigned coordinator id due to a stale
-cached User in `TestAuthHelper`, (b) the JdbcTemplate connection used
-by the controller has different connection pool semantics than the test
-thread's, (c) some session-level RLS setting on `coordinator_assignment`
-is filtering reads. None of these are the bed-hold-integrity change's
-problem; the same wrinkle would block any future test exercising this
-HTTP path.
+**Production impact in v0.32.x and v0.33.x pre-fix:** every coordinator
+who hits `/manual-hold`, regardless of shelter assignment, gets 403'd
+silently. The entire coordinator offline-hold workflow (the legitimate
+"phone reservation / expected guest" use case that Component 3 was added
+for) is broken. This is production-blocking for any real-tenant
+deployment of bed-hold-integrity.
+
+**Fix (landed in this change):** insert a more specific rule before
+line 172, matching Spring's first-match-wins semantics:
+
+```java
+// Manual offline hold (Issue #102 / bed-hold-integrity): coordinators can
+// create offline holds at their assigned shelters. Filter chain admits
+// the role; the fine-grained shelter-assignment check is enforced in
+// ManualHoldController via CoordinatorAssignmentRepository.isAssigned.
+// Two-layer authz contract — filter is the coarse first pass, controller
+// is the fine second pass. The filter must never be more restrictive than
+// the controller body.
+.requestMatchers(HttpMethod.POST, "/api/v1/shelters/*/manual-hold").hasAnyRole("COORDINATOR", "COC_ADMIN", "PLATFORM_ADMIN")
+```
+
+**Test coverage additions (Riley Cho gating):**
+- New `OfflineHoldEndpointTest.coordinator_creates_offline_hold_succeeds_when_assigned`
+  using real `coordinatorHeaders()` — exercises the full filter → controller → isAssigned path.
+- `OfflineHoldEndpointTest.coordinator_not_assigned_to_shelter_403` now
+  asserts that the `fabt.http.access_denied.count` counter incremented by 1,
+  which proves the rejection came from the controller's `isAssigned` branch
+  (increments counter via GlobalExceptionHandler) and not from the filter
+  chain (does not increment counter). This is the regression guard for
+  SecurityConfig ever narrowing below the controller contract again.
+- `ManualHoldController.create()` now carries a Javadoc documenting the
+  two-layer authz contract.
+
+**Verified against live dev stack 2026-04-11 20:55-21:04 UTC:**
+- Pre-fix: POST /manual-hold as `dv-coordinator@dev.fabt.org` → HTTP 403,
+  `fabt_http_access_denied_count_total` absent from Prometheus (proving
+  GlobalExceptionHandler was never called).
+- Post-fix (pending verification): POST /manual-hold same user/shelter → expect HTTP 201.
+
+### B. V45/seed-Component-6 ordering — FIXED (war room 2026-04-11)
+
+An earlier draft of this document counted 3 `BED_HOLDS_RECONCILED` audit
+rows at T+5 min on every fresh restart as "transient artifacts." Casey
+Drummond pointed out that the audit trail was misleading: the rows
+described corrections for drift that the system had itself induced via
+a V45-backfill/seed-Component-6 ordering bug. Flyway's V45 backfill
+runs during Spring context init, BEFORE dev-start.sh loads seed-data.sql.
+At V45 time the reservation table has zero HELD rows for the seed's
+orphan pairs, so V45 writes corrective snapshots of `beds_on_hold = 0`.
+Then seed Component 6 inserts 5 HELD reservations, creating reverse
+drift (snapshot=0, held=1/3/1). The scheduled reconciliation tasklet
+catches it within 5 minutes, but those 5 minutes are a phantom-LOW
+window where outreach workers see 1 fewer bed at 3 shelters than
+actually exists. Opposite direction from the original #102 bug, but
+still wrong and still misleading the audit trail.
+
+**Fix (landed in this change):** add an `INSERT INTO bed_availability`
+block to seed-data.sql Component 6 AFTER the `INSERT INTO reservation`
+block, writing fresh snapshots with `clock_timestamp()` (strictly later
+than V45's `clock_timestamp()`) and the correct `beds_on_hold` values
+(1, 3, 1). Both blocks wrapped in a single `BEGIN; ... COMMIT;`
+transaction per Elena Vasquez — if the script crashes between them,
+the DB is left in the same drift state we started with rather than
+a half-committed reverse-drift state.
+
+### C. V44/V45 ordering rename
+
+V44 and V45 were swapped from their previous placement. V44 is now
+`audit_events_allow_null_actor.sql` (previously V45) and V45 is now
+`backfill_phantom_beds_on_hold.sql` (previously V44). This ordering is
+required so the V45 backfill can write audit_events rows with
+`actor_user_id = NULL` (Casey Drummond's chain-of-custody requirement,
+war room 2026-04-11). Flyway runs migrations in version order, so
+V44 → V45 is guaranteed.
+
+### D. V45 writes audit_events rows for each corrective snapshot
+
+Per Casey Drummond's war room ask: the one-time backfill migration
+should not be a silent system-initiated state change. V45 now writes
+one `audit_events` row per actually-inserted snapshot, via a single
+compound CTE that captures `RETURNING shelter_id, population_type`
+from the `INSERT INTO bed_availability` and joins back to the drifted
+row for the before/after values. The audit row payload is:
+
+```json
+{
+  "shelter_id": "...",
+  "population_type": "SINGLE_ADULT",
+  "snapshot_value_before": 3,
+  "actual_count": 0,
+  "delta": -3,
+  "correction_source": "V45_backfill",
+  "github_issue": "https://github.com/ccradle/finding-a-bed-tonight/issues/102"
+}
+```
+
+An auditor asking "why did `beds_on_hold` change on the Oracle demo at
+deploy time on 2026-04-12 for Downtown Warming Station" can find this
+exact row in `audit_events` with `action = 'BED_HOLDS_RECONCILED'` and
+`correction_source = 'V45_backfill'`.
 
 ### B. Pre-existing tests that relied on coordinator-supplied `bedsOnHold`
 
@@ -267,8 +370,8 @@ fix is shipping in the same release.
 - `backend/src/main/java/org/fabt/availability/batch/BedHoldsReconciliationJobConfig.java`
 - `backend/src/main/java/org/fabt/reservation/api/ManualHoldController.java`
 - `backend/src/main/java/org/fabt/reservation/api/ManualHoldRequest.java`
-- `backend/src/main/resources/db/migration/V44__backfill_phantom_beds_on_hold.sql`
-- `backend/src/main/resources/db/migration/V45__audit_events_allow_null_actor.sql`
+- `backend/src/main/resources/db/migration/V44__audit_events_allow_null_actor.sql`
+- `backend/src/main/resources/db/migration/V45__backfill_phantom_beds_on_hold.sql`
 - `backend/src/test/java/org/fabt/reservation/BedHoldsInvariantTest.java` (7 tests)
 - `backend/src/test/java/org/fabt/availability/batch/BedHoldsReconciliationJobTest.java` (4 tests)
 - `backend/src/test/java/org/fabt/reservation/OfflineHoldEndpointTest.java` (5 tests)
