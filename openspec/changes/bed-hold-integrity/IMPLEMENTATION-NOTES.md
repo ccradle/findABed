@@ -32,21 +32,40 @@ missed this fourth call site. The refactor handles it the same way:
 - The explicit pre-throw `updateStatus(CANCELLED)` is preserved (mirrors
   the prior defensive shape).
 
-### 2. Migration is V40 / V41, not V44
+### 2. Migration is V44 / V45 (was V40 / V41 in first pass)
 
-The proposal guessed V44 on the assumption that coc-admin-escalation
-(V40–V43) would land first. On this branch, coc-admin-escalation is **not
-merged** — the latest pre-change migration is V39. Two new migrations:
+The proposal originally guessed V44. On this branch (created from
+v0.32.3), coc-admin-escalation is **not** merged in the file system —
+the latest pre-change migration is V39 — so the first implementation
+pass slotted my migrations into V40 / V41.
 
-- **`V40__backfill_phantom_beds_on_hold.sql`** — append-only one-time
-  backfill, idempotent, tagged `updated_by = 'V40-rca-backfill'`. Header
-  comment cross-links GH #102.
-- **`V41__audit_events_allow_null_actor.sql`** — drops the `NOT NULL`
-  constraint on `audit_events.actor_user_id` so system-driven audit events
-  (the reconciliation tasklet, plus pre-existing TotpController calls
-  that already pass null) can record `actor_user_id = NULL`. The original
-  V29 schema's `NOT NULL` was inconsistent with already-existing caller
-  intent in TotpController.
+**Smoke-test discovery (2026-04-11 evening):** the local Postgres
+container, however, was running coc-admin-escalation work and already
+had migrations V40 ("create escalation policy"), V41 ("referral token
+admin columns"), V42 ("audit events nullable actor"), V43 ("referral
+token escalation chain broken") applied. My V40 / V41 collided on
+version number with coc-admin-escalation's V40 / V41 — Flyway would
+have rejected my migrations as checksum mismatches at deploy time
+against any database that had already run coc-admin-escalation work.
+
+This collision would also have surfaced at PR / merge time when both
+branches eventually land in main. Better to fix it now.
+
+**Resolution — renumber:**
+
+- **`V44__backfill_phantom_beds_on_hold.sql`** (was V40) — append-only
+  one-time backfill, idempotent, tagged `updated_by = 'V44-rca-backfill'`.
+  Slots in after coc-admin-escalation's V43.
+- **`V45__audit_events_allow_null_actor.sql`** (was V41) — drops the
+  `NOT NULL` constraint on `audit_events.actor_user_id`.
+  coc-admin-escalation's V42 makes the same schema change for the same
+  reason. `ALTER COLUMN ... DROP NOT NULL` is a Postgres no-op when
+  the column is already nullable, so V45 is safe regardless of which
+  branch merges first. The migration's header comment documents the
+  idempotency.
+
+Discovered 2026-04-11 evening during the local backfill smoke test.
+Backend regression re-ran with the renumber: 517 / 517 still pass.
 
 ### 3. `AuditEventTypes` had to be created from scratch
 
@@ -248,8 +267,8 @@ fix is shipping in the same release.
 - `backend/src/main/java/org/fabt/availability/batch/BedHoldsReconciliationJobConfig.java`
 - `backend/src/main/java/org/fabt/reservation/api/ManualHoldController.java`
 - `backend/src/main/java/org/fabt/reservation/api/ManualHoldRequest.java`
-- `backend/src/main/resources/db/migration/V40__backfill_phantom_beds_on_hold.sql`
-- `backend/src/main/resources/db/migration/V41__audit_events_allow_null_actor.sql`
+- `backend/src/main/resources/db/migration/V44__backfill_phantom_beds_on_hold.sql`
+- `backend/src/main/resources/db/migration/V45__audit_events_allow_null_actor.sql`
 - `backend/src/test/java/org/fabt/reservation/BedHoldsInvariantTest.java` (7 tests)
 - `backend/src/test/java/org/fabt/availability/batch/BedHoldsReconciliationJobTest.java` (4 tests)
 - `backend/src/test/java/org/fabt/reservation/OfflineHoldEndpointTest.java` (5 tests)
