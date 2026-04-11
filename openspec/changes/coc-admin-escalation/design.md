@@ -234,6 +234,169 @@ The legacy `architecture.drawio` is preserved alongside as a v0.21–v0.28 histo
 
 **Both docs are reviewed together** by Devon Kessler (training), Marcus Okafor (CoC admin), and Keisha Thompson (dignity) before merge. Establishing two companion docs (not one) sets the precedent that the business-process documentation series is multi-doc by default — each major feature gets its own happy-path + edge-case pairing.
 
+### D11: Cross-tenant guard at the service layer (war room round 3, Marcus Webb)
+
+`referral_token` RLS only checks `app.dv_access='true'` — it does NOT isolate by `tenant_id`. The escalation batch job needs platform-wide visibility, so DB-level tenant isolation would break it. The consequence: every endpoint that mutates a referral by id MUST explicitly assert at the service layer that the referral belongs to the caller's tenant.
+
+**Pattern (applied to T-13 escalated queue, T-17 reassign, and any future mutating endpoint):**
+
+```java
+ReferralToken token = repository.findById(tokenId)
+        .orElseThrow(() -> new NoSuchElementException(...));
+UUID callerTenant = TenantContext.getTenantId();
+if (callerTenant == null || !callerTenant.equals(token.getTenantId())) {
+    throw new AccessDeniedException("Referral does not belong to your tenant");
+}
+```
+
+For read-only queries (T-13 `getEscalatedQueue`), the tenant filter is in the SQL itself: `WHERE tenant_id = ?`. This double-purpose: closes the cross-tenant leak AND lets the planner use the V41 partial index `idx_referral_token_pending_by_expiry (tenant_id, expires_at) WHERE status = 'PENDING'`.
+
+**Why this is a recurring concern, not a one-off:** every new endpoint that takes a `referralId` URL parameter is at risk. T-13 caught it first; T-17 reassign would have shipped without the check until war-room round 3 surfaced the pattern. Documented here as a design invariant to enforce in code review for any future mutating endpoint.
+
+### D12: Atomic conditional UPDATE for claim/release/auto-release (war room round 1+3)
+
+The naive Java-level pattern (`findById` → check claim state → `updateClaim`) has a TOCTOU window: two admins can both pass the check, both write, and the last writer wins silently. The Session 3 round-1 review caught this; the fix is a single conditional UPDATE per operation, with `RETURNING *` so the caller gets the winning row in the same DB round-trip.
+
+**`tryClaim` (atomic):**
+```sql
+UPDATE referral_token
+   SET claimed_by_admin_id = ?, claim_expires_at = ?
+ WHERE id = ?
+   AND status = 'PENDING'
+   AND (claimed_by_admin_id IS NULL
+        OR claimed_by_admin_id = ?
+        OR claim_expires_at < NOW()
+        OR ?::boolean = true)  -- override
+RETURNING *;
+```
+
+Returns 0 rows when the row is missing, no longer PENDING, or someone else holds an unexpired claim and override is false. The service layer translates "0 rows" to a `ClaimConflictException` mapped to `409 Conflict`.
+
+**`tryRelease`** uses the same shape with `WHERE claimed_by_admin_id = ? OR ?::boolean = true`. Idempotent on no-op.
+
+**`clearExpiredClaims`** (auto-release scheduler) uses `WHERE claimed_by_admin_id IS NOT NULL AND claim_expires_at < NOW() RETURNING id, tenant_id` so the V41 partial index `idx_referral_token_active_claim` is actually used (Sam Okafor catch — without the `IS NOT NULL` predicate the planner falls back to a full table scan).
+
+**Load-bearing test:** `ClaimReleaseTest.concurrentClaimsExactlyOneWinner` races two HTTP claims through a `CountDownLatch`, asserting exactly one OK + one 409 + the row holds the winner. If `tryClaim` regresses to a non-atomic pattern, this test fails.
+
+### D13: V42 — `audit_events.actor_user_id` nullable for system actors (war room round 3)
+
+The original V29 `audit_events` schema declared `actor_user_id NOT NULL` because every audit row was triggered by a human admin. The auto-release scheduler in `ReferralTokenService.autoReleaseClaims()` writes `DV_REFERRAL_RELEASED` rows with `actor_user_id = null` (system actor). The NOT NULL constraint caused these rows to fail at INSERT time and be silently swallowed by `AuditEventService.onAuditEvent`'s try/catch.
+
+**Discovery path:** `ClaimReleaseTest.autoReleaseClearsExpiredClaims` ran green (the DB state was correct), but the test log showed `Failed to persist audit event: ... null value in column "actor_user_id" of relation "audit_events" violates not-null constraint`. The functional behavior was right but the audit trail was broken — Casey Drummond's chain-of-custody requires every claim transition to leave a row.
+
+**Fix (Flyway V42):**
+```sql
+ALTER TABLE audit_events
+    ALTER COLUMN actor_user_id DROP NOT NULL;
+```
+
+Reads MUST treat `actor_user_id IS NULL` as "system" (e.g. display "System (auto-release)" in admin audit log UI). The application layer is responsible for that mapping; the schema just allows the value. The `AuditEventCoverageTest.timeoutReleaseWritesAuditRowWithNullActor` test pins the contract.
+
+### D14: V43 — `escalation_chain_broken` column + chain-resume on group reassign (war room round 4, Marcus Okafor)
+
+**The semantic question:** when a CoC admin reassigns a referral via `SPECIFIC_USER`, the system should stop auto-escalating it because the named user owns it now. But what if that user goes on PTO and the admin needs to "give the referral back to the group"?
+
+**Solution:** a new boolean column `referral_token.escalation_chain_broken` (Flyway V43, default FALSE) tracked alongside the existing `escalation_policy_id` snapshot. Three reassign target types interact with it differently:
+
+| Target type | Effect on `escalation_chain_broken` | Rationale |
+|---|---|---|
+| `SPECIFIC_USER` | Set to TRUE via `markEscalationChainBroken(id)` | Named user owns it; no auto-escalation |
+| `COORDINATOR_GROUP` | Cleared to FALSE via `markEscalationChainResumed(id)` IF previously TRUE | Admin "gives back" to the group; per-user accountability is gone |
+| `COC_ADMIN_GROUP` | Cleared to FALSE via `markEscalationChainResumed(id)` IF previously TRUE | Same as COORDINATOR_GROUP — broadcast = no single owner |
+
+The escalation batch tasklet checks `token.isEscalationChainBroken()` at the top of `checkAndEscalate(...)` and `return 0;` early if set. This is the load-bearing invariant tested by `ReassignTest.chainBrokenReferralIsSkippedByTasklet`.
+
+**Why a new column instead of repurposing `escalation_policy_id IS NULL`:** setting `escalation_policy_id = NULL` falls back to the platform default which still escalates. We need an EXPLICIT "escalation paused by admin" signal that the tasklet can branch on.
+
+**Why this matters operationally (Marcus Okafor):** without chain-resume, the chain-broken state is sticky and silent — an admin who reassigns to Maria, then later realizes Maria is on PTO, has no way to re-enable auto-escalation. They'd reassign to a group expecting "the system takes over again," and instead the referral would silently stop escalating until human intervention. Round 4 fix.
+
+### D15: URL prefix `/api/v1/admin/...` is a deliberate exception to project convention
+
+The project's other controllers use module-prefixed paths: `/api/v1/dv-referrals`, `/api/v1/notifications`, `/api/v1/shelters`, `/api/v1/users`. There is no existing `/api/v1/admin/...` controller. The escalation policy controller is the first.
+
+**Why the exception is allowed:**
+
+1. The auth gate (`@PreAuthorize("hasAnyRole('COC_ADMIN', 'PLATFORM_ADMIN')")`) is what makes the endpoint admin-only — the URL prefix is a hint, not the enforcement.
+2. The frontend grouping (admin tab) makes the `admin` segment a useful semantic signal for the OpenAPI spec and for any future admin-facing tooling.
+3. Adding a single exception is cheaper than retroactively adding `/api/v1/admin/...` prefixes to every existing admin-only endpoint, which would break frontend URL configuration in two dozen places.
+
+**Documented in the controller javadoc** so a future reviewer doesn't "fix" the inconsistency. The Java location of the controller (`org.fabt.notification.api.EscalationPolicyController`) follows the modular monolith — the URL path is just a string.
+
+### D16: UserService boundary primitives (war room rounds 3+4, Alex Chen)
+
+The referral module is forbidden from importing `org.fabt.auth.domain.User` (ArchUnit rule `referral_should_not_access_other_domain_entities`). Session 3 review caught Gemini's code touching `User.getId()`, `User.getRoles()`, and `User.getDisplayName()` directly. The fix: add primitive accessor methods on `UserService` that return `boolean`, `List<UUID>`, `List<String>`, or `Map<UUID, String>` instead of `User` objects.
+
+| Accessor | Returns | Used by |
+|---|---|---|
+| `existsByIdInCurrentTenant(UUID)` | `boolean` | `reassignToken` SPECIFIC_USER target check |
+| `getRolesByUserId(UUID)` | `List<String>` | `reassignToken` audit `actorRoles` enrichment |
+| `findActiveUserIdsByRole(UUID, String)` | `List<UUID>` | Batch tasklet recipient resolution + COC_ADMIN_GROUP fan-out |
+| `findDvCoordinatorIds(UUID)` | `List<UUID>` | Batch tasklet DV-only coordinator filter |
+| `findDisplayNamesByIds(Collection<UUID>)` | `Map<UUID, String>` | Controller queue rendering for admin display names |
+| `isAdminActor(UUID)` | `boolean` | Role-aware audit type selection on accept/reject |
+
+**Pattern to preserve in future work:** when the referral (or any non-auth) module needs to know something about a user, add a primitive accessor to `UserService` rather than exposing `Optional<User>` and reading fields from the returned object. The boundary smell of "I need just one primitive but the only API gives me the whole entity" is a reliable signal.
+
+### D17: Audit details enrichment policy (Casey Drummond rounds 3, 4, 5)
+
+Beyond the basic `{actor_user_id, target_user_id, action, details, ip_address}` shape that audit_events provides, the `details` JSON for escalation events is enriched to support court-bound subpoena queries without table joins.
+
+**`DV_REFERRAL_REASSIGNED` details:**
+- `targetType` — COORDINATOR_GROUP / COC_ADMIN_GROUP / SPECIFIC_USER
+- `targetUserId` — when SPECIFIC_USER (omitted otherwise)
+- `reason` — verbatim admin text (PII responsibility on admin via UI warning per D18)
+- `recipientCount` — operational fan-out scale
+- `shelterId` — single-table subpoena queries: "show me all reassigns for shelter X" without joining `audit_events.target_user_id → referral_token.shelter_id`
+- `actorRoles` — frozen-at-action-time so a later role change doesn't rewrite history. The roles are read inside the same `@Transactional` as the audit publish.
+- `chainResumed: true` — when a group reassign cleared a previously broken chain (D14). The audit row tells the story without requiring adjacent-row inference.
+
+**`ESCALATION_POLICY_UPDATED` details:**
+- `tenantId`, `eventType`, `version`
+- `previousVersion` — when version > 1. Computed as `version - 1` because `EscalationPolicyRepository.insertNewVersion` uses an atomic `MAX(version)+1` subquery — no race. Subpoena answers "what changed?" without joining back to escalation_policy.
+
+**`DV_REFERRAL_CLAIMED` / `_RELEASED` details:**
+- `claimed_until` (CLAIMED), `reason: "manual"|"timeout"` (RELEASED), `override: true|false`
+
+**The audit_events table is append-only, so once written you cannot enrich** — every detail field that might matter for chain of custody must be present at write time. This is why the war-room rounds focused on getting the enrichment right before mass-writing rows.
+
+### D18: PII reduction — reason in audit only, not notification payload (Keisha Thompson round 3)
+
+The admin's free-text reason for reassign is potentially PII-leaky despite the modal warning. The original Session 3 implementation included it in BOTH the audit row AND the broadcast notification payload — meaning every recipient's `notification.payload` JSONB column held a copy of the reason text.
+
+**Round 3 decision:** the reason lives in the `audit_events.details` row only. The notification payload contains `referralId + targetType` only — neutral metadata that an admin can share verbally if context is needed. Even if an admin slips PII into the reason despite the modal warning, the audit trail is the only sink, not every recipient's notification table row.
+
+**Frontend obligation (carry-forward to T-37 ReassignSubModal):** the reason text field MUST display a prominent PII warning identical to the Deny modal's warning. The backend cannot enforce content. The frontend modal is the only PII checkpoint.
+
+**Test lock-in:** `ReassignTest.coordinatorGroupReassignPagesShelterCoordinators` uses a recognizable reason string and asserts it appears in the audit row's details but NOT in any recipient's notification payload.
+
+### D19: R6 batch tasklet guardrail (war room round 4, Sam Okafor + Riley Cho)
+
+The escalation tasklet holds the entire result of `findAllPending()` in heap plus per-tenant lookup caches. Without a guardrail, a runaway pending count would OOM the `@Scheduled` thread.
+
+**Fix:** new `findAllPending(int limit)` repository method with `LIMIT 5000` and `ORDER BY expires_at ASC`. Sized for ~10 active tenants × 500 referrals each — well above realistic operational load. Tasklet logs WARN on cap hit.
+
+**Why `expires_at ASC` not `created_at`:** if the cap is hit, the cap-truncated set should be the most-urgent half (about-to-expire), not the oldest-created half. A referral past the cap would miss its escalation threshold by at most one batch interval (5 minutes) — picked up on the next run. Sam Okafor + Riley Cho war-room round 4 call.
+
+**The cap-hit case is paging-grade**, not a normal condition. A `TODO(riley)` comment on `PENDING_BATCH_LIMIT` documents the deferred cap-hit unit test (high fixture cost; revisit if production WARNs ever fire).
+
+### D20: Frontend conformance to archived UI specs (Session 5 carry-forward)
+
+The new `DvEscalationsTab` and its sub-components MUST conform to the existing frontend conventions established by these archived OpenSpec changes:
+
+| Archived change | What to honor |
+|---|---|
+| `2026-03-26-wcag-accessibility-audit` | W3C APG tabs pattern (already in `AdminPanel.tsx`); 44×44px touch targets; color independence (text + icon, not color alone); modal focus trap, Escape close, focus returns to trigger; `lang` attribute via react-intl; axe-core CI gate must remain green |
+| `2026-03-27-font-consistency-audit` | NEVER hardcode font sizes — use `text.xs/sm/base/md/lg/xl/2xl/3xl` from `theme/typography.ts`; no fixed `height`/`max-height` on text containers; no `-webkit-line-clamp` |
+| `2026-03-29-color-system-dark-mode` | NEVER hardcode hex — use `color.*` tokens from `theme/colors.ts`; split tokens (`primary` for fills, `primaryText` for links/labels) diverge in dark mode; WCAG 4.5:1 contrast already verified for all token pairs in both modes; use `color.dv` family for DV escalation accents (purple — the project's safety color), NOT `color.error` red (red is for severity, not for "this is a DV referral") |
+| `2026-03-29-sse-notifications` | Disclosure pattern, NOT `role="menu"`; `aria-live="polite"` for dynamic count updates; person-centered language ("A new referral needs your attention," not "New referral assigned") |
+| `2026-03-31-sse-stability` | Use `@microsoft/fetch-event-source` (already wired in `useNotifications`), NOT native `EventSource`; never reintroduce query-param token auth |
+| `2026-04-07-admin-panel-extraction` | Each tab is a `default export` from `src/pages/admin/tabs/`; lazy-loaded with `<Suspense fallback={<Spinner/>}>`; tab-specific types stay in tab files (NOT in `types.ts`); shared imports: `api`, `color`, `text/weight`, `react-intl`, `tableStyle/thStyle/tdStyle/inputStyle/primaryBtnStyle`, `StatusBadge/ErrorBox/Spinner/NoData` |
+| `2026-04-09-persistent-notifications` | Three severity tiers (CRITICAL/ACTION_REQUIRED/INFO); zero-PII payloads (frontend resolves names from REST); CRITICAL banner stays until acted on |
+| `feedback_data_testid` (memory) | Every interactive element gets `data-testid` for Playwright stability |
+| `feedback_build_before_commit` (memory) | `npm run build` (tsc + vite) MUST pass before any frontend commit |
+
+**Implementation consequence for `useDvEscalationQueue` hook (T-39):** EXTEND `useNotifications` rather than open a parallel SSE stream. Add 4 new `case` branches to the existing `onmessage` switch (`referral.claimed`, `referral.released`, `referral.queue-changed`, `referral.policy-updated`) that dispatch new `window` custom events. The new hook is a thin wrapper that listens for those custom events and exposes `{queue, loading, error, refresh}`. SSE connection budget matters — one connection per session, not two.
+
 ## Risks / Trade-offs
 
 - **Soft-lock vs hard-lock on Claim.** Soft-lock can produce duplicate admin actions if both admins ignore the visible "claimed by" indicator. Mitigated by SSE real-time push + the second admin needing an extra confirmation modal to override. PagerDuty deliberately chose soft-lock for the same reason — hard-lock creates deadlocks. Accepted trade-off.

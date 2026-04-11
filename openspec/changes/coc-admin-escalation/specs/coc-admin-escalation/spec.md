@@ -53,6 +53,13 @@ The system SHALL allow a CoC administrator to claim a pending DV referral as a s
 - **THEN** the system SHALL replace `claimed_by_admin_id` with admin B's ID
 - **AND** SHALL write a new audit event `DV_REFERRAL_CLAIMED` (the previous claim's audit event is preserved)
 
+#### Scenario: Concurrent claims — exactly one wins atomically
+- **WHEN** admin A and admin B send `POST /api/v1/dv-referrals/{id}/claim` simultaneously on an unclaimed referral, neither with the override header
+- **THEN** exactly one request SHALL receive `200 OK`
+- **AND** the other SHALL receive `409 Conflict`
+- **AND** the row SHALL hold the winning admin's id (not silently overwritten)
+- **AND** the underlying SQL SHALL be a single atomic conditional `UPDATE ... RETURNING *` (no Java-level read-then-write window)
+
 #### Scenario: Auto-release after timeout
 - **WHEN** a claim's `claim_expires_at < NOW()`
 - **AND** the auto-release scheduled task runs
@@ -61,6 +68,8 @@ The system SHALL allow a CoC administrator to claim a pending DV referral as a s
 - **AND** SHALL publish an SSE event `referral.released`
 
 ### Requirement: Manual release of a claim
+
+The system SHALL allow the admin who currently holds a claim to release it manually. Other admins SHALL NOT be able to release a claim they do not hold without an explicit override header. Manual releases SHALL be recorded in the audit trail and broadcast via SSE.
 
 #### Scenario: Claiming admin releases their own claim
 - **WHEN** admin A sends `POST /api/v1/dv-referrals/{id}/release` on a referral they currently claim
@@ -95,6 +104,42 @@ The system SHALL allow a CoC administrator to reassign a pending DV referral to 
 #### Scenario: Reassign requires reason
 - **WHEN** the request body omits `reason` or sends an empty string
 - **THEN** the system SHALL return `400 Bad Request`
+
+#### Scenario: Cross-tenant referral access denied
+- **WHEN** a CoC admin in tenant A sends `POST /api/v1/dv-referrals/{id}/reassign` (or `/claim`, `/release`) for a referral that belongs to tenant B
+- **THEN** the system SHALL return `403 Forbidden`
+- **AND** SHALL NOT mutate the referral
+- **AND** SHALL NOT publish any SSE event
+- **AND** the service-layer guard SHALL be the enforcement point because `referral_token` RLS only checks `dvAccess`, not `tenant_id`
+
+#### Scenario: SPECIFIC_USER targeting a different-tenant user is rejected
+- **WHEN** an admin in tenant A sends a SPECIFIC_USER reassign with `targetUserId` belonging to tenant B
+- **THEN** the system SHALL return `404 Not Found` (target user not in caller's tenant)
+- **AND** SHALL NOT set `escalation_chain_broken = true` on the referral
+- **AND** SHALL NOT write any audit event
+
+#### Scenario: SPECIFIC_USER reassign sets escalation_chain_broken
+- **WHEN** an admin reassigns to SPECIFIC_USER successfully
+- **THEN** the system SHALL set `referral_token.escalation_chain_broken = TRUE`
+- **AND** the escalation batch tasklet SHALL skip this referral on subsequent runs (return early before threshold checks)
+
+#### Scenario: COORDINATOR_GROUP reassign clears chain-broken state
+- **WHEN** a referral has `escalation_chain_broken = TRUE` from a prior SPECIFIC_USER reassign
+- **AND** an admin reassigns it via COORDINATOR_GROUP
+- **THEN** the system SHALL clear `escalation_chain_broken` to FALSE
+- **AND** the audit row's `details` SHALL contain `chainResumed: true`
+- **AND** the escalation batch tasklet SHALL resume escalating this referral on subsequent runs
+
+#### Scenario: COC_ADMIN_GROUP reassign also clears chain-broken state
+- **WHEN** a chain-broken referral is reassigned via COC_ADMIN_GROUP
+- **THEN** the same chain-resume behavior SHALL apply (flag cleared, `chainResumed: true` audit, escalation resumes)
+
+#### Scenario: Reason field is in audit row only — never in notification payload
+- **WHEN** an admin reassigns with a free-text reason
+- **THEN** the audit row's `details.reason` SHALL contain the verbatim reason text
+- **AND** the broadcast `referral.reassigned` notification's payload SHALL contain ONLY `referralId` and `targetType`
+- **AND** the reason text SHALL NOT appear in any recipient's `notification.payload` JSONB
+- **AND** the frontend Reassign modal SHALL display a prominent PII warning above the reason field (the backend cannot enforce content)
 
 ### Requirement: Admin can act directly on a pending DV referral
 
@@ -169,6 +214,12 @@ The system SHALL store escalation thresholds in a per-tenant append-only version
 - **WHEN** a COORDINATOR sends `PATCH /api/v1/admin/escalation-policy/dv-referral`
 - **THEN** the system SHALL return `403 Forbidden`
 
+#### Scenario: Threshold count cap prevents OOM via huge JSONB
+- **WHEN** a PATCH request body contains more than 50 thresholds
+- **THEN** the system SHALL return `400 Bad Request` (Bean Validation `@Size(max = 50)` on the request DTO)
+- **AND** SHALL NOT insert any row
+- **AND** the cap exists to prevent a malicious or buggy admin from OOMing the JSONB serializer and policy cache
+
 ### Requirement: Frozen-at-creation policy lookup for escalation
 
 The escalation batch job SHALL apply the policy version that was active when each referral was created, not the current tenant policy. Mid-day policy changes SHALL only affect new referrals.
@@ -213,8 +264,28 @@ The system SHALL write to the existing `audit_events` table for every CoC admin 
 
 #### Scenario: Auto-release records system actor
 - **WHEN** the auto-release scheduled task clears an expired claim
-- **THEN** the audit event `DV_REFERRAL_RELEASED` SHALL be written with `actor_user_id = system`
+- **THEN** the audit event `DV_REFERRAL_RELEASED` SHALL be written with `actor_user_id = NULL` (representing the system actor)
+- **AND** the `audit_events.actor_user_id` column SHALL be nullable (V42 schema change — was previously NOT NULL, which silently dropped these rows)
 - **AND** the detail JSON SHALL contain `reason: "timeout"`
+- **AND** application code reading audit rows SHALL treat NULL `actor_user_id` as "system" for display purposes
+
+#### Scenario: Reassign audit details include shelterId and actorRoles
+- **WHEN** any reassign action writes a `DV_REFERRAL_REASSIGNED` audit row
+- **THEN** the `details` JSON SHALL include `shelterId` (the shelter this referral was for, so subpoena queries are single-table)
+- **AND** SHALL include `actorRoles` (the acting admin's role list at action time, frozen so a later role change does not rewrite history)
+- **AND** SHALL include `recipientCount` (operational fan-out scale)
+
+#### Scenario: Policy update audit details include previousVersion
+- **WHEN** a PATCH inserts policy version N where N > 1
+- **THEN** the `ESCALATION_POLICY_UPDATED` audit row's `details` SHALL include `previousVersion: N - 1`
+- **AND** when N = 1 (first tenant version), `previousVersion` SHALL be omitted from the details
+- **AND** the previousVersion value is computed as `version - 1` because `EscalationPolicyRepository.insertNewVersion` uses an atomic `MAX(version) + 1` subquery (race-free)
+
+#### Scenario: Group reassign that resumes a broken chain records chainResumed
+- **WHEN** a referral has `escalation_chain_broken = TRUE` from a prior SPECIFIC_USER reassign
+- **AND** an admin reassigns it via COORDINATOR_GROUP or COC_ADMIN_GROUP
+- **THEN** the resulting `DV_REFERRAL_REASSIGNED` audit row's `details` SHALL include `chainResumed: true`
+- **AND** the SPECIFIC_USER reassign that originally broke the chain SHALL NOT have `chainResumed` in its details
 
 ### Requirement: SSE live updates on the escalation queue
 
@@ -258,6 +329,58 @@ The escalation queue view SHALL be usable on mobile screens via progressive disc
 - **THEN** the editor SHALL display a read-only message: "Edit on a larger screen — this view is read-only on mobile"
 - **AND** the form fields SHALL be disabled (not interactive)
 - **AND** the Save button SHALL NOT be present in the DOM (preventing tap-to-submit on a form full of disabled values)
+
+### Requirement: Frontend tab conforms to archived UI specs
+
+The new `DvEscalationsTab` and its sub-components SHALL conform to the project's existing frontend conventions established by previously archived OpenSpec changes, so the new tab does not regress dark mode, WCAG, typography, or admin-panel-extraction patterns.
+
+#### Scenario: Color tokens, no hardcoded hex
+- **WHEN** any new component is created under `frontend/src/pages/admin/tabs/` or its sub-components for this change
+- **THEN** all color values SHALL come from `theme/colors.ts` tokens (e.g. `color.bg`, `color.text`, `color.dv`, `color.primary`)
+- **AND** SHALL NOT contain hardcoded hex values (audit by Playwright `typography.spec.ts` extension or visual diff)
+- **AND** SHALL use `color.dv` family (purple — the project's safety color) for DV escalation accents, NOT `color.error` red (red is reserved for severity)
+
+#### Scenario: Typography tokens, no hardcoded font sizes
+- **WHEN** any new component sets a font size, weight, or line-height
+- **THEN** the value SHALL come from `theme/typography.ts` tokens (`text.xs/sm/base/md/lg/xl/2xl/3xl`, `weight.normal/medium/semibold/bold/extrabold`)
+- **AND** SHALL NOT contain numeric pixel font sizes (`fontSize: 14`)
+- **AND** SHALL NOT use fixed `height` / `max-height` / `-webkit-line-clamp` on text containers (WCAG 1.4.12)
+
+#### Scenario: SSE hook extension, not parallel stream
+- **WHEN** the `useDvEscalationQueue` hook subscribes to the four new SSE event types (`referral.claimed`, `referral.released`, `referral.queue-changed`, `referral.policy-updated`)
+- **THEN** it SHALL extend the existing `useNotifications` hook (one SSE connection per session)
+- **AND** SHALL NOT open a parallel `EventSource` or second `fetchEventSource` connection
+- **AND** SHALL use cross-component coordination via `window` custom events (matching the existing `SSE_REFERRAL_UPDATE`/`SSE_REFERRAL_EXPIRED` pattern)
+
+#### Scenario: Disclosure pattern, not menu pattern
+- **WHEN** the SPECIFIC_USER reassign tab is presented in the Reassign sub-modal
+- **THEN** it SHALL use a disclosure (`<details>` or equivalent expandable) pattern, NOT `role="menu"`
+- **AND** SHALL be gated behind an "Advanced" label per PagerDuty's documented warning convention
+- **AND** the persona review (sse-notifications change) explicitly rejected `role="menu"` for similar patterns
+
+#### Scenario: 44×44px minimum touch targets
+- **WHEN** any new interactive element (button, link, action trigger) is rendered
+- **THEN** its rendered size SHALL be at least 44×44 CSS pixels
+- **AND** the existing `accessibility.spec.ts` axe-core CI gate SHALL remain green
+
+#### Scenario: data-testid on every interactive element
+- **WHEN** any new component renders an interactive element that Playwright will need to locate
+- **THEN** it SHALL include a `data-testid` attribute with a stable, semantic id
+- **AND** Playwright tests SHALL prefer `data-testid` selectors over fragile DOM/style selectors (memory: `feedback_data_testid`)
+
+#### Scenario: Tab is lazy-loaded as a default export
+- **WHEN** the new `DvEscalationsTab` is registered in `AdminPanel.tsx`
+- **THEN** it SHALL be a `default export` from `frontend/src/pages/admin/tabs/DvEscalationsTab.tsx`
+- **AND** SHALL be lazy-loaded via `React.lazy(() => import(...))` per the existing extracted-admin-panel pattern
+- **AND** tab-specific types (`EscalatedReferral`, `EscalationPolicy`, `EscalationPolicyThreshold`) SHALL stay in the tab file, NOT in the shared `types.ts`
+- **AND** only the `'dvEscalations'` `TabKey` union member SHALL be added to the shared `types.ts`
+
+#### Scenario: Person-centered notification language
+- **WHEN** any new i18n key is added for notification text
+- **THEN** the English copy SHALL center the person being served, not the system action
+- **AND** SHALL avoid anxiety-inducing imperative verbs ("Take action now" → "A new referral needs your attention")
+- **AND** the Spanish copy SHALL preserve the warmth-vs-urgency balance, not literally translate
+- **AND** Keisha Thompson's review SHALL be required before merge
 
 ### Requirement: Documentation deliverables
 
