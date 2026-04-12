@@ -1,6 +1,6 @@
 # 90-Second Pitch Briefs — Finding A Bed Tonight
 
-> Developed through the Simone Okafor AI persona (Brand Strategist, defined in PERSONAS.md) and refined by the Maria Torres AI persona (Product Manager). These are starting points — refine based on actual conversations.
+> Starting points for outreach conversations — refine based on actual audience feedback.
 
 ---
 
@@ -45,5 +45,5 @@ Use this in every document, every page, every pitch. It's specific, emotional, a
 ---
 
 *Finding A Bed Tonight — Pitch Briefs*
-*Developed through AI personas (Simone Okafor, Maria Torres) defined in PERSONAS.md*
+*Finding A Bed Tonight — Apache 2.0 Open Source*
 *March 2026*

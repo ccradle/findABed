@@ -98,13 +98,12 @@ as a community profile proposal. It is also the data contract that governs the
 
 - **Repo:** `finding-a-bed-tonight` (GitHub, account: `ccradle`, public) — new repo
 - **HSDS upstream:** Extension will be submitted as a community profile proposal
-  to `openreferral/specification` after Raleigh pilot validates the schema
+  to `openreferral/specification` after an initial pilot community validates the schema
 - **Downstream consumers:** Any outreach app, 211 system, or city dashboard
   that speaks HSDS can query this API with zero proprietary dependency
-- **Pilot city:** Raleigh / Wake County NC-507 CoC — selected because Wake County
-  is actively rebuilding its CoC infrastructure (took over as lead agency 2023),
-  HMIS platform upgrade is in progress, and the 2025 PIT count (1,258 persons,
-  +27% YoY) explicitly called out the need for real-time availability data
+- **Target pilot profile:** Mid-sized CoC (500-2,000 PIT count) that is actively
+  rebuilding infrastructure, has an HMIS platform upgrade in progress, and has
+  PIT count data showing growing need for real-time availability data
 - **Open source license:** Apache 2.0 — compatible with municipal adoption,
   nonprofit use, and commercial wrapper products
 - **No client PII stored or transmitted at any point in the system**

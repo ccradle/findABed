@@ -86,7 +86,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - GitHub Pages demo walkthrough updated with new screenshot showing the Change Password modal
 - Admin Users tab screenshot recaptured showing the Reset Password button on each user row
-- False claims about pilot deployments removed from funder and sustainability documentation — the platform is not yet deployed in any community
+- False claims about pilot deployments removed from funder and sustainability documentation — the platform is live as a demonstration deployment at findabed.org but has not been adopted by any CoC community for production use
 
 ---
 

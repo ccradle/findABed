@@ -210,7 +210,7 @@ Building it now would mean:
 
 The right trigger for Phase 2 MCP development is:
 
-> At least one pilot city (Raleigh) has active shelter data, at least 20 outreach
+> At least one pilot community has active shelter data, at least 20 outreach
 > workers are using the query app, and at least one specific pain point has been
 > identified where a natural language interface would change behavior.
 
@@ -451,7 +451,7 @@ not added as an afterthought.
 
 ## 7. What the MCP Server Looks Like in Phase 2
 
-When the Phase 1 API is stable and the Raleigh pilot has real users, building the
+When the Phase 1 API is stable and a pilot community has real users, building the
 MCP server is a focused, bounded task. The server is a standalone process — not a
 modification to the core application.
 
@@ -512,7 +512,7 @@ substitute for one.
 
 ---
 
-*This briefing is a living document. Revisit after the Raleigh pilot's 90-day
+*This briefing is a living document. Revisit after an initial pilot community's 90-day
 milestone review to determine whether the Phase 2 trigger conditions have been met.*
 
 *Finding a Bed Tonight — Apache 2.0 Open Source*  
