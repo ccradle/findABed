@@ -1,10 +1,25 @@
 # Implementation Plan — coc-admin-escalation
 
 **Drafted:** 2026-04-10
-**Status:** Awaiting approval to start Session 1
+**Updated:** 2026-04-11 (post-v0.34.0 rebase — see v0.35.0 retargeting note below)
+**Status:** Session 6 complete, Session 7 in progress (post-rebase)
 **Total scope:** 59 tasks across 14 sections (~30-50 hours focused work)
-**Target release:** v0.33.0 (bundles v0.32.2 webhook fix + this change)
-**Deploy:** held per project decision; will go out as a v0.33.0 bundle
+**Target release:** **v0.35.0** (originally planned as v0.33.0 before v0.34.0 bed-hold-integrity shipped first; v0.32.2 webhook fix was already bundled into v0.34.0, not this release)
+**Deploy:** held per project decision; will go out as a v0.35.0 release
+
+## v0.35.0 retargeting note (2026-04-11)
+
+The original plan targeted **v0.33.0**, bundling this change with the v0.32.2 webhook read-timeout fix. That plan was superseded when GH issue #102 (phantom `beds_on_hold` drift, RCA) was discovered on 2026-04-11 and the founder prioritized it as production-blocking. bed-hold-integrity was implemented and shipped as **v0.34.0** before coc-admin-escalation could complete Session 7. The v0.32.2 fix also shipped earlier as part of v0.32.2/v0.32.3/v0.34.0 rolling deploys and is no longer bundled with coc-admin-escalation.
+
+**Changes from the original v0.33.0 plan:**
+
+1. **Version number:** v0.33.0 → **v0.35.0**. Sequential release order (v0.32.3 → v0.34.0 → v0.35.0). v0.33.0 is skipped — there is no and will be no v0.33.0.
+2. **Flyway migrations renumbered:** V40-V43 → **V46-V49**, plus a **new V50** for the cocadmin dv_access flip (originally planned as V44 before bed-hold-integrity claimed V44/V45).
+3. **V48 is a no-op on v0.34.0+ deployments** (drops `NOT NULL` on `audit_events.actor_user_id` — v0.34.0's V44 already did this). Preserved for lineage per Elena Vasquez (see V48 header comment).
+4. **Rebase conflicts resolved during the rebase itself:** the main `AuditEventTypes.java` file (created by v0.34.0 bed-hold-integrity) now contains both the `BED_HOLDS_RECONCILED` constant AND the 6 DV referral constants from Session 1 of this change. `AuditEventTypesTest` pins all 7. `SecurityConfig.java` gained a block comment documenting the filter-vs-controller authorization invariant that emerged from the v0.34.0 war room (the regression guard for the `/manual-hold` bug).
+5. **Task #3 and Task #6** from the v0.34.0 work queue are rolled into Session 7 as part of T-55 and a new **T-55a** (API-level Playwright coverage for `/manual-hold`).
+
+Full rebase plan preserved in memory `project_coc_admin_escalation_post_v034_resume_plan.md` (superseded by `project_v033_deploy_plan.md`).
 
 ---
 
@@ -45,11 +60,11 @@ This plan breaks the 59-task change into **7 sessions**, each with a clean miles
 **Tasks:**
 - T-0: Create branch `feature/coc-admin-escalation` from main in code repo
 - T-1: Capture pre-change baseline (run `ReferralEscalationIntegrationTest`, `NotificationServiceTest`, existing Playwright SSE/notification tests; tee to `logs/coc-escalation-baseline-pre.log`)
-- T-2: V40 — `escalation_policy` table (UUID PK, tenant_id FK NULL, event_type VARCHAR, version INT, thresholds JSONB, created_at, created_by, UNIQUE constraint, partial index)
-- T-3: V40 seed — platform default policy (tenant_id=NULL, event_type='dv-referral', version=1, current hardcoded thresholds)
-- T-4: V41 — `referral_token.escalation_policy_id` UUID FK column (nullable)
-- T-5: V41 — `referral_token.claimed_by_admin_id` UUID + `claim_expires_at` TIMESTAMPTZ columns + partial index
-- T-6: V42 — Add 6 new enum constants to `AuditEventType`: DV_REFERRAL_CLAIMED, _RELEASED, _REASSIGNED, _ADMIN_ACCEPTED, _ADMIN_REJECTED, ESCALATION_POLICY_UPDATED
+- T-2: V46 (renumbered from V40) — `escalation_policy` table (UUID PK, tenant_id FK NULL, event_type VARCHAR, version INT, thresholds JSONB, created_at, created_by, UNIQUE constraint, partial index)
+- T-3: V46 seed — platform default policy (tenant_id=NULL, event_type='dv-referral', version=1, current hardcoded thresholds)
+- T-4: V47 (renumbered from V41) — `referral_token.escalation_policy_id` UUID FK column (nullable)
+- T-5: V47 — `referral_token.claimed_by_admin_id` UUID + `claim_expires_at` TIMESTAMPTZ columns + partial index
+- T-6: Add 6 new constants to `AuditEventTypes.java` (the file was created by v0.34.0 bed-hold-integrity; this task adds DV_REFERRAL_CLAIMED, _RELEASED, _REASSIGNED, _ADMIN_ACCEPTED, _ADMIN_REJECTED, ESCALATION_POLICY_UPDATED alongside the existing BED_HOLDS_RECONCILED). No separate SQL migration — the audit_events.actor_user_id nullable change lives in V48.
 
 **Verification:**
 - `mvn -q test-compile` clean
@@ -213,18 +228,18 @@ This plan breaks the 59-task change into **7 sessions**, each with a clean miles
 - T-55: Full Playwright suite final run, tee log
 - T-56: Open PR against main, link #82, link openspec change, hold for scans
 - (After scans green) merge PR
-- T-57: Bump pom.xml to v0.33.0, promote CHANGELOG, tag, GitHub release, comment on #82
+- T-57: Bump pom.xml to v0.35.0, promote CHANGELOG, tag, GitHub release, comment on #82
 - T-58: After release: `/opsx:verify` → `/opsx:sync` → `/opsx:archive coc-admin-escalation`
 
 **Verification:**
 - All 11 CI checks green on the PR (CI, E2E Playwright + Karate, all 3 CodeQL, DV Access Control Canary, Legal Language Scan, Backend Java 25 Maven, Frontend Node 20 Vite, Docker Build, Performance Gatling)
-- v0.33.0 release page published
+- v0.35.0 release page published
 - Issue #82 closed with reference to release
 - OpenSpec archived to `openspec/changes/archive/2026-04-XX-coc-admin-escalation/`
 
 **Commit milestones:**
 1. `Documentation + performance verification (Session 7/7 prep)`
-2. `Bump to v0.33.0 — coc-admin-escalation + webhook read timeout fix`
+2. `Bump to v0.35.0 — coc-admin-escalation + webhook read timeout fix`
 3. `Archive coc-admin-escalation (Nth change), sync 12 reqs to main specs`
 
 ---
@@ -244,14 +259,14 @@ This plan breaks the 59-task change into **7 sessions**, each with a clean miles
 
 **Cons:**
 - More overhead (7 PR descriptions, 7 release-cycles for the verify-and-merge dance)
-- The bundled v0.33.0 release at the end is harder to coordinate
+- The bundled v0.35.0 release at the end is harder to coordinate
 - Some sessions are not independently shippable (Session 5 specifically)
 
 ### Approach B — One big PR after Session 6, docs PR after Session 7
 
 **Pros:**
 - Single review pass
-- Clean v0.33.0 release at the end
+- Clean v0.35.0 release at the end
 - Matches how `platform-hardening` originally shipped (one big PR)
 
 **Cons:**
@@ -264,7 +279,7 @@ This plan breaks the 59-task change into **7 sessions**, each with a clean miles
 - **Sessions 5-6 (frontend + Playwright):** second PR. Frontend depends on backend being merged. Playwright tests need both.
 - **Session 7 (docs + release):** third PR (small, mostly markdown).
 
-3 PRs total, each with a clear scope. v0.33.0 ships from the third merge.
+3 PRs total, each with a clear scope. v0.35.0 ships from the third merge.
 
 ---
 
@@ -304,7 +319,7 @@ This plan breaks the 59-task change into **7 sessions**, each with a clean miles
 - **Generalization beyond DV referrals to other event types** — schema supports it, MVP does not wire it
 - **Replacing `docs/architecture.drawio`** — preserved as v0.21–v0.28 historical reference; new Mermaid file lives alongside
 - **Hard dependency on `sse-backpressure-phase2` (#97)** — this change uses the existing SSE send path; will refactor cleanly when Phase 2 lands
-- **Deploy** — held per project decision; will go out as v0.33.0 bundle (with v0.32.2 webhook fix)
+- **Deploy** — held per project decision; will go out as v0.35.0 bundle (with v0.32.2 webhook fix)
 
 ---
 

@@ -109,7 +109,7 @@ Audit events: `DV_REFERRAL_ADMIN_ACCEPTED` and `DV_REFERRAL_ADMIN_REJECTED` (dis
 
 ### D7: Per-tenant escalation policy with append-only versioning + frozen-at-creation
 
-**Schema (Flyway V40):**
+**Schema (Flyway V46, renumbered from V40 post-v0.34.0):**
 
 ```sql
 CREATE TABLE escalation_policy (
@@ -144,9 +144,9 @@ The table is **append-only**. Each PATCH from the admin creates a new row with `
 
 ISO 8601 durations (`Duration.parse(...)`). Validation enforces monotonic ordering: `t[i].at < t[i+1].at`. Recipients must be valid role enum values. Severities must be `INFO|ACTION_REQUIRED|CRITICAL`.
 
-**Default policy seeded by Flyway** at V40 with `tenant_id = NULL` and the current hardcoded values `[1h, 2h, 3.5h, 4h]`. Existing tenants do NOT get individual rows on migration — they fall back to the platform default until they explicitly customize via PATCH (which inserts their first version=1 row).
+**Default policy seeded by Flyway** at V46 with `tenant_id = NULL` and the current hardcoded values `[1h, 2h, 3.5h, 4h]`. Existing tenants do NOT get individual rows on migration — they fall back to the platform default until they explicitly customize via PATCH (which inserts their first version=1 row).
 
-**Frozen-at-creation pattern (Flyway V41):**
+**Frozen-at-creation pattern (Flyway V47, renumbered from V41):**
 
 ```sql
 ALTER TABLE referral_token
@@ -249,7 +249,7 @@ if (callerTenant == null || !callerTenant.equals(token.getTenantId())) {
 }
 ```
 
-For read-only queries (T-13 `getEscalatedQueue`), the tenant filter is in the SQL itself: `WHERE tenant_id = ?`. This double-purpose: closes the cross-tenant leak AND lets the planner use the V41 partial index `idx_referral_token_pending_by_expiry (tenant_id, expires_at) WHERE status = 'PENDING'`.
+For read-only queries (T-13 `getEscalatedQueue`), the tenant filter is in the SQL itself: `WHERE tenant_id = ?`. This double-purpose: closes the cross-tenant leak AND lets the planner use the V47 partial index `idx_referral_token_pending_by_expiry (tenant_id, expires_at) WHERE status = 'PENDING'`.
 
 **Why this is a recurring concern, not a one-off:** every new endpoint that takes a `referralId` URL parameter is at risk. T-13 caught it first; T-17 reassign would have shipped without the check until war-room round 3 surfaced the pattern. Documented here as a design invariant to enforce in code review for any future mutating endpoint.
 
@@ -274,17 +274,17 @@ Returns 0 rows when the row is missing, no longer PENDING, or someone else holds
 
 **`tryRelease`** uses the same shape with `WHERE claimed_by_admin_id = ? OR ?::boolean = true`. Idempotent on no-op.
 
-**`clearExpiredClaims`** (auto-release scheduler) uses `WHERE claimed_by_admin_id IS NOT NULL AND claim_expires_at < NOW() RETURNING id, tenant_id` so the V41 partial index `idx_referral_token_active_claim` is actually used (Sam Okafor catch — without the `IS NOT NULL` predicate the planner falls back to a full table scan).
+**`clearExpiredClaims`** (auto-release scheduler) uses `WHERE claimed_by_admin_id IS NOT NULL AND claim_expires_at < NOW() RETURNING id, tenant_id` so the V47 partial index `idx_referral_token_active_claim` is actually used (Sam Okafor catch — without the `IS NOT NULL` predicate the planner falls back to a full table scan).
 
 **Load-bearing test:** `ClaimReleaseTest.concurrentClaimsExactlyOneWinner` races two HTTP claims through a `CountDownLatch`, asserting exactly one OK + one 409 + the row holds the winner. If `tryClaim` regresses to a non-atomic pattern, this test fails.
 
-### D13: V42 — `audit_events.actor_user_id` nullable for system actors (war room round 3)
+### D13: V48 — `audit_events.actor_user_id` nullable for system actors (war room round 3; renumbered from V42 post-v0.34.0)
 
 The original V29 `audit_events` schema declared `actor_user_id NOT NULL` because every audit row was triggered by a human admin. The auto-release scheduler in `ReferralTokenService.autoReleaseClaims()` writes `DV_REFERRAL_RELEASED` rows with `actor_user_id = null` (system actor). The NOT NULL constraint caused these rows to fail at INSERT time and be silently swallowed by `AuditEventService.onAuditEvent`'s try/catch.
 
 **Discovery path:** `ClaimReleaseTest.autoReleaseClearsExpiredClaims` ran green (the DB state was correct), but the test log showed `Failed to persist audit event: ... null value in column "actor_user_id" of relation "audit_events" violates not-null constraint`. The functional behavior was right but the audit trail was broken — Casey Drummond's chain-of-custody requires every claim transition to leave a row.
 
-**Fix (Flyway V42):**
+**Fix (Flyway V48; no-op on deployments that already ran v0.34.0's V44 which did the same thing — V48 preserved for lineage per Elena Vasquez, see V48 file header):**
 ```sql
 ALTER TABLE audit_events
     ALTER COLUMN actor_user_id DROP NOT NULL;
@@ -292,11 +292,11 @@ ALTER TABLE audit_events
 
 Reads MUST treat `actor_user_id IS NULL` as "system" (e.g. display "System (auto-release)" in admin audit log UI). The application layer is responsible for that mapping; the schema just allows the value. The `AuditEventCoverageTest.timeoutReleaseWritesAuditRowWithNullActor` test pins the contract.
 
-### D14: V43 — `escalation_chain_broken` column + chain-resume on group reassign (war room round 4, Marcus Okafor)
+### D14: V49 — `escalation_chain_broken` column + chain-resume on group reassign (war room round 4, Marcus Okafor; renumbered from V43 post-v0.34.0)
 
 **The semantic question:** when a CoC admin reassigns a referral via `SPECIFIC_USER`, the system should stop auto-escalating it because the named user owns it now. But what if that user goes on PTO and the admin needs to "give the referral back to the group"?
 
-**Solution:** a new boolean column `referral_token.escalation_chain_broken` (Flyway V43, default FALSE) tracked alongside the existing `escalation_policy_id` snapshot. Three reassign target types interact with it differently:
+**Solution:** a new boolean column `referral_token.escalation_chain_broken` (Flyway V49, default FALSE) tracked alongside the existing `escalation_policy_id` snapshot. Three reassign target types interact with it differently:
 
 | Target type | Effect on `escalation_chain_broken` | Rationale |
 |---|---|---|
@@ -427,7 +427,7 @@ The six questions resolved with the project lead on 2026-04-10 are baked into th
 
 1. **Architecture diagram update format?** Mermaid replacement (Q1=c). New `docs/architecture.md`, drawio preserved alongside as legacy. → D10.
 2. **Tracking issue?** Reuse #82 (Q2=reuse). The implementation comment will be added to #82 after this spec is committed. → no code impact, workflow only.
-3. **Version bundling?** Ship as v0.33.0 BEFORE `sse-backpressure-phase2` (Q3=before). #82 is the higher-priority current bug; sse-backpressure-phase2 ships separately as v0.34.0. → no code impact, release planning only.
+3. **Version bundling?** Ship as v0.33.0 BEFORE `sse-backpressure-phase2` (Q3=before). #82 is the higher-priority current bug; sse-backpressure-phase2 ships separately in a later release. → no code impact, release planning only. **Post-v0.34.0 update (2026-04-11):** the answer to this question was overtaken by events. GH issue #102 (phantom `beds_on_hold` drift, bed-hold-integrity) was discovered and prioritized ahead of both coc-admin-escalation and sse-backpressure-phase2. bed-hold-integrity shipped as v0.34.0; this change retargets to **v0.35.0** (see IMPLEMENTATION-PLAN.md's "v0.35.0 retargeting note" for the full chronology). sse-backpressure-phase2 remains queued for a future release, still after this change.
 4. **Audit trail to `audit_events` table?** Yes (Q4=yes). Five new event types covering claim, release, reassign, admin accept, admin reject, plus policy update. → D8.
 5. **Policy update semantics?** Frozen-at-creation (Q5=c). Each referral records the policy version active at creation time; mid-day policy changes apply only to new referrals. → D7.
 6. **Sequencing vs `sse-backpressure-phase2`?** Independent ship, no hard dependency (Q6=independent). New SSE events use existing send path and refactor cleanly when Phase 2 lands. → D9 + Out of Scope.

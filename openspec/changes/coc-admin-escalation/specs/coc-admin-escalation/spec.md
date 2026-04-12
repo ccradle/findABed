@@ -183,7 +183,7 @@ The CriticalNotificationBanner SHALL render a primary action button that navigat
 The system SHALL store escalation thresholds in a per-tenant append-only versioned table. Each policy update SHALL create a new row; existing rows SHALL never be modified or deleted.
 
 #### Scenario: Default policy seeded for all tenants
-- **WHEN** the application starts after Flyway V40 has run
+- **WHEN** the application starts after Flyway V46 has run
 - **THEN** there SHALL be exactly one row in `escalation_policy` with `tenant_id IS NULL`, `event_type = 'dv-referral'`, `version = 1`
 - **AND** that row's thresholds SHALL match the historical hardcoded values: `[1h ACTION_REQUIRED COORDINATOR, 2h CRITICAL COC_ADMIN, 3h30m CRITICAL COORDINATOR+OUTREACH_WORKER, 4h INFO OUTREACH_WORKER]`
 
@@ -241,8 +241,8 @@ The escalation batch job SHALL apply the policy version that was active when eac
 - **THEN** referral A SHALL continue to fire escalations per policy v1's thresholds
 - **AND** referral B SHALL fire escalations per policy v2's thresholds
 
-#### Scenario: Backwards compatibility for pre-V41 referrals
-- **WHEN** the batch job processes a referral with `escalation_policy_id IS NULL` (existing rows from before V41)
+#### Scenario: Backwards compatibility for pre-V47 referrals
+- **WHEN** the batch job processes a referral with `escalation_policy_id IS NULL` (existing rows from before V47)
 - **THEN** the job SHALL fall back to the platform default policy (`tenant_id IS NULL, event_type = 'dv-referral'`)
 - **AND** SHALL NOT raise an error
 
@@ -265,7 +265,7 @@ The system SHALL write to the existing `audit_events` table for every CoC admin 
 #### Scenario: Auto-release records system actor
 - **WHEN** the auto-release scheduled task clears an expired claim
 - **THEN** the audit event `DV_REFERRAL_RELEASED` SHALL be written with `actor_user_id = NULL` (representing the system actor)
-- **AND** the `audit_events.actor_user_id` column SHALL be nullable (V42 schema change — was previously NOT NULL, which silently dropped these rows)
+- **AND** the `audit_events.actor_user_id` column SHALL be nullable (V48 schema change, or V44 for deployments running v0.34.0+ bed-hold-integrity — was previously NOT NULL, which silently dropped these rows)
 - **AND** the detail JSON SHALL contain `reason: "timeout"`
 - **AND** application code reading audit rows SHALL treat NULL `actor_user_id` as "system" for display purposes
 
