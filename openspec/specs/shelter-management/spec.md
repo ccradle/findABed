@@ -52,3 +52,79 @@ The system SHALL include a Flyway migration V20 that migrates capacity-only data
 - **WHEN** V20 completes
 - **THEN** the `shelter_capacity` table no longer exists
 - **AND** the `dv_shelter_capacity_access` RLS policy no longer exists
+
+### Requirement: full-featured-shelter-csv-import
+The system SHALL support importing shelters with the complete data model via CSV: name, address, phone, coordinates, DV flag, population types served, bed counts, and operational constraints. The existing fuzzy header matching SHALL be extended to cover all new columns.
+
+#### Scenario: Import shelter with full data model
+- **WHEN** a CSV row includes name, address, phone, dvShelter, populationTypesServed, bedsTotal, bedsOccupied, and constraint columns
+- **THEN** the shelter is created with all provided data including constraints and capacities
+- **AND** the shelter appears in bed search with correct availability (bedsAvailable = bedsTotal - bedsOccupied)
+- **AND** if dvShelter=true, the shelter is RLS-protected and only visible to users with dvAccess=true
+
+#### Scenario: Import shelter with minimal columns
+- **WHEN** a CSV row includes only the required columns (name, addressCity)
+- **THEN** the shelter is created with defaults: dvShelter=false, no constraints, no capacities
+- **AND** the shelter exists in the system but shows zero beds available until capacities are configured manually
+
+#### Scenario: Boolean columns accept flexible values
+- **WHEN** a CSV row contains boolean values like "yes", "true", "1", "Y", "TRUE"
+- **THEN** all are parsed as true
+- **AND** "no", "false", "0", "N", "FALSE", empty, or absent are parsed as false
+
+#### Scenario: Population types are semicolon-delimited
+- **WHEN** a CSV row has populationTypesServed = "SINGLE_ADULT;FAMILY_WITH_CHILDREN;VETERAN"
+- **THEN** the shelter is created serving all three population types
+- **AND** bed capacities are created for each listed population type using the bedsTotal and bedsOccupied values
+
+#### Scenario: Invalid population type rejected
+- **WHEN** a CSV row has populationTypesServed containing "ADULTS" (not a recognized value)
+- **THEN** the row is rejected with an error listing valid population type values
+
+#### Scenario: Capacity conflict rejected
+- **WHEN** a CSV row has bedsOccupied greater than bedsTotal
+- **THEN** the row is rejected with an error explaining the conflict
+
+### Requirement: shelter-csv-import-documentation
+The system SHALL provide comprehensive documentation, downloadable templates, and in-app guidance for the CSV shelter import feature.
+
+#### Scenario: Import page shows quick-start guidance
+- **WHEN** an admin navigates to the Import tab
+- **THEN** a quick-start card is visible with numbered steps, template download links, and a link to the full format reference
+
+#### Scenario: Template CSV includes example data with all column types
+- **WHEN** a user downloads the example template CSV
+- **THEN** it contains example rows demonstrating emergency, DV, and constrained shelter types
+
+#### Scenario: Column reference documentation covers all fields
+- **WHEN** a user reads the shelter import format documentation
+- **THEN** every column is documented with name, required/optional, data type, allowed values, and example
+
+### Requirement: row-level-import-validation-feedback
+The system SHALL provide specific, non-technical validation error messages at the row and field level during CSV import, with a downloadable error report.
+
+#### Scenario: Validation errors shown per row
+- **WHEN** a CSV file contains validation errors
+- **THEN** the preview shows a summary of valid vs. error rows with per-row details
+
+#### Scenario: Downloadable error CSV
+- **WHEN** the import preview shows rows with errors
+- **THEN** a "Download errors" button exports a CSV of only the failed rows
+
+#### Scenario: Valid rows succeed despite errors in other rows
+- **WHEN** a CSV file contains both valid and invalid rows
+- **THEN** valid rows are imported successfully and invalid rows are rejected with specific error messages
+
+### Requirement: import-upsert-with-preview
+The system SHALL support update-or-create (upsert) behavior on re-import, with a preview showing the expected outcome.
+
+#### Scenario: Re-import updates existing shelters
+- **GIVEN** a shelter with a given name and city already exists in the tenant
+- **WHEN** a CSV is uploaded containing a row with the same name and city
+- **THEN** the preview shows update vs. create counts and on commit the existing shelter is updated
+
+#### Scenario: DV flag change flagged in preview
+- **GIVEN** a non-DV shelter exists
+- **WHEN** a CSV re-import sets dvShelter=true for that shelter
+- **THEN** the preview flags this as a safety notice and a WARN log is written
+- **AND** the DV flag is NOT changed by the import (manual admin action required)
