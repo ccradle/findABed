@@ -33,7 +33,7 @@ The DemoGuardFilter SHALL allow full admin access for requests arriving via SSH 
 
 #### Scenario: Browser UI admin operations work through tunnel
 - **WHEN** an admin opens SSH tunnel to port 8081 and logs into the browser UI
-- **THEN** they SHALL be able to: create/delete users, activate/deactivate surge, edit shelters, run imports, manage API keys
+- **THEN** they SHALL be able to: create/delete users, activate/deactivate surge, edit shelters, run imports, manage API keys, deactivate/reactivate shelters
 - **AND** the UI SHALL show success responses (not demo_restricted errors)
 
 #### Scenario: Safe mutations still work for public traffic

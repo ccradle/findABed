@@ -37,6 +37,11 @@ The system SHALL use `bed_availability` snapshots as the single source of truth 
 - **AND** `beds_occupied` and `beds_on_hold` are preserved from the previous snapshot
 - **AND** the UI displays `beds_available = beds_total - beds_occupied - beds_on_hold` correctly
 
+#### Scenario: Deactivation metadata stored on shelter
+- **WHEN** an admin deactivates a shelter with reason SEASONAL_END
+- **THEN** `shelter.deactivated_at`, `shelter.deactivated_by`, and `shelter.deactivation_reason` are populated
+- **AND** on reactivation, all three fields are cleared to null
+
 ### Requirement: migration-v20-drop-shelter-capacity
 The system SHALL include a Flyway migration V20 that migrates capacity-only data to `bed_availability` and drops the `shelter_capacity` table.
 
