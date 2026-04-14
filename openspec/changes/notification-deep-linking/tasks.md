@@ -85,10 +85,10 @@
 
 ## 3z. Phase 1 → Phase 2 transition
 
-- [ ] 3z.1 Ship Phase 1: open PR, address review, merge `feature/issue-106-phase1-deeplink-foundation` to main.
-- [ ] 3z.2 Confirm Phase 1 ship-gate criteria all green (see implementation plan).
-- [ ] 3z.3 `git checkout main && git pull origin main` to pick up Phase 1 changes.
-- [ ] 3z.4 `git checkout -b feature/issue-106-phase2-admin-banner` from updated main.
+- [x] 3z.1 Ship Phase 1: open PR, address review, merge `feature/issue-106-phase1-deeplink-foundation` to main. PR ccradle/finding-a-bed-tonight#114 merged 2026-04-14 as `f319b50`. Non-release checkpoint tag `issue-106-phase1` pushed.
+- [x] 3z.2 Confirm Phase 1 ship-gate criteria all green. All 11 CI checks SUCCESS at merge (Backend, Frontend, Legal Language Scan, CodeQL x3, DV Access Control Canary, E2E Playwright + Karate, Docker skipped, Performance skipped). Local verification: 76/76 Vitest, 621/621 backend, Playwright happy-path verified end-to-end against live stack.
+- [x] 3z.3 `git checkout main && git pull origin main` to pick up Phase 1 changes.
+- [ ] 3z.4 `git checkout -b feature/issue-106-phase2-admin-banner` from updated main. (Start Phase 2 — not yet triggered.)
 
 ## 4. Frontend — Admin escalation queue deep-link handling (Phase 2 starts here)
 
