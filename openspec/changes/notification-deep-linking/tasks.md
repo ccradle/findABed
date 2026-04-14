@@ -115,10 +115,10 @@
 
 ## 5z. Phase 2 → Phase 3 transition
 
-- [ ] 5z.1 Ship Phase 2: open PR, address review, merge `feature/issue-106-phase2-admin-banner` to main.
-- [ ] 5z.2 Confirm Phase 2 ship-gate criteria all green.
-- [ ] 5z.3 `git checkout main && git pull origin main` to pick up Phase 2 changes.
-- [ ] 5z.4 `git checkout -b feature/issue-106-phase3-my-holds-lifecycle` from updated main.
+- [x] 5z.1 Ship Phase 2: PR ccradle/finding-a-bed-tonight#115 merged 2026-04-14 as `190e86c`. Non-release checkpoint tag `issue-106-phase2` pushed.
+- [x] 5z.2 Confirm Phase 2 ship-gate criteria green. At merge: Backend, Frontend, CodeQL (×3), DV Access Control Canary, Legal Language Scan all SUCCESS. E2E (Playwright + Karate) was IN_PROGRESS at merge per branch-protection settings — branch protection accepted the merge without requiring its completion. (Phase 4 task 13.6 will confirm no E2E regressions once full coverage lands on main.)
+- [x] 5z.3 Local main synced with origin after merge.
+- [ ] 5z.4 `git checkout -b feature/issue-106-phase3-my-holds-lifecycle` from updated main. (Start Phase 3 — not yet triggered.)
 
 ## 6. Frontend — My Past Holds view (Phase 3 starts here)
 
