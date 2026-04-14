@@ -75,6 +75,12 @@ The coordinator dashboard SHALL accept a `referralId` query parameter. When pres
 - **THEN** the dashboard loads and the specified shelter is auto-expanded
 - **AND** keyboard focus moves to the shelter card
 
+#### Scenario: Deep-link target fails to materialize within timeout
+- **WHEN** a coordinator navigates to `/coordinator?referralId=abc-123` but the target row does not appear in the dashboard within 5 seconds (slow network, infrastructure failure, host's data fetch hangs)
+- **THEN** the same fallback as the stale-notification scenario applies — non-blocking toast "This referral is no longer pending." displays
+- **AND** the dashboard returns to a usable state (no infinite spinner, no stuck overlay)
+- **NOTE** This timeout is owned by the `useDeepLink` hook's `awaiting-target` deadline (D-12). It guarantees that no deep-link can leave the user in a silent stuck state, regardless of which host (coordinator dashboard, admin queue, my-past-holds) consumed the hook.
+
 ### Requirement: Admin escalation queue auto-opens detail modal
 The DvEscalationsTab SHALL accept a `referralId` query parameter. When present, the tab SHALL automatically open the detail modal for that referral upon load.
 

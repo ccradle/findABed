@@ -92,11 +92,19 @@
 
 ## 4. Frontend — Admin escalation queue deep-link handling (Phase 2 starts here)
 
-- [ ] 4.1 In `DvEscalationsTab.tsx` (or the queue component): read `referralId` from URL search params.
-- [ ] 4.1a Apply idempotency guard pattern from 3.1a (same re-render concern applies).
-- [ ] 4.2 If `referralId` is present: find the matching row in the loaded queue, open its detail modal automatically.
-- [ ] 4.3 If `referralId` present but not in queue: show non-blocking toast "This escalation is no longer in the queue." Load queue normally. Also mark the notification read-unacted per X-1 pattern.
-- [ ] 4.4 Update AdminPanel hash router to preserve query params alongside hash (`#dvEscalations?referralId=X`).
+> **Implementation note (post-3R refactor):** Phase 2 reuses the
+> `useDeepLink` hook from `frontend/src/hooks/useDeepLink.ts` (D-12).
+> The admin queue plugs in different host callbacks than the coordinator
+> dashboard does. Tasks below specify the host-specific wiring; the
+> state machine itself (idempotency, intent-equality, stuck-state
+> protection, timeout fallback) is inherited from the hook and does not
+> need to be re-implemented or re-tested here.
+
+- [ ] 4.1 In `DvEscalationsTab.tsx`: call `useDeepLink<EscalatedReferralDto>` with admin-queue callbacks: `resolveTarget` returns the referral row from the in-memory queue (or fetches via `GET /api/v1/dv-referrals/{id}` if not in the queue yet); `needsUnsavedConfirm` returns false (no per-row edits in the queue); `expand` is a no-op (the queue is already visible); `isTargetReady` returns true once the row is in the queue array.
+- [ ] 4.1a ~~Apply idempotency guard pattern from 3.1a~~ — **SUPERSEDED by 3R**: intent-equality in the hook's reducer eliminates the need for a per-host idempotency guard. Delete this task.
+- [ ] 4.2 In a `useEffect([dlState.kind, queueRows])` on the tab: when `dlState.kind === 'done'`, open the detail modal for `dlState.resolved.detail`.
+- [ ] 4.3 Stale handling is automatic via the hook: when `dlState.kind === 'stale'`, render a non-blocking toast "This escalation is no longer in the queue." Also call `markNotificationsActedByPayload('referralId', dlState.intent.referralId, 'stale')` per X-1 pattern (helper ships in task 7.1).
+- [ ] 4.4 Update AdminPanel hash router to preserve query params alongside hash (`#dvEscalations?referralId=X`). **Unchanged by 3R** — this is a router concern, independent of the deep-link state machine.
 
 ## 5. Frontend — CriticalNotificationBanner coordinator CTA
 
@@ -118,14 +126,14 @@
 - [ ] 6.2 Fetch user's reservations: HELD + CANCELLED + EXPIRED + CONFIRMED + CANCELLED_SHELTER_DEACTIVATED. **D-1 fix — default window extended to 14 days** (was 7) to cover casual weekend workers whose holds expire 8+ days prior.
 - [ ] 6.3 Render grouped by status: Active (HELD) first, then Recent (terminal states). Each row shows shelter name, population type, status with visible text label, created timestamp (using DataAge component), primary action button.
 - [ ] 6.4 Status-specific actions: HELD → "Confirm arrival" + "Cancel hold" (existing API). CANCELLED_SHELTER_DEACTIVATED → "Find another bed" link to `/outreach`. CONFIRMED → no action (display only). CANCELLED/EXPIRED → "Find another bed" link. **D-2 fix — add `tel:` link**: every row shows a small "Call shelter" link using the shelter's phone number (existing field on shelter record). Clickable on mobile to initiate call.
-- [ ] 6.4a Deep-link highlighting: if URL has `?reservationId=X`, render that row with a visible left border accent (color.primaryText), scroll to it, move focus to its primary action.
-- [ ] 6.4b Apply idempotency guard pattern from 3.1a for `reservationId` processing.
+- [ ] 6.4a Deep-link highlighting: call `useDeepLink<ReservationDetailResponse>` with reservation callbacks: `resolveTarget` looks the reservation up in the just-fetched list (or via a single-reservation fetch if not yet loaded); `needsUnsavedConfirm` returns false (no in-flight edits on this page); `expand` is a no-op; `isTargetReady` returns true once the row is rendered. In the `useEffect([dlState.kind])`, on `done` apply the visible left-border accent (`color.primaryText`), scroll into view, and move focus to the row's primary action button. (Note: this page focuses the **primary action** rather than the row heading — D11. Different from coordinator dashboard's row-heading focus because there's no DV-accept safety risk here.)
+- [ ] 6.4b ~~Apply idempotency guard pattern from 3.1a for `reservationId` processing~~ — **SUPERSEDED by 3R**: intent-equality in the hook's reducer handles this. Delete this task.
 - [ ] 6.5 Empty state: "No recent bed holds. Search for beds to create one." with link to `/outreach`. **D-2 (Devon) fix**: separately handle first-ever load state: "You'll see your bed holds here once you start searching." (distinct from "no recent" vs "never created any").
 - [ ] 6.6 "Show older" button loads reservations 14-60 days old (adjusted from 7-30 per D-1 change).
 - [ ] 6.7 Nav: add "My Holds" link in outreach header (role-gated to OUTREACH_WORKER).
 - [ ] 6.8 i18n: all strings in EN + ES.
 - [ ] 6.9 data-testid: `my-holds-row-{reservationId}`, `my-holds-action-{reservationId}`, `my-holds-call-{reservationId}`, `my-holds-empty`, `my-holds-load-older`.
-- [ ] 6.10 **D-3 fix — offline deep-link handling**: if the user navigates to `/outreach/my-holds?reservationId=X` while offline, display a toast "Can't load your holds — check your connection." and load cached data if available (from SW cache). Do NOT show an infinite spinner. Reuse existing offline queue patterns.
+- [ ] 6.10 **D-3 fix — offline deep-link handling**: if the user navigates to `/outreach/my-holds?reservationId=X` while offline, display a toast "Can't load your holds — check your connection." and load cached data if available (from SW cache). Do NOT show an infinite spinner. Reuse existing offline queue patterns. **Post-3R note:** the `useDeepLink` hook handles the fetch-failure path via `dlState.kind === 'stale'` (its `resolveTarget` callback throws on network error → `STALE: error`). The host's `useEffect([dlState.kind])` chooses the offline-specific toast text when `navigator.onLine === false` rather than the generic "no longer pending" copy. SW-cache fallback is a separate concern from the deep-link state machine.
 
 ## 7. Frontend — Notification lifecycle (markActed)
 
@@ -177,8 +185,8 @@
 - [ ] 10.2 Unit test: missing payload field falls back to role-based default.
 - [ ] 10.3 Unit test: `getNotificationMessageId` and `getNotificationMessageValues` handle the three new types.
 - [ ] 10.4 **K-1 coverage**: unit test that `getNotificationMessageValues` for `SHELTER_DEACTIVATED` returns a localized reason string, not the raw enum value. Assert intl key lookup happens.
-- [ ] 10.5 **A-1 coverage**: React Testing Library test that `useEffect` processing query param fires only once per `referralId` value, even with multiple re-renders.
-- [ ] 10.6 **Phase 1 war-room follow-up — H-2 effect-based focus regression test** (Jordan). React Testing Library test that the focus useEffect on `pendingReferrals` fires once when the target row appears AND clears `pendingFocusRef.current` so countdown timer ticks (which mutate `pendingReferrals` every second) don't re-fire focus.
+- [ ] 10.5 ~~**A-1 coverage**: React Testing Library test that `useEffect` processing query param fires only once per `referralId` value~~ — **SUPERSEDED by 3R.2**: the 28 hook tests in `useDeepLink.test.ts` cover intent-equality (`intentsEqual` + the reducer's INTENT no-op for unchanged intents). Re-firing on rerender is structurally impossible. Delete this task.
+- [ ] 10.6 ~~**Phase 1 war-room follow-up — H-2 effect-based focus regression test**~~ — **SUPERSEDED by 3R.2**: the hook's awaiting-target → done transition is covered by the reducer tests, and `pendingFocusRef` no longer exists. The host's `useEffect([dlState, intl])` only fires on `dlState.kind` change, not on every `pendingReferrals` mutation, so the countdown-tick refire isn't reachable. Delete this task.
 - [ ] 10.7 **Phase 1 war-room follow-up — H-1 snapshot-refresh regression test** (Alex). React Testing Library test: simulate Save in the dialog, verify `originalAvailRef` matches new `editAvailability`, verify subsequent `isDirty()` returns false until a fresh edit.
 
 ## 11. Playwright — E2E tests
@@ -229,7 +237,7 @@
 - [ ] 14.1 **D-1 (Devon) — update coordinator quick-start card** in docs repo: add one-pager "How to respond to a DV referral notification" with screenshots of the three notification states, the CriticalNotificationBanner CTA, and the deep-linked view. Coordinate with Simone for voice/layout.
 - [ ] 14.2 Add inline tooltip help in bell header: "?" icon or "Help" link that opens a small overlay explaining the three states.
 - [ ] 14.3 Update `docs/FOR-COORDINATORS.md` with the new notification lifecycle and deep-linking behavior.
-- [ ] 14.4 Update `docs/FOR-DEVELOPERS.md` with the deep-link URL pattern convention (`?referralId=X`, `?reservationId=X`, `?shelterId=X`) for future notification types.
+- [ ] 14.4 Update `docs/FOR-DEVELOPERS.md` with: (a) the deep-link URL pattern convention (`?referralId=X`, `?reservationId=X`, `?shelterId=X`) for future notification types; (b) the `useDeepLink` hook contract (D-12 in design.md) — its `UseDeepLinkOptions` callbacks (`resolveTarget`, `needsUnsavedConfirm`, `expand`, `isTargetReady`), the host's responsibility to render the toast / dialog / announcement off `dlState.kind`, and the rule that new pages adding deep-link support MUST consume the hook rather than re-implement state machines or idempotency guards.
 - [ ] 14.5 **Phase 1 war-room follow-up — L-1 Keisha + Simone copy review on the deep-link aria-live announcement** (Keisha, Simone). Current EN copy is `"Opened pending DV referral: {populationType}, household size {size}, urgency {urgency}."` — accurate but clinical. Run through Simone for action-oriented voice and Keisha for dignity-centered phrasing. Update both EN and ES strings.
 - [ ] 14.6 **Phase 1 war-room follow-up — L-3 move row focus styling from inline `onFocus`/`onBlur` to CSS `:focus-visible`** (Jordan). Current implementation imperatively sets `boxShadow` on focus events; a CSS class with `:focus-visible` selector is more idiomatic, survives React reconciles, and naturally handles browser quirks around programmatic-vs-keyboard focus. Coordinate with Phase 4 task 7.7 which also touches `:focus-visible` styles.
 - [ ] 14.7 **Phase 1 war-room follow-up — L-5 evaluate URL cleanup after deep-link processing** (Marcus). Current behavior keeps `?referralId=X` in the URL after processing (per D8 idempotency + bookmarkability). Trade-off: UUIDs land in browser history, nginx access logs, and Referer headers. Decision needed: leave as-is (current OpenSpec D-8 default), strip after processing, or use `replace: true` on navigate. Document in design.md once decided.
