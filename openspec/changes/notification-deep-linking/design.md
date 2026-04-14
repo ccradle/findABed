@@ -156,6 +156,30 @@ NOT called on:
 
 **Rationale:** The notification table is not being migrated. Existing unread notifications remain in the bell. They must not break.
 
+### D-BP: Banner routes to oldest pending referral via count-endpoint routing hint (NEW, Phase 4 — genesis gap closure)
+
+**Decision:** `GET /api/v1/dv-referrals/pending/count` returns `{ count: N, firstPending: { referralId, shelterId } | null }` where `firstPending` is the oldest PENDING referral across the caller's assigned DV shelters (ordered by `created_at ASC`), or `null` when `count === 0`. The CoordinatorReferralBanner stores this hint alongside the count and, on click without an existing `?referralId` query param, navigates to `/coordinator?referralId=${firstPending.referralId}` — converging on the same `useDeepLink` state machine used by the notification bell. The `shelters.find(item => item.shelter.dvShelter)` fallback in `CoordinatorDashboard.tsx` is deleted along with its stale comment.
+
+**Why "oldest first":**
+- **Deterministic.** Any tie-breaker needs a total order; `created_at ASC` is the existing order for pending-list queries so the banner's "first" and the list's "first" line up.
+- **Matches urgency heuristic.** The longer a referral sits PENDING, the more time has elapsed since the outreach worker placed it — oldest-first surfaces the referral that has been waiting the longest, which correlates with urgency without requiring a separate urgency-field sort.
+- **Consistent with the CriticalNotificationBanner coordinator CTA.** That CTA already uses `pickOldestEscalationReferralId` (notificationMessages.ts) as its "which referral wins" selector. Using oldest-first in both places means the two banners agree on the target when both are visible.
+
+**Alternatives considered:**
+- **Highest urgency first (EMERGENCY > URGENT > NORMAL).** Rejected because urgency is set by the outreach worker at creation and the coordinator can re-negotiate it — an urgency-based sort risks surfacing a stale "EMERGENCY" flagged hours ago over a just-arrived genuine emergency. Oldest-first is more predictable for the coordinator's mental model during a shift.
+- **New dedicated endpoint `GET /api/v1/dv-referrals/pending/next`.** Rejected because the banner already calls `/count` on mount and on SSE referral-update events; adding a second endpoint doubles the RTT for zero behavioral benefit. Extending the existing response is a ~6-line serializer change.
+- **Push the routing hint through the SSE `referral.update` event payload.** Rejected for this change because SSE events are transient and the banner must still work on initial page load (before any event arrives). The REST endpoint is the source of truth; SSE events trigger a re-fetch, which naturally refreshes `firstPending` too.
+- **Embed the hint in the notification itself and let the bell set the query param.** That's what Phase 1 already does when the coordinator arrives via a notification click. The genesis gap is specifically the case where the coordinator is on the dashboard WITHOUT having clicked a notification — no bell interaction to plumb through.
+
+**Contract additions:**
+- When `count === 0`: `firstPending` is `null` (not omitted — clients test for `=== null`). Spring's default Jackson serialization will emit `"firstPending": null`; we do NOT opt into `@JsonInclude(NON_NULL)` on this field because the contract distinguishes "not applicable" from "missing".
+- When the caller is not a COORDINATOR, the existing 403 behavior is preserved (no change).
+- RLS + `coordinatorAssignmentRepository.findShelterIdsByUserId(userId)` already scope the query — `firstPending` can only surface a referral the caller is authorized to see. Same authorization envelope as `count`.
+
+**Security (Casey Drummond):** Surfacing a `referralId` UUID in the count response is no different from surfacing it in a notification payload — the caller can already enumerate pending referrals via the existing `GET /api/v1/dv-referrals/pending?shelterId=X` endpoint for any shelter they're assigned to. Zero new PII. UUID guessing is computationally infeasible (128 bits).
+
+**Back-compat (Marcus Webb):** Purely additive — existing consumers that destructure `{ count }` ignore the new field. No version bump. No OpenAPI breaking change.
+
 ### D7: Notification lifecycle visual states
 
 **Decision:** Three visual states in the bell:
@@ -202,10 +226,10 @@ This is a substantive change (112 tasks). It ships in four phases, each as a sep
 **Scope:** New `/outreach/my-holds` route, three-state bell visuals, markActed wiring, tooltips, hide-acted filter, tel: link.
 **Ship gate:** Outreach workers have a home for cancelled holds. Notifications distinguish read vs acted.
 
-### Phase 4: Observability + tests + docs
-**Tasks:** 8, 9, 9a, 10-15
-**Scope:** Optional backend endpoints (evaluate first), Vitest + Playwright tests, Micrometer metrics, Grafana panel, accessibility audits, documentation.
-**Ship gate:** Priya's differentiator measurement is live. Pilot data collection can begin.
+### Phase 4: Observability + tests + docs + banner genesis-gap closure
+**Tasks:** 8, 9, 9a, 10-15, **16 (banner routing hint — new, 2026-04-14)**
+**Scope:** Optional backend endpoints (evaluate first), Vitest + Playwright tests, Micrometer metrics, Grafana panel, accessibility audits, documentation. **Plus the banner routing fix (D-BP):** extend `/pending/count` with `firstPending`, wire the banner to deep-link via the hint, delete the stale "first DV shelter" fallback.
+**Ship gate:** Priya's differentiator measurement is live. Pilot data collection can begin. **The banner genesis-gap fix (section 16) is a demo-deploy blocker per the 2026-04-14 re-walk with Corey — the original user story motivating this entire change does not land until this is in place.**
 
 **Phase independence rationale:** Phase 1 is shippable on its own and delivers the core user story. Phases 2-4 are enhancements. If we have to pause (e.g., for a higher-priority issue), Phase 1 is a complete unit.
 
