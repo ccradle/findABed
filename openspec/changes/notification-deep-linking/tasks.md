@@ -1,6 +1,8 @@
 ## 0. Setup
 
-- [ ] 0.1 Switch to the code repo (`finding-a-bed-tonight`), checkout `main`, pull latest, then create and switch to branch `feature/issue-106-notification-deep-linking` from `main`.
+> **Branching strategy:** This change ships in 4 phases (see implementation plan), each merging to main independently. Create a new phase branch from **updated** main at the START of each phase. Do NOT use a single long-lived branch.
+
+- [ ] 0.1 Switch to the code repo (`finding-a-bed-tonight`), checkout `main`, pull latest, then create and switch to branch `feature/issue-106-phase1-deeplink-foundation` from `main`. (Phase 1 branch.)
 - [ ] 0.2 **Backend endpoint evaluation:** read `ReservationController.java` and `ReservationService.java` to confirm whether `GET /api/v1/reservations` supports filtering by status list and date range. Document findings. If existing support is insufficient, this informs tasks 6.x + 8.1.
 - [ ] 0.3 **Measurement gate decision:** read notification flows producing multiple notifications per referral (referral.requested + escalation.1h/2h/3_5h/4h). If typical user scenario produces ≥5 matching notifications, plan for batch endpoint in task 8.2. Otherwise per-notification PATCH acceptable.
 - [ ] 0.4 **SSE fallback verification** (Dr. Whitfield / W-1): verify the bell's REST fallback polling works when SSE is blocked. Test by disabling SSE via browser DevTools or network rules and confirming bell unread count still updates on next page load or REST refresh. Document behavior for hospital IT environments.
@@ -41,7 +43,14 @@
 - [ ] 3.4 **Stale-referral handling**: if `referralId` no longer maps to a pending referral, show non-blocking toast "This referral is no longer pending." **X-1 fix**: also call `markNotificationsActedByPayload('referralId', referralId)` with a special "stale" outcome — mark the notification as read-unacted (not acted, since user didn't complete the workflow). Also covers **M-1 (Marcus) authorization case**: same toast + behavior if API returns 403 on fetch — never leak "stolen by another coordinator" vs "not authorized."
 - [ ] 3.5 Update `CoordinatorReferralBanner.tsx`: accept a `referralId` prop (passed from dashboard). When present, clicking opens the shelter containing that specific referral, not the first DV shelter. Preserve existing no-param behavior.
 
-## 4. Frontend — Admin escalation queue deep-link handling
+## 3z. Phase 1 → Phase 2 transition
+
+- [ ] 3z.1 Ship Phase 1: open PR, address review, merge `feature/issue-106-phase1-deeplink-foundation` to main.
+- [ ] 3z.2 Confirm Phase 1 ship-gate criteria all green (see implementation plan).
+- [ ] 3z.3 `git checkout main && git pull origin main` to pick up Phase 1 changes.
+- [ ] 3z.4 `git checkout -b feature/issue-106-phase2-admin-banner` from updated main.
+
+## 4. Frontend — Admin escalation queue deep-link handling (Phase 2 starts here)
 
 - [ ] 4.1 In `DvEscalationsTab.tsx` (or the queue component): read `referralId` from URL search params.
 - [ ] 4.1a Apply idempotency guard pattern from 3.1a (same re-render concern applies).
@@ -56,7 +65,14 @@
 - [ ] 5.3 Add i18n key `notifications.criticalBanner.coordinatorCta` with EN + ES. Use action-oriented copy per 2.4b.
 - [ ] 5.4 Ensure `color.textInverse` / `color.errorMid` contrast fix from v0.38.0 is preserved (no regression).
 
-## 6. Frontend — My Past Holds view
+## 5z. Phase 2 → Phase 3 transition
+
+- [ ] 5z.1 Ship Phase 2: open PR, address review, merge `feature/issue-106-phase2-admin-banner` to main.
+- [ ] 5z.2 Confirm Phase 2 ship-gate criteria all green.
+- [ ] 5z.3 `git checkout main && git pull origin main` to pick up Phase 2 changes.
+- [ ] 5z.4 `git checkout -b feature/issue-106-phase3-my-holds-lifecycle` from updated main.
+
+## 6. Frontend — My Past Holds view (Phase 3 starts here)
 
 - [ ] 6.1 Create `MyPastHoldsPage.tsx` at `frontend/src/pages/MyPastHoldsPage.tsx`. Route: `/outreach/my-holds` in React Router.
 - [ ] 6.2 Fetch user's reservations: HELD + CANCELLED + EXPIRED + CONFIRMED + CANCELLED_SHELTER_DEACTIVATED. **D-1 fix — default window extended to 14 days** (was 7) to cover casual weekend workers whose holds expire 8+ days prior.
@@ -83,7 +99,14 @@
 - [ ] 7.6 Ensure bell badge continues to count unread only (read-unacted and acted do not count).
 - [ ] 7.7 **T-3 fix — focus visible on deep-link targets**: after programmatic focus on any deep-linked element, verify `:focus-visible` styles render. Use Playwright keyboard path (Tab to bell, Enter on notification) in test 11.9. If `:focus-visible` is suppressed by the browser on programmatic focus, add a class `.deep-link-focus` with matching styles.
 
-## 8. Backend — Optional API additions (deferred unless needed)
+## 7z. Phase 3 → Phase 4 transition
+
+- [ ] 7z.1 Ship Phase 3: open PR, address review, merge `feature/issue-106-phase3-my-holds-lifecycle` to main.
+- [ ] 7z.2 Confirm Phase 3 ship-gate criteria all green (including 7.1a measurement gate result — decide batch endpoint need for Phase 4).
+- [ ] 7z.3 `git checkout main && git pull origin main` to pick up Phase 3 changes.
+- [ ] 7z.4 `git checkout -b feature/issue-106-phase4-metrics-tests` from updated main.
+
+## 8. Backend — Optional API additions (deferred unless needed) — Phase 4 starts here
 
 - [ ] 8.1 **Evaluate (result from 0.2)**: if existing `GET /api/v1/reservations` doesn't support status filter + date range, add query params `status=HELD,CANCELLED,...` and `sinceDays=N`. Write backend integration test + OpenAPI annotation.
 - [ ] 8.2 **Evaluate (result from 7.1a)**: if measurement gate fails, add batch `POST /api/v1/notifications/mark-acted-by-payload` endpoint. Elena's note: per-notification PATCH is preferred — avoids JSONB expression index. Only add batch if measurement gate fails.
