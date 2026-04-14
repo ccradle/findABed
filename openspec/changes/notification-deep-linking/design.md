@@ -75,7 +75,9 @@ NOT called on:
 
 ### D8: Idempotency guard on query-param processing (NEW)
 
-**Decision:** Deep-link processing uses a `useRef<Set<string>>()` to track which referralIds/reservationIds have already been processed in the current session. Re-runs of the effect skip already-processed values.
+> **SUPERSEDED by D-12 — see below.** The `useRef<Set<string>>()` ad-hoc tracker described here was replaced by intent-equality in the `useDeepLink` reducer. The reducer ignores `INTENT` actions whose intent equals the current state's intent, so re-renders with the same URL are no-ops without a separate ref. Page-refresh re-triggering still works (refresh resets in-memory state, so the new intent is dispatched). The original D-8 text is preserved for historical context only.
+
+**Decision (original, superseded):** Deep-link processing uses a `useRef<Set<string>>()` to track which referralIds/reservationIds have already been processed in the current session. Re-runs of the effect skip already-processed values.
 
 **Why:** React Router `useSearchParams` triggers re-renders on every URL change. Without a guard, navigating back to a URL with `?referralId=X` would re-trigger the auto-expand-scroll-focus sequence, fighting the user's current state.
 

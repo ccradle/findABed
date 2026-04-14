@@ -81,6 +81,22 @@ The coordinator dashboard SHALL accept a `referralId` query parameter. When pres
 - **AND** the dashboard returns to a usable state (no infinite spinner, no stuck overlay)
 - **NOTE** This timeout is owned by the `useDeepLink` hook's `awaiting-target` deadline (D-12). It guarantees that no deep-link can leave the user in a silent stuck state, regardless of which host (coordinator dashboard, admin queue, my-past-holds) consumed the hook.
 
+### Requirement: Backend single-referral lookup endpoint for deep-link resolution
+The system SHALL expose `GET /api/v1/dv-referrals/{id}` returning the full `ReferralTokenResponse` (including `shelterId`) for the requested referral. The endpoint SHALL be RLS-tenant-scoped, role-restricted to COORDINATOR / COC_ADMIN / PLATFORM_ADMIN, and SHALL contain zero client PII (matches the `/pending` list shape — household size, population type, urgency, callback number; never address). Both not-found and access-denied SHALL respond with HTTP 404 (NOT 403) so the response never leaks whether the referral exists in another tenant (D10 unified stale shape).
+
+#### Scenario: Coordinator deep-link resolves a referral to its shelter
+- **WHEN** the frontend deep-link processor calls `GET /api/v1/dv-referrals/abc-123` for a referral the requesting coordinator has dvAccess to
+- **THEN** the response is HTTP 200 with the full `ReferralTokenResponse` including `shelterId`
+- **AND** the response contains no shelter address, latitude, or longitude (FVPSA / VAWA)
+
+#### Scenario: Unknown referral id returns 404
+- **WHEN** the frontend deep-link processor calls `GET /api/v1/dv-referrals/00000000-0000-0000-0000-000000000000`
+- **THEN** the response is HTTP 404 with no body details that would distinguish "doesn't exist" from "RLS-hidden"
+
+#### Scenario: Cross-tenant referral returns 404 (no info leak)
+- **WHEN** a coordinator from tenant A calls `GET /api/v1/dv-referrals/{id}` for a referral that exists only in tenant B
+- **THEN** RLS hides the row, the service throws `NoSuchElementException`, and the response is HTTP 404 — identical to the unknown-id response. The caller cannot distinguish "exists in another tenant" from "doesn't exist anywhere."
+
 ### Requirement: Admin escalation queue auto-opens detail modal
 The DvEscalationsTab SHALL accept a `referralId` query parameter. When present, the tab SHALL automatically open the detail modal for that referral upon load.
 

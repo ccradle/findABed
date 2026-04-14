@@ -45,7 +45,7 @@ Four review rounds against the inline Phase 1 implementation kept turning up new
 ## Impact
 
 - **Frontend**: NotificationBell, CriticalNotificationBanner, CoordinatorReferralBanner, CoordinatorDashboard, AdminPanel (hash router + query params), DvEscalationsTab, notificationMessages.ts, new MyPastHoldsPage. **NEW** `frontend/src/hooks/useDeepLink.ts` containing the state machine and pure reducer; CoordinatorDashboard becomes the first consumer.
-- **Backend**: no API contract changes. `GET /api/v1/reservations` may need a query param or new endpoint for historical holds (TBD in design).
+- **Backend**: one new read-only endpoint added during the war-room round 1 review — `GET /api/v1/dv-referrals/{id}` returning `ReferralTokenResponse` (zero-PII, RLS-scoped, role-checked COORDINATOR/COC_ADMIN/PLATFORM_ADMIN). The deep-link processor uses this lookup to resolve a notification's `referralId` to its containing shelter so the dashboard can auto-expand the right card. Without this endpoint every notification click would 404. `GET /api/v1/reservations` may also need a query param or new endpoint for Phase 3 historical holds (covered in tasks 0.2 / 8.1).
 - **Routing**: new route `/outreach/my-holds`; existing routes accept query params (`?referralId=X`, `?reservationId=X`).
 - **Database**: no migration needed. All required fields already in payload JSONB.
 - **Testing**: 12-15 new Playwright tests covering each notification type's deep-link path, 5-6 backend integration tests for `markActed` lifecycle, axe-core scans on My Past Holds + deep-linked views.
