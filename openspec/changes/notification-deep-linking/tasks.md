@@ -16,20 +16,20 @@
 
 ## 1. Frontend — Core routing changes
 
-- [ ] 1.1 Refactor `notificationMessages.ts`: change `getNavigationPath(eventType: string)` signature to `getNavigationPath(notification: Notification, userRoles: string[]): string`. Extract `referralId`, `shelterId`, `reservationId` from `notification.payload` (JSON string — must be parsed).
-- [ ] 1.2 Implement role-aware routing: escalation.* types route COC_ADMIN/PLATFORM_ADMIN to `/admin#dvEscalations?referralId=X` and COORDINATOR to `/coordinator?referralId=X`. All other types use existing role-agnostic paths with query param appended.
-- [ ] 1.3 Add navigation path + message mappings for `SHELTER_DEACTIVATED`, `HOLD_CANCELLED_SHELTER_DEACTIVATED`, `referral.reassigned`. Deep-link `SHELTER_DEACTIVATED` to `/coordinator?shelterId=X` (coordinator) or `/admin?shelterId=X` (admin). Deep-link `HOLD_CANCELLED_SHELTER_DEACTIVATED` to `/outreach/my-holds?reservationId=X`. Deep-link `referral.reassigned` to role-appropriate referral view.
-- [ ] 1.4 Graceful fallback: if expected payload field is missing (pre-change notifications), fall back to role-based default path without error.
-- [ ] 1.5 Update `NotificationBell.tsx`: pass the full notification object and current user roles (from JWT claims) to `getNavigationPath`.
+- [x] 1.1 Refactor `notificationMessages.ts`: change `getNavigationPath(eventType: string)` signature to `getNavigationPath(notification: Notification, userRoles: string[]): string`. Extract `referralId`, `shelterId`, `reservationId` from `notification.payload` (JSON string — must be parsed). Reuses existing `parseNotificationPayload` helper; reads both live-SSE (`data.x`) and persistent (`payload.x`) shapes.
+- [x] 1.2 Implement role-aware routing: escalation.* types route COC_ADMIN/PLATFORM_ADMIN to `/admin#dvEscalations?referralId=X` and COORDINATOR to `/coordinator?referralId=X`. All other types use existing role-agnostic paths with query param appended. (Also extends to `referral.requested` and `referral.reassigned` for consistency.)
+- [x] 1.3 Add navigation path + message mappings for `SHELTER_DEACTIVATED`, `HOLD_CANCELLED_SHELTER_DEACTIVATED`, `referral.reassigned`. Deep-link `SHELTER_DEACTIVATED` to `/coordinator?shelterId=X` (coordinator) or `/admin?shelterId=X` (admin). Deep-link `HOLD_CANCELLED_SHELTER_DEACTIVATED` to `/outreach/my-holds?reservationId=X`. Deep-link `referral.reassigned` to role-appropriate referral view. (Navigation paths done here; i18n message mappings are task group 2.)
+- [x] 1.4 Graceful fallback: if expected payload field is missing (pre-change notifications), fall back to role-based default path without error. Local `getRoleBasedDefaultPath` helper returns `/admin` | `/coordinator` | `/outreach` | `/` based on the user's roles.
+- [x] 1.5 Update `NotificationBell.tsx`: pass the full notification object and current user roles (from JWT claims) to `getNavigationPath`. Uses `useAuth()` → `user.roles` (JWT-decoded in AuthContext).
 
 ## 2. Frontend — i18n for new notification types
 
-- [ ] 2.1 Add EN strings: `notifications.shelterDeactivated` ("Shelter {shelterName} was deactivated. Reason: {localizedReason}"), `notifications.holdCancelledShelterDeactivated` ("Your bed hold at {shelterName} was cancelled — the shelter was deactivated."), `notifications.referralReassigned` ("A DV referral was reassigned to you.").
-- [ ] 2.2 Add ES equivalents with dignity-centered copy (Keisha's lens).
-- [ ] 2.3 Update `getNotificationMessageId()` switch to handle the three new types.
-- [ ] 2.4 Update `getNotificationMessageValues()` to extract `shelterName`, `reason`, etc. from payload for the new types.
-- [ ] 2.4a **K-1 fix — localize deactivation reason enum**: `getNotificationMessageValues` for `SHELTER_DEACTIVATED` returns `localizedReason = intl.formatMessage({ id: 'shelter.reason.' + payload.reason })` — resolves enum value `TEMPORARY_CLOSURE` to user-friendly "Temporary closure" using the existing i18n keys shipped in v0.38.0. Never render the raw enum value to the user.
-- [ ] 2.4b **Simone copy review — action-oriented CTA**: CTA language MUST use an imperative verb (Respond, Open, View, Review, Check) and MUST NOT be a bare noun phrase. Examples accepted: "Respond to pending referral", "Open referral for review". Examples rejected: "Pending referral", "1 referral" (bare noun). Document the chosen phrase in the commit message for auditability.
+- [x] 2.1 Add EN strings: `notifications.shelterDeactivated` ("Shelter {shelterName} was deactivated. Reason: {localizedReason}"), `notifications.holdCancelledShelterDeactivated` ("Your bed hold at {shelterName} was cancelled — the shelter was deactivated."), `notifications.referralReassigned` ("A DV referral was reassigned to you.").
+- [x] 2.2 Add ES equivalents with dignity-centered copy (Keisha's lens). Used existing "referencia" convention for referral and matter-of-fact tone (desactivado/cancelada).
+- [x] 2.3 Update `getNotificationMessageId()` switch to handle the three new types.
+- [x] 2.4 Update `getNotificationMessageValues()` to extract `shelterName`, `reason`, etc. from payload for the new types. Added `reason` + `localizedReason` values; now takes optional `intl: IntlShape` (production callers pass it; tests may omit).
+- [x] 2.4a **K-1 fix — localize deactivation reason enum**: `getNotificationMessageValues` for `SHELTER_DEACTIVATED` returns `localizedReason = intl.formatMessage({ id: 'shelter.reason.' + payload.reason })` — resolves enum value `TEMPORARY_CLOSURE` to user-friendly "Temporary closure" using the existing i18n keys shipped in v0.38.0. Never render the raw enum value to the user. NotificationBell.tsx now threads `intl` (from `useIntl()`) through the call. 27/27 existing tests pass.
+- [x] 2.4b **Simone copy review — action-oriented CTA**: existing `notifications.criticalBanner.cta` already uses imperative "Review ..." and is compliant. New Phase 1 keys are notification row *descriptions* (not CTAs) — 2.4b applies to the CTA key `notifications.criticalBanner.coordinatorCta` being added in Phase 2 task 5.3. Review-gate enforced there.
 
 ## 3. Frontend — Coordinator dashboard deep-link handling
 
