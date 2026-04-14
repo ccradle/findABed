@@ -97,6 +97,41 @@ NOT called on:
 1. **Marcus Webb (security):** Different messages for 404 vs 403 would leak whether a referral exists and was stolen vs the user lacks access. Unified message = no information leak.
 2. **Notification lifecycle correctness:** The user didn't complete the workflow, so the notification is NOT acted. But they DID see it, so it's read. Distinguishing these states lets the user's bell stay accurate.
 
+### D12: Deep-link logic lives in a `useDeepLink` hook with an explicit state machine (NEW, post-Phase-1 war-room)
+
+**Decision:** All deep-link orchestration (URL → resolve → optional confirm → expand → focus → done | stale) lives in a single custom hook `frontend/src/hooks/useDeepLink.ts` that owns a finite-state machine. CoordinatorDashboard, DvEscalationsTab (Phase 2), and MyPastHoldsPage (Phase 3) consume the hook by passing host-specific callbacks: `resolveTarget`, `needsUnsavedConfirm`, `expand`, `isTargetReady`. Side-effecting concerns (DOM focus, scroll, aria-live announcement, toast, dialog rendering) live in the host and react to `state.kind` transitions.
+
+**State machine:**
+
+| State | Entered by | Exits to |
+| --- | --- | --- |
+| `idle` | Reducer init, `RESET` action | `resolving` on URL with deep-link params |
+| `resolving` | URL effect dispatches `INTENT` | `awaiting-confirm` (needs save), `expanding` (no confirm), `stale` (404/403 → `not-found`, network error → `error`) |
+| `awaiting-confirm` | Reducer on `RESOLVED` when host returns `needsConfirm = true` | `expanding` on `confirm('continue')`, `idle` on `confirm('abort')` |
+| `expanding` | `RESOLVED` (no confirm) or `CONFIRM_CONTINUE` | `awaiting-target` on `EXPAND_DONE`, `stale: error` if expand throws |
+| `awaiting-target` | `EXPAND_DONE` | `done` when host's `isTargetReady(resolved)` returns true, `stale: timeout` after `targetTimeoutMs` (default 5000ms) |
+| `done` | `TARGET_READY` | `resolving(new intent)` on URL change |
+| `stale` | Any error / timeout | `resolving(new intent)` on URL change, auto-cleared by host's stale toast handler |
+
+**Why a state machine:**
+- Stuck states are impossible by construction — every non-terminal state has an outbound transition AND a timeout fallback.
+- The transitions are the contract. Tests assert `reducer(state, action)` directly without rendering React.
+- Host code becomes a small set of `useEffect`s keyed on `state.kind` — no more interleaving with arbitrary refs/effects.
+- Phase 2 and Phase 3 reuse the hook with different host callbacks; the deep-link logic exists exactly once.
+
+**Idempotency:** intent equality (deep-compared on `referralId | shelterId | reservationId`) replaces the prior `processedRef<Set<string>>` ad-hoc tracker. The reducer ignores `INTENT` actions whose intent equals the current state's intent, so re-renders with the same URL are no-ops.
+
+**Cancellation:** the URL effect uses an `AbortController` for the `resolveTarget` fetch and a `cancelled` flag in async chains. URL changes mid-flight cancel the previous resolve and discard its result.
+
+**Why this lives in a hook (not a Redux store / context):** the state is local to the dashboard view. There's no cross-component sharing requirement. A hook keeps the API surface small and the state colocated with the UI that consumes it.
+
+**Why not extract toast/dialog/announcement into the hook too:** those are DOM/UI concerns. The hook stays presentation-agnostic so it's reusable across hosts that may render the same state in different ways (the admin queue might use a modal, the my-holds page might use inline highlighting).
+
+**Supersedes:**
+- D8 (idempotency guard via ref) — replaced by intent-equality in the reducer; the ref disappears.
+- The setTimeout(200) post-fetch focus race — replaced by `awaiting-target` polling `isTargetReady` until ready or timeout.
+- Multiple ad-hoc patches from the war-room rounds (3w.A-1, 3w.H-1 through H-5, 3w.N-1, 3w.N-2) — the underlying bugs they patched are eliminated by the state-machine structure.
+
 ### D11: Hold cancellation and shelter deactivation auto-focus primary action (NEW)
 
 **Decision:** For `HOLD_CANCELLED_SHELTER_DEACTIVATED` deep-links to `/outreach/my-holds?reservationId=X`, focus lands on the primary action ("Find another bed") — NOT a row heading.

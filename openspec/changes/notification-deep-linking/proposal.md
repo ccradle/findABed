@@ -38,9 +38,13 @@ Issue #106.
 - `coordinator-referral-banner`: accept optional `referralId` query param to open the shelter containing that referral (not always the first).
 - `coc-admin-escalation`: DvEscalationsTab opens detail modal for a specific referralId when URL contains `?referralId=X`.
 
+## Architectural pivot (post-Phase-1 war-room)
+
+Four review rounds against the inline Phase 1 implementation kept turning up new HIGH/MEDIUM stuck-state bugs. Root cause: the deep-link logic was an ad-hoc collection of state, refs, and effects without a coherent model — each new patch closed one stuck state and exposed another. Decision (2026-04-14): extract a `useDeepLink` hook with an explicit state machine (`idle → resolving → awaiting-confirm → expanding → awaiting-target → done | stale`). The state machine eliminates the entire class of stuck-state bugs by construction — every state has a defined exit and a timeout fallback to `stale`. Phase 2 (admin queue) and Phase 3 (my-past-holds) reuse the same hook by plugging in different `resolveTarget` / `expand` / `isTargetReady` callbacks, so the deep-link logic exists in one place and is tested once.
+
 ## Impact
 
-- **Frontend**: NotificationBell, CriticalNotificationBanner, CoordinatorReferralBanner, CoordinatorDashboard, AdminPanel (hash router + query params), DvEscalationsTab, notificationMessages.ts, new MyPastHoldsPage.
+- **Frontend**: NotificationBell, CriticalNotificationBanner, CoordinatorReferralBanner, CoordinatorDashboard, AdminPanel (hash router + query params), DvEscalationsTab, notificationMessages.ts, new MyPastHoldsPage. **NEW** `frontend/src/hooks/useDeepLink.ts` containing the state machine and pure reducer; CoordinatorDashboard becomes the first consumer.
 - **Backend**: no API contract changes. `GET /api/v1/reservations` may need a query param or new endpoint for historical holds (TBD in design).
 - **Routing**: new route `/outreach/my-holds`; existing routes accept query params (`?referralId=X`, `?reservationId=X`).
 - **Database**: no migration needed. All required fields already in payload JSONB.

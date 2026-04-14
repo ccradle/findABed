@@ -43,6 +43,46 @@
 - [x] 3.4 **Stale-referral handling**: if `referralId` no longer maps to a pending referral, show non-blocking toast "This referral is no longer pending." **X-1 fix**: also call `markNotificationsActedByPayload('referralId', referralId)` with a special "stale" outcome — mark the notification as read-unacted (not acted, since user didn't complete the workflow). Also covers **M-1 (Marcus) authorization case**: same toast + behavior if API returns 403 on fetch — never leak "stolen by another coordinator" vs "not authorized." (Toast + aria-live announcement implemented; markNotificationsActedByPayload call deferred to task 7.x in Phase 3 when the helper is created.)
 - [x] 3.5 Update `CoordinatorReferralBanner.tsx`: accept a `referralId` prop (passed from dashboard). When present, clicking opens the shelter containing that specific referral, not the first DV shelter. Preserve existing no-param behavior. Banner now passes `referralId` back through `onBannerClick(referralId?)`; dashboard's handler routes through `processDeepLink` when present, falls back to existing T-46 behavior otherwise.
 
+## 3w. Phase 1 war-room fixes (post-Group-3 review, 2026-04-14)
+
+> **SUPERSEDED by section 3R.** The patches in this section addressed real
+> bugs in the inline implementation, but four review rounds kept finding
+> new stuck-state defects in the same area. The architectural pivot to a
+> `useDeepLink` hook (3R) eliminates the entire class of bugs by
+> construction. Task entries kept here for historical traceability — the
+> war-room findings remain valuable as a record of what failure modes
+> the new state machine must continue to prevent.
+
+- [x] 3w.C-1 **Backend `GET /api/v1/dv-referrals/{id}` endpoint** (Sam, Marcus). The deep-link processor depends on this lookup; without it every notification click 404s and shows the stale toast. Added `referralTokenService.findById(UUID)` + controller `@GetMapping("/{id}")` returning `ReferralTokenResponse` (zero-PII, RLS-scoped). Two integration tests added (happy path + unknown-id 404 for D10 stale shape).
+- [x] 3w.H-1 **`originalAvailRef` refresh after save** (Alex). After Save in the unsaved-state dialog, the snapshot was stale → `isDirty()` would re-fire on the next deep-link. Fix: `submitAvailability` updates the snapshot row in place on a successful PATCH.
+- [x] 3w.H-2 **Replace setTimeout-for-focus with effect on `pendingReferrals`** (Jordan). The 200ms timer raced openShelter's chained fetches on slow networks → focus could miss the row → false stale toast. Fix: `pendingFocusRef` + `useEffect([pendingReferrals])` runs after React commits, guaranteeing the screening row is in the DOM.
+- [x] 3w.H-3 **Drop duplicate aria-live announcement on stale path** (Keisha). Toast is `role="alert"` (assertive) — pairing it with the `role="status"` polite region using identical text caused screen readers to double-announce. Fix: only the toast announces stale.
+- [x] 3w.H-4 **Surface save success/failure to dialog** (Alex). `handleSaveAndProceed`'s catch block was unreachable; a hard-failed save would still close the dialog and abandon the deep-link silently. Fix: `submitAvailability` now returns `'saved' | 'queued' | 'failed'`; dialog stays open on `'failed'`.
+- [x] 3w.H-5 **`useCallback` for `openShelter`/`submitAvailability`** (Jordan). Stale-closure risk in `processDeepLink` — neither helper was in deps. Fix: both wrapped, `processDeepLink` deps now include `openShelter`. Declaration order also fixed.
+- [x] 3w.M-1 **6 unit tests for `getNavigationPath`** (Riley). Phase 1 routing had zero tests despite the "27/27 pass" claim. Added: COORDINATOR + escalation, COC_ADMIN + escalation, COORDINATOR + SHELTER_DEACTIVATED, OUTREACH + HOLD_CANCELLED, missing-payload fallback, unknown-type role default. 48/48 Vitest tests pass.
+- [x] 3w.M-2 **Playwright happy-path deep-link test** (Riley). Added `Issue #106 deep-link: ?referralId lands on referral row with focus on row (not Accept)` to `persistent-notifications.spec.ts`. Asserts row visible + focused + Accept NOT focused (S-2 safety) + aria-live populated. Skips gracefully if seed lacks a referral.requested notification.
+- [x] 3w.M-3 **Strengthen integration test assertions to JSON parse** (Sam). Replaced `.contains("reservationId")` substring matches with structured JSON parsing (`extractNotificationPayload` helper). Asserts actual UUID format for reservationId and exact value match for shelterId/shelterName/reason. Also added negative assertion that addressStreet does NOT appear in the payload.
+- [x] 3w.M-4 **Real TypeScript response type for the new endpoint** (Alex, Marcus). Replaced `<{ shelterId: string } & PendingReferral>` cast (which hid the missing-endpoint bug) with a `ReferralDetailResponse` interface mirroring the Java DTO.
+- [x] 3w.L-2 **Move dialog `autoFocus` to Cancel button** (Sandra). Save-as-default risked accidental commits on reflexive Enter press; Cancel is the safest default and preserves the user's view.
+- [x] 3w.N-1 **War-room round 2 — fix stuck state when deep-linking to already-expanded shelter** (Sandra, Alex, Jordan). H-2 effect didn't fire when openShelter was skipped (same shelter already expanded), leaving `pendingFocusRef` set forever. Fix: converted `pendingFocusRef` (ref) to `pendingFocus` (state), so setting it triggers the effect even when `pendingReferrals` doesn't change. Effect clears `pendingFocus` after consuming.
+- [x] 3w.N-2 **War-room round 2 — make Playwright test self-contained** (Riley). Original test silently skipped on seed drift. Rewritten to log in as dv-outreach via API, discover a DV shelter, POST a fresh referral, then deep-link the dv-coordinator page to that referralId. No skip path; fails loudly if the API setup breaks.
+
+## 3R. Phase 1 architectural refactor — extract `useDeepLink` hook (post-war-room pivot, 2026-04-14)
+
+> **Decision context:** Four review rounds against the inline implementation kept turning up new HIGH/MEDIUM stuck-state bugs. Root cause was the absence of a coherent state model — patches closed one stuck state and exposed another. User chose to refactor before merging Phase 1 since this is the foundation for Phases 2-3. See design.md D-12 for the state machine.
+>
+> **Supersedes** the patch-by-patch fixes in section 3w (which addressed real bugs but left the structural fragility intact). The hook eliminates the entire class of stuck-state defects by construction.
+
+- [x] 3R.1 Created `frontend/src/hooks/useDeepLink.ts` exporting `DeepLinkIntent`, `ResolvedTarget<T>`, `DeepLinkState<T>`, `DeepLinkAction<T>`, `StaleReason`, the pure helpers `extractIntent` / `intentsEqual` / `currentIntent`, the pure `deepLinkReducer`, and the `useDeepLink` hook that wires `useReducer` + four side-effect `useEffect`s (URL → intent, resolve, expand, target-poll-with-timeout).
+- [x] 3R.2 Added `frontend/src/hooks/useDeepLink.test.ts` — **28 pure unit tests** covering every transition in the D-12 table (idle/resolving/awaiting-confirm/expanding/awaiting-target/done/stale), the helpers, and edge cases (late RESOLVED from superseded request, STALE from idle ignored, INTENT replaces any state, defensive guards on out-of-state actions). No React rendering, no DOM, no new dev dependency.
+- [x] 3R.3 Refactored `CoordinatorDashboard.tsx`:
+  - Deleted `pendingDeepLink` state, `pendingFocus` state, `processedRef` ref, the searchParams useEffect, the H-2 focus useEffect, the inline shelterId-only branch, the `processDeepLink` function, and all `processedRef.current.delete()` calls (~150 lines net deletion).
+  - Added four memoized callbacks consumed by `useDeepLink`: `resolveTarget`, `needsUnsavedConfirm`, `expandForDeepLink`, `isTargetReady`.
+  - Dialog renders when `dlState.kind === 'awaiting-confirm'`; handlers call `dlConfirm('continue')` or `dlConfirm('abort')`.
+  - Single `useEffect([dlState, intl])` drives all side effects (focus, scroll, announcement, toast) keyed on `dlState.kind`.
+- [x] 3R.4 **Verified:** `tsc -b && vite build` clean. Vitest **76/76 pass** (was 48; +28 hook tests). Playwright `persistent-notifications --list` confirms test compiles cleanly. Also fixed the response-body single-consumption bug in the Playwright test (would have crashed on every run).
+- [x] 3R.5 Marked the 3w war-room section as SUPERSEDED with a header note explaining the pivot rationale; kept individual 3w entries for historical traceability of what failure modes the state machine must continue to prevent.
+
 ## 3z. Phase 1 → Phase 2 transition
 
 - [ ] 3z.1 Ship Phase 1: open PR, address review, merge `feature/issue-106-phase1-deeplink-foundation` to main.
@@ -111,6 +151,10 @@
 - [ ] 8.1 **Evaluate (result from 0.2)**: if existing `GET /api/v1/reservations` doesn't support status filter + date range, add query params `status=HELD,CANCELLED,...` and `sinceDays=N`. Write backend integration test + OpenAPI annotation.
 - [ ] 8.2 **Evaluate (result from 7.1a)**: if measurement gate fails, add batch `POST /api/v1/notifications/mark-acted-by-payload` endpoint. Elena's note: per-notification PATCH is preferred — avoids JSONB expression index. Only add batch if measurement gate fails.
 - [ ] 8.3 If batch endpoint added: full integration test + OpenAPI annotation.
+- [ ] 8.4 **Phase 1 war-room follow-up — REST polling fallback for SSE-blocked environments** (Dr. Whitfield W-1, deferred from 0.4). Add a periodic `useNotifications` REST refresh (e.g., every 60s) when `connected` has been false for >30s. Today, hospital IT environments that block SSE will only see new notifications on page reload. Phase 1 deep-linking still works on existing notifications, but new arrivals are invisible until refresh.
+- [ ] 8.5 **Phase 1 war-room follow-up — cross-tenant 404 integration test for `GET /api/v1/dv-referrals/{id}`** (Marcus D10). Verifies that a referral fetched by a user in a different tenant returns 404 (NOT 403) so the response never leaks whether the referral exists in another tenant. Requires a `setupUserWithDvAccessInTenant` helper not currently on `TestAuthHelper`.
+- [ ] 8.6 **Phase 1 war-room round 2 — N-4 shelter-assignment authorization audit on DV referral endpoints** (Marcus). The new `GET /api/v1/dv-referrals/{id}` matches the existing `accept`/`reject` authorization model: role + RLS-tenant + dvAccess, but NOT coordinator-shelter assignment. A coordinator with dvAccess can fetch (and accept!) ANY DV referral in their tenant if they know the UUID. UUID guessing is computationally infeasible (128 bits), so this is low practical risk, but should be hardened consistently across `getById`, `accept`, `reject` by checking the caller's `coordinatorAssignmentRepository.findShelterIdsByUserId` includes the referral's shelterId. Out of scope for Phase 1 (would change behavior of shipped endpoints); treat as separate security audit.
+- [ ] 8.7 **Phase 1 war-room round 2 — N-7 sequential saves with progress in dialog** (Sandra, Alex). `handleSaveAndProceed` currently uses `Promise.all`, which can produce partial-success state (3 dirty, 1 fails → 2 saved silently, dialog stays open). Switch to sequential `for…of` saves with a "Saving 2 of 3…" progress label so the user can see what's persisted vs pending when a failure interrupts the chain.
 
 ## 9. Backend — Tests
 
@@ -134,6 +178,8 @@
 - [ ] 10.3 Unit test: `getNotificationMessageId` and `getNotificationMessageValues` handle the three new types.
 - [ ] 10.4 **K-1 coverage**: unit test that `getNotificationMessageValues` for `SHELTER_DEACTIVATED` returns a localized reason string, not the raw enum value. Assert intl key lookup happens.
 - [ ] 10.5 **A-1 coverage**: React Testing Library test that `useEffect` processing query param fires only once per `referralId` value, even with multiple re-renders.
+- [ ] 10.6 **Phase 1 war-room follow-up — H-2 effect-based focus regression test** (Jordan). React Testing Library test that the focus useEffect on `pendingReferrals` fires once when the target row appears AND clears `pendingFocusRef.current` so countdown timer ticks (which mutate `pendingReferrals` every second) don't re-fire focus.
+- [ ] 10.7 **Phase 1 war-room follow-up — H-1 snapshot-refresh regression test** (Alex). React Testing Library test: simulate Save in the dialog, verify `originalAvailRef` matches new `editAvailability`, verify subsequent `isDirty()` returns false until a fresh edit.
 
 ## 11. Playwright — E2E tests
 
@@ -162,6 +208,7 @@
 - [ ] 12.3 axe-core scan on admin escalation detail modal opened via deep-link — zero violations.
 - [ ] 12.4 axe-core scan in dark mode on all above states.
 - [ ] 12.5 Screen reader verification (NVDA or Playwright virtual screen reader): deep-link navigation announces the target page and new focus via aria-live region.
+- [ ] 12.6 **Phase 1 war-room round 2 — N-3 unsaved-state dialog: focus trap + focus restoration** (Jordan, Keisha). Currently the dialog has `autoFocus` on Cancel (3w.L-2) but no focus trap (Tab/Shift-Tab escape into background controls) and no focus restoration when the dialog closes. Add: (a) Tab cycle Cancel ↔ Discard ↔ Save while modal is open, (b) capture `document.activeElement` on dialog open, restore on close. Verify with axe-core + manual NVDA pass. WCAG 2.4.3 Focus Order.
 
 ## 13. Verification
 
@@ -183,6 +230,10 @@
 - [ ] 14.2 Add inline tooltip help in bell header: "?" icon or "Help" link that opens a small overlay explaining the three states.
 - [ ] 14.3 Update `docs/FOR-COORDINATORS.md` with the new notification lifecycle and deep-linking behavior.
 - [ ] 14.4 Update `docs/FOR-DEVELOPERS.md` with the deep-link URL pattern convention (`?referralId=X`, `?reservationId=X`, `?shelterId=X`) for future notification types.
+- [ ] 14.5 **Phase 1 war-room follow-up — L-1 Keisha + Simone copy review on the deep-link aria-live announcement** (Keisha, Simone). Current EN copy is `"Opened pending DV referral: {populationType}, household size {size}, urgency {urgency}."` — accurate but clinical. Run through Simone for action-oriented voice and Keisha for dignity-centered phrasing. Update both EN and ES strings.
+- [ ] 14.6 **Phase 1 war-room follow-up — L-3 move row focus styling from inline `onFocus`/`onBlur` to CSS `:focus-visible`** (Jordan). Current implementation imperatively sets `boxShadow` on focus events; a CSS class with `:focus-visible` selector is more idiomatic, survives React reconciles, and naturally handles browser quirks around programmatic-vs-keyboard focus. Coordinate with Phase 4 task 7.7 which also touches `:focus-visible` styles.
+- [ ] 14.7 **Phase 1 war-room follow-up — L-5 evaluate URL cleanup after deep-link processing** (Marcus). Current behavior keeps `?referralId=X` in the URL after processing (per D8 idempotency + bookmarkability). Trade-off: UUIDs land in browser history, nginx access logs, and Referer headers. Decision needed: leave as-is (current OpenSpec D-8 default), strip after processing, or use `replace: true` on navigate. Document in design.md once decided.
+- [ ] 14.8 **Phase 1 war-room follow-up — P-1/P-3 memoization pass** (Jordan). Memoize `searchParams.get('referralId')` in `CoordinatorDashboard` and pass through to `CoordinatorReferralBanner` as a stable reference, so SSE-triggered banner re-renders don't churn on URL-unchanged renders. Verify `intl` reference stability in `processDeepLink`'s deps.
 
 ## 15. Post-deploy
 
