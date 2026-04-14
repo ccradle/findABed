@@ -88,7 +88,7 @@
 - [x] 3z.1 Ship Phase 1: open PR, address review, merge `feature/issue-106-phase1-deeplink-foundation` to main. PR ccradle/finding-a-bed-tonight#114 merged 2026-04-14 as `f319b50`. Non-release checkpoint tag `issue-106-phase1` pushed.
 - [x] 3z.2 Confirm Phase 1 ship-gate criteria all green. All 11 CI checks SUCCESS at merge (Backend, Frontend, Legal Language Scan, CodeQL x3, DV Access Control Canary, E2E Playwright + Karate, Docker skipped, Performance skipped). Local verification: 76/76 Vitest, 621/621 backend, Playwright happy-path verified end-to-end against live stack.
 - [x] 3z.3 `git checkout main && git pull origin main` to pick up Phase 1 changes.
-- [ ] 3z.4 `git checkout -b feature/issue-106-phase2-admin-banner` from updated main. (Start Phase 2 — not yet triggered.)
+- [x] 3z.4 Created `feature/issue-106-phase2-admin-banner` from updated main. Phase 2 implementation started 2026-04-14.
 
 ## 4. Frontend — Admin escalation queue deep-link handling (Phase 2 starts here)
 
@@ -100,18 +100,18 @@
 > protection, timeout fallback) is inherited from the hook and does not
 > need to be re-implemented or re-tested here.
 
-- [ ] 4.1 In `DvEscalationsTab.tsx`: call `useDeepLink<EscalatedReferralDto>` with admin-queue callbacks: `resolveTarget` returns the referral row from the in-memory queue (or fetches via `GET /api/v1/dv-referrals/{id}` if not in the queue yet); `needsUnsavedConfirm` returns false (no per-row edits in the queue); `expand` is a no-op (the queue is already visible); `isTargetReady` returns true once the row is in the queue array.
-- [ ] 4.1a ~~Apply idempotency guard pattern from 3.1a~~ — **SUPERSEDED by 3R**: intent-equality in the hook's reducer eliminates the need for a per-host idempotency guard. Delete this task.
-- [ ] 4.2 In a `useEffect([dlState.kind, queueRows])` on the tab: when `dlState.kind === 'done'`, open the detail modal for `dlState.resolved.detail`.
-- [ ] 4.3 Stale handling is automatic via the hook: when `dlState.kind === 'stale'`, render a non-blocking toast "This escalation is no longer in the queue." Also call `markNotificationsActedByPayload('referralId', dlState.intent.referralId, 'stale')` per X-1 pattern (helper ships in task 7.1).
-- [ ] 4.4 Update AdminPanel hash router to preserve query params alongside hash (`#dvEscalations?referralId=X`). **Unchanged by 3R** — this is a router concern, independent of the deep-link state machine.
+- [x] 4.1 In `DvEscalationsTab.tsx`: called `useDeepLink<EscalatedReferral>` with admin-queue callbacks. `resolveTarget` passes the intent through (queue is the data source, documented with a comment post-war-room L-1). `needsUnsavedConfirm` returns false. `expand` is a no-op. `isTargetReady` returns true once queue has loaded AND contains the target; returns false for shelterId-only intents that shouldn't reach the admin queue (war-room L-2 defensive guard). Otherwise the hook's `awaiting-target` deadline handles stale-fallback.
+- [x] 4.1a ~~Apply idempotency guard pattern from 3.1a~~ — **SUPERSEDED by 3R**: intent-equality in the hook's reducer eliminates the need for a per-host idempotency guard. No implementation needed.
+- [x] 4.2 `useEffect([dlState, queue, intl])` — on `dlState.kind === 'done'` find the matching row in `queue` and `setOpenReferral(row)` which opens the singleton detail modal owned by the tab orchestrator. War-room round 2 H-1 fix: effect gated by `lastHandledDlKindRef` so it acts only on `dlState.kind` **transitions**, not on every `queue` re-render — prevents the modal from reopening after the admin closes it when the next SSE queue refresh hits.
+- [x] 4.3 On `dlState.kind === 'stale'`, render a non-blocking toast "This escalation is no longer in the queue." via new i18n key `notifications.deepLink.escalationStale` (EN + ES). `role="alert"` + auto-dismiss after 5s. markNotificationsActedByPayload-stale wiring deferred to Phase 3 task 7.1 (X-1 pattern).
+- [x] 4.4 Updated `AdminPanel.tabKeyFromHash` to split on `?` before matching, so `#dvEscalations?referralId=X` resolves to tab key `dvEscalations`. Added `useHashSearchParams` hook (`frontend/src/hooks/useHashSearchParams.ts`) that reads `location.hash`, extracts the substring after the first `?`, and returns a memoized `URLSearchParams` — the shape `useDeepLink` consumes. This is admin-only; non-admin routes use standard `useSearchParams`.
 
 ## 5. Frontend — CriticalNotificationBanner coordinator CTA
 
-- [ ] 5.1 In `CriticalNotificationBanner.tsx`: when user role is COORDINATOR and unread CRITICAL notifications include at least one with `type.startsWith('escalation.')` AND `payload.referralId`, show CTA linking to `/coordinator?referralId=<first-critical-referral-id>`. **X-4 fix — "first" is deterministic**: order by `notification.createdAt ASC` (oldest first = most urgent, highest risk of timeout).
-- [ ] 5.2 Preserve existing admin CTA behavior for COC_ADMIN/PLATFORM_ADMIN.
-- [ ] 5.3 Add i18n key `notifications.criticalBanner.coordinatorCta` with EN + ES. Use action-oriented copy per 2.4b.
-- [ ] 5.4 Ensure `color.textInverse` / `color.errorMid` contrast fix from v0.38.0 is preserved (no regression).
+- [x] 5.1 Delegates selection to `pickOldestEscalationReferralId(notifications)` — a pure helper in `notificationMessages.ts` that filters escalation.* notifications with a referralId (parsed via `parseNotificationPayload` for both live-SSE and persistent shapes), sorts ASC by `timestamp`, and returns the first id or null (war-room M-1: determinism contract now has 7 Vitest tests). `CriticalNotificationBanner` renders `data-testid="critical-banner-coordinator-cta"` when the helper returns non-null AND user is coordinator AND no admin CTA is showing; click navigates to `/coordinator?referralId=<id>`.
+- [x] 5.2 Preserved admin CTA behavior — `showEscalationCta` still gates on `hasAdminAccess`; the admin path (`/admin#dvEscalations`) and `data-testid="critical-banner-escalation-cta"` are untouched.
+- [x] 5.3 Added i18n key `notifications.criticalBanner.coordinatorCta` (EN: "Respond to pending referral →"; ES: "Responder a referencia pendiente →"). Imperative verb per 2.4b Simone copy review — "Respond" / "Responder".
+- [x] 5.4 Coordinator CTA uses identical styling to the admin CTA (`backgroundColor: color.textInverse`, `color: color.errorMid`, min 44×44 touch target) so the v0.38.0 contrast fix applies to both buttons; no color-token changes introduced.
 
 ## 5z. Phase 2 → Phase 3 transition
 
@@ -242,6 +242,7 @@
 - [ ] 14.6 **Phase 1 war-room follow-up — L-3 move row focus styling from inline `onFocus`/`onBlur` to CSS `:focus-visible`** (Jordan). Current implementation imperatively sets `boxShadow` on focus events; a CSS class with `:focus-visible` selector is more idiomatic, survives React reconciles, and naturally handles browser quirks around programmatic-vs-keyboard focus. Coordinate with Phase 4 task 7.7 which also touches `:focus-visible` styles.
 - [ ] 14.7 **Phase 1 war-room follow-up — L-5 evaluate URL cleanup after deep-link processing** (Marcus). Current behavior keeps `?referralId=X` in the URL after processing (per D8 idempotency + bookmarkability). Trade-off: UUIDs land in browser history, nginx access logs, and Referer headers. Decision needed: leave as-is (current OpenSpec D-8 default), strip after processing, or use `replace: true` on navigate. Document in design.md once decided.
 - [ ] 14.8 **Phase 1 war-room follow-up — P-1/P-3 memoization pass** (Jordan). Memoize `searchParams.get('referralId')` in `CoordinatorDashboard` and pass through to `CoordinatorReferralBanner` as a stable reference, so SSE-triggered banner re-renders don't churn on URL-unchanged renders. Verify `intl` reference stability in `processDeepLink`'s deps.
+- [ ] 14.9 **Phase 2 war-room round 3 follow-up — N-1 `useMemo` ineffectiveness in CriticalNotificationBanner** (Alex/Jordan). `escalationCriticals` is derived from an inline `.filter()` call so it gets a fresh array reference every render, making the `useMemo` on `coordinatorCtaReferralId` recompute every render anyway. Not a correctness bug — result is always right; the filter+helper is O(N<20). Fix by either (a) memoizing `escalationCriticals` so the dependent memo can actually cache, OR (b) dropping the useMemo entirely and computing inline since the work is trivially cheap. Group with 14.8's broader memoization pass.
 
 ## 15. Post-deploy
 
