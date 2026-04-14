@@ -149,10 +149,10 @@
 
 ## 7z. Phase 3 → Phase 4 transition
 
-- [ ] 7z.1 Ship Phase 3: open PR, address review, merge `feature/issue-106-phase3-my-holds-lifecycle` to main.
-- [ ] 7z.2 Confirm Phase 3 ship-gate criteria all green (including 7.1a measurement gate result — decide batch endpoint need for Phase 4).
-- [ ] 7z.3 `git checkout main && git pull origin main` to pick up Phase 3 changes.
-- [ ] 7z.4 `git checkout -b feature/issue-106-phase4-metrics-tests` from updated main.
+- [x] 7z.1 Ship Phase 3: PR ccradle/finding-a-bed-tonight#116 merged 2026-04-14 as `80eae6a`. Non-release checkpoint tag `issue-106-phase3` pushed.
+- [x] 7z.2 Confirm Phase 3 ship-gate criteria green. At merge: Backend, Frontend, CodeQL (×3), DV Access Control Canary, Legal Language Scan all SUCCESS. E2E was IN_PROGRESS — same branch-protection pattern as Phase 2; Phase 4 task 13.6 will confirm full regression. Measurement gate (7.1a): PASSED under 500ms — no batch endpoint needed for Phase 4 (task 8.2 remains optional / deferred).
+- [x] 7z.3 Local main synced with origin after merge.
+- [ ] 7z.4 `git checkout -b feature/issue-106-phase4-metrics-tests` from updated main. (Start Phase 4 — not yet triggered.)
 
 ## 8. Backend — Optional API additions (deferred unless needed) — Phase 4 starts here
 
