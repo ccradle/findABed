@@ -15,16 +15,17 @@
 - [x] 2.1.3 Refactor `TenantOAuth2ProviderService.update(UUID id, ...)` to route through `findByIdOrThrow`
 - [x] 2.1.4 Refactor `TenantOAuth2ProviderService.delete(UUID id)` to route through `findByIdOrThrow` (replaces both the bare `findById` AND the bare `existsById(UUID)` on line 86)
 - [x] 2.1.5 Write 2 integration tests mirroring `DvReferralIntegrationTest`: (a) cross-tenant 404 on both `update` and `delete`, (b) Tenant B's OAuth2 provider row is unchanged after both attempts (`issuerUri`, `clientId`, `clientSecret`, `updated_at` identical to pre-attempt state)
-- [ ] 2.1.6 **[URL-path-sink class, design D11]** Refactor `TenantOAuth2ProviderService.create` to drop the `UUID tenantId` parameter and source the value from `TenantContext.getTenantId()` internally. Update `OAuth2ProviderController.create` to validate the URL path `{tenantId}` matches `TenantContext.getTenantId()` and throw `NoSuchElementException` → 404 on mismatch (symmetric with D3 for read paths). Do not silently redirect the write; do not use 403 (would leak tenant existence).
-- [ ] 2.1.7 Write 1 integration test `tc_create_crossTenant_urlPath_returns404_noRowInsertedForTenantB` — Tenant A admin `POST /api/v1/tenants/{tenantB-uuid}/oauth2-providers` with an attacker-shaped create body (malicious `issuerUri`), assert 404 Not Found, assert zero rows inserted into `tenant_oauth2_provider` for Tenant B (and zero for Tenant A since the controller guard should short-circuit before the service runs).
+- [x] 2.1.6 **[URL-path-sink class, design D11]** Refactor `TenantOAuth2ProviderService.create` to drop the `UUID tenantId` parameter and source the value from `TenantContext.getTenantId()` internally. Update `OAuth2ProviderController.create` to validate the URL path `{tenantId}` matches `TenantContext.getTenantId()` and throw `NoSuchElementException` → 404 on mismatch (symmetric with D3 for read paths). Do not silently redirect the write; do not use 403 (would leak tenant existence).
+- [x] 2.1.7 Write 1 integration test `tc_create_crossTenant_urlPath_returns404_noRowInsertedForTenantB` — Tenant A admin `POST /api/v1/tenants/{tenantB-uuid}/oauth2-providers` with an attacker-shaped create body (malicious `issuerUri`), assert 404 Not Found, assert zero rows inserted into `tenant_oauth2_provider` for Tenant B (and zero for Tenant A since the controller guard should short-circuit before the service runs).
 
 ### 2.2 ApiKeyService (VULN-HIGH)
 
-- [ ] 2.2.1 Add `findByIdAndTenantId(UUID id, UUID tenantId)` to `ApiKeyRepository`
-- [ ] 2.2.2 Add `findByIdOrThrow(UUID id)` helper in `ApiKeyService`
-- [ ] 2.2.3 Refactor `ApiKeyService.rotate(UUID keyId)` to route through `findByIdOrThrow`
-- [ ] 2.2.4 Refactor `ApiKeyService.deactivate(UUID keyId)` to route through `findByIdOrThrow`
-- [ ] 2.2.5 Write 2 integration tests: (a) cross-tenant 404 on both `rotate` and `deactivate`, (b) Tenant B's API key row unchanged (`active`, `rotated_at`, `updated_at` identical to pre-attempt state)
+- [x] 2.2.1 Add `findByIdAndTenantId(UUID id, UUID tenantId)` to `ApiKeyRepository`
+- [x] 2.2.2 Add `findByIdOrThrow(UUID id)` helper in `ApiKeyService`
+- [x] 2.2.3 Refactor `ApiKeyService.rotate(UUID keyId)` to route through `findByIdOrThrow`
+- [x] 2.2.4 Refactor `ApiKeyService.deactivate(UUID keyId)` to route through `findByIdOrThrow`
+- [x] 2.2.5 Write 2 integration tests: (a) cross-tenant 404 on both `rotate` and `deactivate`, (b) Tenant B's API key row unchanged (`active`, `rotated_at`, `updated_at` identical to pre-attempt state)
+- [x] 2.2.6 **[D11 latent fix, warroom 2026-04-15]** Refactor `ApiKeyService.create` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update `ApiKeyController.createApiKey` to stop passing the pass-through. Update all test call sites (13 in `ApiKeyAuthTest`, 1 in `ApiKeyRateLimitTest`) to wrap calls in `TenantContext.runWithContext` / `callWithContext`. This is NOT a live vulnerability today (controller already sources from `TenantContext`) but the signature is an attractive-nuisance the Phase 3 ArchUnit Family B rule will flag; fixing now keeps Family B strict (no exception list required).
 
 ### 2.3 TotpController admin endpoints (VULN-HIGH)
 
@@ -38,6 +39,12 @@
 - [ ] 2.4.2 Add `findByIdOrThrow(UUID id)` helper in `SubscriptionService`
 - [ ] 2.4.3 Refactor `SubscriptionService.delete(UUID id)` to route through `findByIdOrThrow`
 - [ ] 2.4.4 Write 2 integration tests: (a) cross-tenant 404 on delete, (b) Tenant B's subscription row unchanged (`status`, `active`, `updated_at` identical to pre-attempt state; webhook deliveries to Tenant B's endpoint continue after the failed cross-tenant attempt)
+- [ ] 2.4.5 **[D11 latent fix, warroom 2026-04-15]** Refactor `SubscriptionService.create` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update `SubscriptionController` to stop passing the pass-through. Update all test call sites. Fold into the Phase 2.4 commit alongside 2.4.3 — same file, same refactor pattern, cheaper together than in separate commits.
+
+### 2.4a EscalationPolicyService.update (D11 latent fix, warroom scope expansion)
+
+- [ ] 2.4a.1 Refactor `EscalationPolicyService.update(UUID tenantId, ...)` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update the controller caller. Update test call sites.
+- [ ] 2.4a.2 Commit as its own standalone commit on top of Phase 2.4 — the file was not previously in Phase 2 scope and warroom flagged the expansion explicitly, so separate commit keeps the audit trail honest.
 
 ### 2.5 AccessCodeController (VULN-MED)
 
@@ -72,7 +79,7 @@
 - [ ] 3.3 Populate fixture rows for already-safe tenanted endpoints (shelter GET/PATCH, reservation GET/PATCH, referral GET/accept/reject — 6+ rows) so the fixture is a comprehensive regression guard, not just Phase-2-scoped
 - [ ] 3.4 Verify the fixture passes green against Phase 2 code
 - [ ] 3.4a **Red-test-first integrity check (per design.md Migration Plan).** Before committing the fixture green, locally `git stash` the Phase 2 service fixes and confirm `CrossTenantIsolationParameterizedTest` reports failures on the 5 VULN-HIGH + 2 VULN-MED rows (fixture correctly detects the pre-fix state). Then `git stash pop` to restore Phase 2, re-run, confirm green. Document the red-run output in the PR description (screenshot or log excerpt). Do NOT commit a red-main state — the stash/verify/restore is local-only.
-- [ ] 3.5 Enable `TenantGuardArchitectureTest` (remove `@Disabled`); make it strict — two rule families. Family A (unsafe-lookup, D2): fires on any bare `findById(UUID)` or `existsById(UUID)` call in `org.fabt.*.service` or `org.fabt.*.api` without `@TenantUnscoped` annotation or `findByIdAndTenantId`-style method dispatch. Family B (URL-path-sink, D11): fires on any method in `org.fabt.*.service` that accepts `UUID tenantId` as a parameter AND writes to a tenant-owned repository, unless the method carries `@TenantUnscoped("justification")`. Exact rule shape per design D11 §"Phase 3 enforcement extension"
+- [ ] 3.5 Enable `TenantGuardArchitectureTest` (remove `@Disabled`); make it strict — two rule families. Family A (unsafe-lookup, D2): fires on any bare `findById(UUID)` or `existsById(UUID)` call in `org.fabt.*.service` or `org.fabt.*.api` without `@TenantUnscoped` annotation or `findByIdAndTenantId`-style method dispatch. Family B (URL-path-sink, D11): fires on **any write-method in `org.fabt.*.service` that accepts `UUID tenantId` as a parameter** and writes to a tenant-owned repository, unless the method carries `@TenantUnscoped("justification")`. Family B is **strict with zero exceptions** (no escape-hatch annotation like `@TenantFromCaller` is needed) because tasks 2.1.6, 2.2.6, 2.4.5, and 2.4a.1 eliminate every violator in the current codebase. Exact rule shape per design D11 §"Phase 3 enforcement extension"
 - [ ] 3.6 Add second ArchUnit rule scoping `findByIdForBatch` callers to `org.fabt.referral.batch.*`
 - [ ] 3.7 Add third ArchUnit rule scoping `*Internal` subscription methods to `WebhookDeliveryService`
 - [ ] 3.8 Add 10 Mockito-based unit tests — one per refactored service method verifying repository is called with `(id, tenantId)` pair (catches "dropped the second arg" regressions)
