@@ -223,7 +223,7 @@
 - [ ] 13.1 Run full backend test suite (`mvn clean test`). Tee to `logs/issue-106-regression.log`.
 - [ ] 13.2 Run Playwright tests through nginx (`BASE_URL=http://localhost:8081`). Tee to `logs/issue-106-playwright.log`.
 - [ ] 13.3 `npm run build` — frontend builds clean.
-- [ ] 13.4 Update DBML if any schema changes (likely none — pure frontend + optional backend query params).
+- [x] 13.4 DBML + ERD synced in code-repo commit 522ee57. Added V55's `idx_referral_token_pending_created_at` partial index. Also backfilled 4 previously-missing referral_token indexes (V21 idx_referral_token_expired + idx_referral_token_purge, V37 idx_referral_token_pending_expires, V47 idx_referral_token_pending_by_expiry) — DBML had drifted from the live schema before this session. Updated the referral_token table note to document the tenant-isolation contract (tasks 8.5/8.6: RLS dvAccess-only; tenant isolation enforced in the repo layer via findByIdAndTenantId). ERD regenerated via @softwaretechnik/dbml-renderer. FOR-DEVELOPERS.md file-map label "V1–V24" → "V1–V55".
 - [ ] 13.5 Update OpenAPI docs if task 8.x adds new endpoints.
 - [ ] 13.6 Full Playwright regression — no failures in other suites.
 - [ ] 13.7 Manual smoke: log in as dv-coordinator, trigger a DV referral from dv-outreach, verify end-to-end flow from notification → accept → mark acted.
