@@ -135,6 +135,80 @@ Discovered during Phase 2.1 implementation (2026-04-15 warroom). `OAuth2Provider
 
 **Casey's audit-trail note:** URL-path-sink writes produce a categorically distinct failure mode from unsafe-lookup reads. When a Tenant A admin successfully wrote a row into Tenant B, both tenants' audit trails became falsified evidence — Tenant A's audit shows action on "their" tenant (no indication of crossing), Tenant B's audit reviewer sees a row appear with no corresponding action by any Tenant B admin. This matters for VAWA per-tenant audit completeness and for HIPAA BAA audit integrity; documented here so downstream compliance review understands the fix closes a different class of legal risk than D1/D2/D3.
 
+### D12 — `SafeOutboundUrlValidator` is the system of record for user-supplied outbound URLs (dial-time IP validation)
+
+**Decision:** A new validator in `org.fabt.shared.security.SafeOutboundUrlValidator` is the only approved validator for URLs that the platform dials on behalf of a tenant. Applies to: (a) webhook subscription callback URLs (`SubscriptionService.create`), (b) OAuth2 provider test-connection targets, (c) HMIS vendor endpoints in `HmisPushService`. Validation has three layers:
+
+1. **Static scheme + syntax check** — reject non-http/https, reject userinfo, reject fragments, reject non-ASCII hostnames post-IDNA.
+2. **DNS resolution + IP category check at creation time** — reject RFC1918 (`10/8`, `172.16/12`, `192.168/16`), loopback (`127/8`, `::1`), link-local (`169.254/16`, `fe80::/10`), ULA (`fc00::/7`), `0.0.0.0/8`, cloud-metadata (`169.254.169.254`). Stores the resolved IP alongside the URL.
+3. **Dial-time IP re-validation** — a custom `HttpClient` implementation that resolves the hostname again at TCP dial time and rejects if the resolved IP falls into any blocked category. This defeats DNS rebinding (the attack class CVE-2026-27127 on Craft CMS demonstrated: URL-parse-only and even creation-time DNS-resolution checks are bypassed by TTL=0 DNS records that resolve to public IPs at registration time and private IPs at delivery time).
+
+**Why all three layers:** parse-only defeats nothing; parse + DNS defeats simple cases but loses to DNS rebinding; parse + DNS + dial-time validation defeats modern exploits.
+
+**Alternatives considered:**
+- *Egress-allowlist (only approved destinations)* — rejected for general webhooks because tenants need to configure their own endpoints. Acceptable for HMIS push (known vendor list). Could layer on top as a per-tenant feature.
+- *Egress HTTP proxy with allowlist* — operationally heavier; defer to `multi-tenant-production-readiness` if needed.
+- *Hope the receiving service rejects bad Host headers* — not a mitigation.
+
+**Scope of application:**
+- `SubscriptionService.create` / `SubscriptionService.updateStatus` (webhook callback URL) — blocking
+- `OAuth2ProviderService.create` (issuer URI) — blocking
+- `OAuth2TestConnectionController` (explicit test-dial) — blocking
+- `HmisPushService.createOutboxEntriesForTenant` → outbound to vendor endpoint — blocking
+
+**Cited CVEs referenced in PRs:** CVE-2026-27127 (Craft CMS DNS rebinding SSRF), CVE-2024-10976 (Postgres RLS subquery bypass — informational), CVE-2025-8713 (Postgres RLS optimizer stats leak — informational).
+
+### D13 — `app.tenant_id` PostgreSQL session variable is always set on connection borrow
+
+**Decision:** `RlsDataSourceConfig.applyRlsContext` sets three session variables on every borrow: `app.tenant_id`, `app.dv_access`, `app.current_user_id`. The `app.tenant_id` variable is not read by any current RLS policy (per D4, tenant scoping lives at the service layer). It is installed as defense-in-depth infrastructure for future use — specifically D14 (tenant-RLS on regulated tables realized in the companion change) and per-tenant `statement_timeout` triggers.
+
+**Why now, not later:** Elena's call — "cheaper to install before you need it." Once installed, adding tenant-RLS on a specific table becomes a one-migration change. Without it, each future tenant-RLS addition also touches `RlsDataSourceConfig` (risk surface for the most-borrowed code path in the service).
+
+**What this does NOT do:**
+- Does NOT change any existing RLS policy's behavior.
+- Does NOT add tenant RLS to any table in this change (see D14).
+- Does NOT enforce tenant isolation at the DB layer today — that remains the service layer's job per D1.
+
+**Per-request cost:** one additional `set_config('app.tenant_id', <uuid>, false)` in the existing `SET LOCAL` block. Sam benched this as ~0.01ms overhead per borrow; acceptable.
+
+**Null-tenant scheduled tasks:** `@Scheduled` methods that run without a `TenantContext` (e.g., `ReservationExpiryService` iterating all tenants) already pass `null` to `TenantContext.runWithContext`. With D13, `app.tenant_id` is `SET LOCAL` to empty string; any future tenant-RLS policy must handle that explicitly.
+
+### D14 — Tenant-RLS permitted on regulated tables only (scope carved from D4 blanket rejection)
+
+**Decision:** D4 rejected adding RLS policies to `tenant_oauth2_provider`, `api_key`, and `subscription` because (a) system processes need cross-tenant visibility and (b) the policies would conflict with the service-layer-is-system-of-record principle. D14 carves a narrow exception for **regulated-data tables** where Casey identifies a compliance-driven need for DB-level tenant segregation as defense-in-last-resort:
+
+- `audit_events` (VAWA audit integrity, HIPAA BAA audit-log separation)
+- `hmis_audit_log` (HMIS-specific audit history)
+- Possibly `one_time_access_code` and `hmis_outbox` — decide in companion change
+
+The tenant-RLS policies on these regulated tables are added in the companion change `multi-tenant-production-readiness`, NOT in this change. The groundwork in this change (D13 + Phase 4.6) makes the companion change a single-migration addition per table.
+
+**Rationale:** regulated-data auditors expect per-tenant segregation at the database layer, not just the application layer. Providing a platform-admin with read-only DB credentials to Tenant A's audit_events is a legitimate operational need; providing the same credentials cross-tenant reads as a side effect is not. Tenant-RLS lets us scope the role to a specific tenant's audit rows without bespoke SQL filtering.
+
+**Non-regulated tables stay under D4** (service layer is system of record). `subscription`, `api_key`, `tenant_oauth2_provider` remain service-guarded-only.
+
+### D15 — Static SQL tenant-predicate coverage test complements the ArchUnit rule
+
+**Decision:** `TenantPredicateCoverageTest` under `backend/src/test/java/org/fabt/architecture/` uses reflection to iterate every `*Repository` interface in `org.fabt.**`, inspects each `@Query.value()` string (and `@Modifying` UPDATE/DELETE), identifies queries against tenant-owned tables (allowlist of table names maintained in the test), and fails if the SQL does not contain `tenant_id = :tenantId` (or equivalent positional parameter). An annotation `@TenantUnscopedQuery("justification")` on the repository method allows opt-out with explicit rationale.
+
+**Why reflection + string parse, not ArchUnit:** ArchUnit reasons about types and call graphs but cannot easily reason about the content of a String annotation value. The project already uses ArchUnit for Family A (`findById` call prohibition) and Family B (`UUID tenantId` parameter prohibition); those are type-level constraints. The SQL-content constraint is string-level — a different tool for a different job.
+
+**What this catches:** multi-row LIST queries (`findByStatus`, `findRecent`, etc.) that would otherwise bypass the service-layer tenant guard. Example: `NotificationRepository.existsByTypeAndReferralId` currently has no `tenant_id =` predicate — Phase 2.9 flags it and the implementation adds the predicate.
+
+**Allowlist mechanism:** the test maintains a set of known tenant-owned table names (`shelter`, `referral_token`, `reservation`, `notification`, `audit_events`, `api_key`, `subscription`, `app_user`, `tenant_oauth2_provider`, ...). New tables added to the schema MUST be added to this allowlist as part of their migration PR — documented in `CONTRIBUTING.md`.
+
+**False-positive handling:** the `@TenantUnscopedQuery` annotation — JdbcTemplate direct SQL calls not visible to the test (separate TODO for a future extension).
+
+### D16 — Observability tenant tagging with cardinality budget
+
+**Decision:** The top-10 per-request Micrometer metrics are tagged with `tenant_id`: `fabt.bed.search.count`, `fabt.availability.update.count`, `fabt.reservation.count`, `fabt.webhook.delivery.count`, `fabt.hmis.push.total`, `fabt.dv.referral.total`, `sse.send.failures.total`, `fabt.http.not_found.count`, `fabt.escalation.batch.duration`, `fabt.notification.deeplink.click.count`. Batch-job timers and platform-wide aggregates are NOT tagged (they legitimately aggregate across tenants).
+
+**Cardinality budget:** ≤200 tenants. Beyond that, Prometheus series count from the tenant tag alone would be ~2000 (10 metrics × 200 tenants); still within a single-instance Prometheus budget. Above 200, apply top-N-downsample with an `"other"` bucket for long-tail tenants.
+
+**Why not all 30+ metrics:** Sam's call. Tagging platform-scoped metrics (cache hit rate, GC pause time, connection pool depth) adds cardinality without answering "which tenant is affected" — those metrics ARE the platform, they do not belong to a tenant.
+
+**Operational benefit:** Grafana variable `$tenant` becomes meaningful. A COC_ADMIN investigating their own tenant's webhook delivery failures can filter to their tenant without seeing platform-wide aggregates. Jordan's runbook addition: per-tenant `fabt.webhook.delivery.failures{outbound="blocked"}` alert — so on-call distinguishes "legitimate tenant-config error" from "SSRF validator kicked in."
+
 ## Risks / Trade-offs
 
 - **[Risk] ArchUnit rule misses a call path we didn't catalog.** → Mitigation: the ArchUnit rule runs on every test-classpath build, including CI; false negatives would be caught at the next test run. Write the rule to fail LOUDLY on violation (full package + method name in failure message).

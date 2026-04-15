@@ -29,22 +29,69 @@
 
 ### 2.3 TotpController admin endpoints (VULN-HIGH)
 
-- [ ] 2.3.1 Refactor `TotpController.disableUserTotp(UUID id)` to call `userService.getUser(id)` (existing tenant-scoped method) instead of bare `userRepository.findById(id)`
-- [ ] 2.3.2 Refactor `TotpController.adminRegenerateRecoveryCodes(UUID id)` identically
-- [ ] 2.3.3 Write 2 integration tests: (a) cross-tenant 404 on both `disableUserTotp` and `adminRegenerateRecoveryCodes`, (b) Tenant B user's TOTP state unchanged (`totp_enabled`, `totp_secret`, recovery codes row count identical to pre-attempt state)
+- [x] 2.3.1 Refactor `TotpController.disableUserTotp(UUID id)` to call `userService.getUser(id)` (existing tenant-scoped method) instead of bare `userRepository.findById(id)`
+- [x] 2.3.2 Refactor `TotpController.adminRegenerateRecoveryCodes(UUID id)` identically
+- [x] 2.3.3 Write 2 integration tests: (a) cross-tenant 404 on both `disableUserTotp` and `adminRegenerateRecoveryCodes`, (b) Tenant B user's TOTP state unchanged (`totp_enabled`, `totp_secret`, recovery codes row count identical to pre-attempt state)
 
 ### 2.4 SubscriptionService.delete (VULN-HIGH)
 
-- [ ] 2.4.1 Add `findByIdAndTenantId(UUID id, UUID tenantId)` to `SubscriptionRepository`
-- [ ] 2.4.2 Add `findByIdOrThrow(UUID id)` helper in `SubscriptionService`
-- [ ] 2.4.3 Refactor `SubscriptionService.delete(UUID id)` to route through `findByIdOrThrow`
-- [ ] 2.4.4 Write 2 integration tests: (a) cross-tenant 404 on delete, (b) Tenant B's subscription row unchanged (`status`, `active`, `updated_at` identical to pre-attempt state; webhook deliveries to Tenant B's endpoint continue after the failed cross-tenant attempt)
-- [ ] 2.4.5 **[D11 latent fix, warroom 2026-04-15]** Refactor `SubscriptionService.create` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update `SubscriptionController` to stop passing the pass-through. Update all test call sites. Fold into the Phase 2.4 commit alongside 2.4.3 — same file, same refactor pattern, cheaper together than in separate commits.
+- [x] 2.4.1 Add `findByIdAndTenantId(UUID id, UUID tenantId)` to `SubscriptionRepository`
+- [x] 2.4.2 Add `findByIdOrThrow(UUID id)` helper in `SubscriptionService`
+- [x] 2.4.3 Refactor `SubscriptionService.delete(UUID id)` to route through `findByIdOrThrow`
+- [x] 2.4.4 Write 2 integration tests: (a) cross-tenant 404 on delete, (b) Tenant B's subscription row unchanged (`status`, `active`, `updated_at` identical to pre-attempt state; webhook deliveries to Tenant B's endpoint continue after the failed cross-tenant attempt)
+- [x] 2.4.5 **[D11 latent fix, warroom 2026-04-15]** Refactor `SubscriptionService.create` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update `SubscriptionController` to stop passing the pass-through. Update all test call sites. Fold into the Phase 2.4 commit alongside 2.4.3 — same file, same refactor pattern, cheaper together than in separate commits.
 
 ### 2.4a EscalationPolicyService.update (D11 latent fix, warroom scope expansion)
 
-- [ ] 2.4a.1 Refactor `EscalationPolicyService.update(UUID tenantId, ...)` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update the controller caller. Update test call sites.
-- [ ] 2.4a.2 Commit as its own standalone commit on top of Phase 2.4 — the file was not previously in Phase 2 scope and warroom flagged the expansion explicitly, so separate commit keeps the audit trail honest.
+- [x] 2.4a.1 Refactor `EscalationPolicyService.update(UUID tenantId, ...)` to drop the `UUID tenantId` parameter and source from `TenantContext.getTenantId()` internally. Update the controller caller. Update test call sites.
+- [x] 2.4a.2 Commit as its own standalone commit on top of Phase 2.4 — the file was not previously in Phase 2 scope and warroom flagged the expansion explicitly, so separate commit keeps the audit trail honest.
+
+### 2.12 `audit_events` cross-tenant isolation (K class — LIVE VULN-HIGH, rescope 2026-04-15)
+
+- [ ] 2.12.1 Add `findByTargetUserIdAndTenantId(UUID targetUserId, UUID tenantId, int limit)` method to `AuditEventRepository` replacing the current unsafe `findByTargetUserId(UUID, int)`; `@Query` includes `AND tenant_id = :tenantId`.
+- [ ] 2.12.2 Refactor `AuditEventService.findByTargetUserId` to pull `tenantId` from `TenantContext.getTenantId()` and call the new repository method.
+- [ ] 2.12.3 Update `AuditEventController.getAuditEvents` endpoint — passes tenant-scoped query; no other controller change (URL path unchanged).
+- [ ] 2.12.4 Write 1 integration test `tc_audit_events_crossTenant_returns_empty` — Tenant A COC_ADMIN calls `GET /api/v1/audit-events?targetUserId=<tenantB-user-uuid>`; asserts empty list (not 404 because empty is the correct cross-tenant signal for a LIST endpoint).
+- [ ] 2.12.5 Write 1 property-based test via jqwik: `forAll((T_a_admin, random_uuid) -> GET /audit-events?targetUserId=<random_uuid> returns [] when uuid belongs to T_b)`. Run 100 random iterations.
+- [ ] 2.12.6 Casey's compliance-review note: add paragraph to `docs/security/rls-coverage.md` stating "`audit_events` post-fix is queryable only within-tenant by non-PLATFORM_ADMIN roles. Tenant-scoped RLS on this table is realized in the `multi-tenant-production-readiness` companion change per D14."
+
+### 2.13 `TenantPredicateCoverageTest` — static SQL analysis (C class, D15)
+
+- [ ] 2.13.1 Create `TenantPredicateCoverageTest` under `backend/src/test/java/org/fabt/architecture/`. Uses reflection to iterate every `*Repository` interface in `org.fabt.**`, inspects `@Query.value()` strings (handles `@Modifying` UPDATE/DELETE too).
+- [ ] 2.13.2 Define tenant-owned-table allowlist (`shelter`, `referral_token`, `reservation`, `notification`, `audit_events`, `api_key`, `subscription`, `app_user`, `tenant_oauth2_provider`, `webhook_delivery_log`, `one_time_access_code`, `hmis_outbox`, `hmis_audit_log`, `escalation_policy`, `bed_availability`, `shelter_constraints`, `surge_event`, `password_reset_token`, `user_oauth2_link`, `totp_recovery`).
+- [ ] 2.13.3 Add `@TenantUnscopedQuery(String justification)` annotation in `org.fabt.shared.security` alongside existing `@TenantUnscoped`. Non-empty `justification` required.
+- [ ] 2.13.4 Run `TenantPredicateCoverageTest` disabled; enumerate failures; fix each surfaced site (estimated 3-6 sites including `NotificationRepository.existsByTypeAndReferralId`) OR annotate with `@TenantUnscopedQuery` + justification.
+- [ ] 2.13.5 Enable `TenantPredicateCoverageTest` strict.
+- [ ] 2.13.6 Update `CONTRIBUTING.md` with the rule: "new tenant-owned tables must be added to the allowlist in `TenantPredicateCoverageTest` as part of the migration PR."
+
+### 2.14 SSRF hot-fix — `SafeOutboundUrlValidator` (I class — LIVE VULN-HIGH, D12)
+
+- [ ] 2.14.1 Create `org.fabt.shared.security.SafeOutboundUrlValidator` with three-layer validation: static scheme+syntax, DNS-resolution + IP category check (blocks RFC1918, loopback, link-local, ULA, cloud-metadata), dial-time IP re-validation via custom `HttpClient` transport.
+- [ ] 2.14.2 Apply validator in `SubscriptionService.validateCallbackUrl` (replaces current URL-parse-only stub). Blocking failure returns `IllegalArgumentException` → HTTP 400 with explicit error code `webhook_url_blocked`.
+- [ ] 2.14.3 Apply validator in `TenantOAuth2ProviderService.create` for `issuerUri` field.
+- [ ] 2.14.4 Apply validator in `HmisPushService` outbound delivery (validate vendor URL at delivery time, not just at creation).
+- [ ] 2.14.5 Create `SafeHttpClient` wrapper around JDK `HttpClient` that performs dial-time IP re-validation — resolves hostname again at connect time and rejects if the resolved IP falls into any blocked category. Defeats DNS rebinding (CVE-2026-27127).
+- [ ] 2.14.6 Wire `SafeHttpClient` into `WebhookDeliveryService` outbound call path. Metric: `fabt.webhook.delivery.failures{reason="ssrf_blocked"}` counter.
+- [ ] 2.14.7 Integration tests: (a) create subscription with `http://169.254.169.254/` → 400, (b) create with `http://127.0.0.1:9091/actuator/` → 400, (c) create with `http://192.168.1.1/webhook` → 400, (d) create with legitimate public URL → 201, (e) DNS-rebinding simulation via mock `Resolver` → dial-time 400.
+
+### 2.15 `@TenantUnscoped` retrofit on scheduled + batch (G class) — extends 2.7
+
+- [ ] 2.15.1 Annotate `ReferralTokenPurgeService.purgeTerminalTokens` with `@TenantUnscoped("hourly retention purge — platform-wide by VAWA retention design")`.
+- [ ] 2.15.2 Annotate `ReferralEscalationJobConfig.checkAndEscalate`-path methods with `@TenantUnscoped("Spring Batch iterates all tenants' pending referrals")`.
+- [ ] 2.15.3 Annotate `BedHoldsReconciliationJobConfig.reconcile` methods with `@TenantUnscoped("Spring Batch reconciler — platform-wide defense-in-depth for bed_availability drift")`.
+- [ ] 2.15.4 Annotate `DailyAggregationJobConfig` methods with `@TenantUnscoped("daily analytics aggregation — platform-wide by design")`.
+- [ ] 2.15.5 Annotate `ApiKeyService.cleanupExpiredGracePeriodKeys` with `@TenantUnscoped("hourly scheduled cleanup — runs across all tenants")`.
+- [ ] 2.15.6 Annotate `SubscriptionService.cleanupOldDeliveryLogs` with `@TenantUnscoped("daily retention purge — runs across all tenants")`.
+- [ ] 2.15.7 Annotate `ReferralTokenService.expireTokens` with `@TenantUnscoped("60-second PENDING→EXPIRED transition runs platform-wide")`.
+- [ ] 2.15.8 Ensure Phase 3 ArchUnit Family B rule treats `@TenantUnscoped` methods as valid exceptions — already in scope per design D2 + D11.
+
+### 2.4b Final D11 sweep — genuinely clear Family B (warroom Phase 2.2-2.4a review, 2026-04-15)
+
+- [x] 2.4b.1 Refactor `SubscriptionService.updateStatus(UUID id, UUID tenantId, String)` — drop `tenantId` param; route through existing `findByIdOrThrow` (2.4.2 helper), which replaces the current manual `!subscription.getTenantId().equals(tenantId)` check on line 154. Update `SubscriptionController.updateStatus` to stop passing tenantId.
+- [x] 2.4b.2 Refactor `NotificationPersistenceService.send(UUID tenantId, ...)` and `.sendToAll(UUID tenantId, ...)` — drop `tenantId` param from both; source from `TenantContext.getTenantId()` internally. Every existing caller already wraps in `TenantContext.runWithContext(tenantId, ...)` before calling (verified: `NotificationEventListener` lines 76/76/... , `ReferralEscalationJobConfig:233`, `ReferralTokenService:658`, `ShelterService:473/504`). Drop the redundant parameter at all ~7 call sites.
+- [x] 2.4b.3 Split `HmisPushService.createOutboxEntries(UUID tenantId)` into two methods: (a) `createOutboxEntriesForCurrentTenant()` sourced from `TenantContext` for the admin-controller path (`HmisExportController.manualPush`), and (b) `createOutboxEntriesForTenant(UUID tenantId)` annotated `@TenantUnscoped("batch-job iterates all tenants — platform-wide by design")` for the batch caller (`HmisPushJobConfig:87`). The split keeps Family B strict at the annotation boundary rather than hiding a dual-use signature.
+- [x] 2.4b.4 Verify all affected test files compile + run green. Cross-check via `mvn test` on `SubscriptionIntegrationTest`, `NotificationPersistenceServiceTest`, `NotificationEventListenerTest` (if exists), `HmisBridgeIntegrationTest`.
+- [x] 2.4b.5 Commit as `cross-tenant-isolation-audit Phase 2.4b: final D11 sweep (Family B clear)`. This is the commit the Phase 3 ArchUnit Family B rule will rely on for "zero exceptions." Separate from 2.4 / 2.4a for audit-trail clarity — warroom-identified cleanup, not original-scope work.
 
 ### 2.5 AccessCodeController (VULN-MED)
 
@@ -122,10 +169,26 @@
 - [ ] 4.5.2 Populate from the warroom audit's 17 SAFE entries (BedSearchService.searchBeds, AvailabilityService.createSnapshot, PasswordResetService.resetPassword, OAuth2AccountLinkService.linkOrReject, UserService.getUser, UserService.findById, PasswordController.changePassword, PasswordController.resetPassword, TotpController enrollTotp/confirmTotpEnrollment/regenerateRecoveryCodes, NotificationPersistenceService.markActed, ShelterService.findById/updateShelter/getDetail, SubscriptionService.updateStatus/findRecentDeliveries)
 - [ ] 4.5.3 Link the SAFE-sites registry from `docs/security/rls-coverage.md` so both docs reinforce each other — the RLS map shows tables, the SAFE-sites doc shows call sites
 
-### 4.6 Phase 4 verification
+### 4.7 Observability tenant tagging (D16, rescope 2026-04-15)
 
-- [ ] 4.6.1 Run full backend test suite green; Flyway applies V56 without error
-- [ ] 4.6.2 Commit Phase 4
+- [ ] 4.7.1 Tag the top-10 per-request Micrometer metrics with `tenant_id`: `fabt.bed.search.count`, `fabt.availability.update.count`, `fabt.reservation.count`, `fabt.webhook.delivery.count`, `fabt.hmis.push.total`, `fabt.dv.referral.total`, `sse.send.failures.total`, `fabt.http.not_found.count`, `fabt.escalation.batch.duration`, `fabt.notification.deeplink.click.count`.
+- [ ] 4.7.2 Do NOT tag platform-scope metrics (cache hit rate, GC pause, connection pool depth) — per design D16 cardinality budget.
+- [ ] 4.7.3 Add a Grafana dashboard variable `$tenant` populated from the metric label; wire the main FABT dashboard panels to filter by `$tenant`.
+- [ ] 4.7.4 Add a `fabt.webhook.delivery.failures{reason="ssrf_blocked"}` counter (incremented by the `SafeOutboundUrlValidator` from 2.14.6); Jordan's runbook alert threshold documented in `docs/runbook.md`.
+- [ ] 4.7.5 Cardinality budget check: under 200 tenants, tagged-metric series count is ≤2000 (10 × 200). Document in Grafana note. Future: top-N-downsample with `tenant_id="other"` bucket if cardinality grows.
+
+### 4.8 `app.tenant_id` session variable in RlsDataSourceConfig (D13, Elena's insist)
+
+- [ ] 4.8.1 Extend `RlsDataSourceConfig.applyRlsContext` to also `SELECT set_config('app.tenant_id', ?, false)` alongside existing `app.dv_access` and `app.current_user_id`. Parameter sourced from `TenantContext.getTenantId()` — empty string when null (scheduled-task case).
+- [ ] 4.8.2 Per-borrow cost: ~0.01ms overhead per Sam's bench. Verify no perf regression via existing `BedSearch` and `AvailabilityUpdate` Gatling suites (already required in Phase 5).
+- [ ] 4.8.3 Add `TenantIdPoolBleedTest` under `backend/src/test/java/org/fabt/` — mirrors `CrossTenantIsolationTest.connectionPoolDoesNotLeakDvAccessAcrossRequests` but for `app.tenant_id`: 100 sequential iterations swapping tenant_id between requests on the same connection, asserting no bleed.
+- [ ] 4.8.4 Update `docs/security/rls-coverage.md` to document: "`app.tenant_id` is set on every borrow but no RLS policy currently reads it. The variable is installed as infrastructure for the companion change `multi-tenant-production-readiness` which realizes D14 (tenant-RLS on regulated tables)."
+- [ ] 4.8.5 No new RLS policy is added in this phase — see D4/D14 for rationale.
+
+### 4.9 Phase 4 verification
+
+- [ ] 4.9.1 Run full backend test suite green; Flyway applies V56 without error; new `TenantIdPoolBleedTest` green; tenant-tagged metrics visible in Prometheus scrape
+- [ ] 4.9.2 Commit Phase 4
 
 ## 5. Phase 5 — E2E + rollout (1 day)
 
