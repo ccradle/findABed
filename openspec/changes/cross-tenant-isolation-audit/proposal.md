@@ -1,0 +1,49 @@
+## Why
+
+During Phase 4 of Issue #106 we discovered and patched a cross-tenant data leak in `GET /api/v1/dv-referrals/{id}` and its accept/reject PATCH paths: `ReferralTokenRepository.findById(UUID)` had no `tenant_id` predicate, and RLS on `referral_token` only enforces `dv_access`, not tenant isolation. A follow-up audit of every `findById(UUID)` call site (Issue #117) confirmed **5 VULN-HIGH** sites (TenantOAuth2ProviderService.update/delete, ApiKeyService.rotate/deactivate, TotpController.disableUserTotp/adminRegenerateRecoveryCodes, SubscriptionService.delete) and **2 VULN-MED** sites (AccessCodeController target + admin lookup).
+
+**Scope-expansion note (2026-04-15 warroom):** During Phase 2.1 implementation, a sibling vulnerability class was discovered: **URL-path-sink** — tenant-owned write endpoints that accept `{tenantId}` from the request URL path and forward it to repository write operations without cross-checking against the caller's JWT tenant. `OAuth2ProviderService.create` is the clearest case: a Tenant A admin `POST /api/v1/tenants/{tenantB}/oauth2-providers` would write a new provider row under Tenant B with attacker-controlled `issuerUri` — categorically worse than the already-closed `update` path because no existing row diff signals the anomaly. Alex's call: this is "tenant isolation where intended" by Corey's framing; the original `findById` grep was a discovery mechanism, not the definition of the vulnerability. This change takes the same-service URL-path-sink (`OAuth2ProviderService.create`) in scope (tasks 2.1.6 + 2.1.7). Sibling services (`TenantConfigController`, `TenantController PUT /{id}/*`, read-side enumeration leaks) are deferred to a follow-up issue to keep Phase 2 within the 2-week budget. Design decision **D11** codifies the rule going forward; the Phase 3 ArchUnit rule is extended to cover URL-path-sink. Two of those — the OAuth2 provider config and the admin-side 2FA disable — are attacker-pivot points worse than the original DV referral leak: they enable auth hijack and account takeover, not just data read. The defect pattern spans modules, so the gap is systemic; code review missed ~10 sites for months. This change completes the audit, fixes the remaining vulnerable sites, and installs mechanical guards so the next contributor cannot silently re-introduce the bug. No exploit path exists on findabed.org today (single-tenant demo), but every multi-tenant pilot is blocked on this work.
+
+## What Changes
+
+- **Repository contract:** introduce `findByIdAndTenantId(UUID id, UUID tenantId)` on `TenantOAuth2ProviderRepository`, `ApiKeyRepository`, and `SubscriptionRepository`, matching the v0.39 `ReferralTokenRepository` reference implementation.
+- **Service contract:** introduce `findByIdOrThrow(UUID)` private helpers (modeled on `ReferralTokenService.findByIdOrThrow`) that pull `tenantId` from `TenantContext` and throw `NoSuchElementException` → 404 on cross-tenant access.
+- **5 VULN-HIGH service fixes:**
+  - `TenantOAuth2ProviderService.update(UUID id, ...)` and `.delete(UUID id)` → route through `findByIdAndTenantId`; also cover the `existsById(UUID)` call on line 86 of `.delete`.
+  - `ApiKeyService.rotate(UUID keyId)` and `.deactivate(UUID keyId)` → route through `findByIdAndTenantId`.
+  - `TotpController.disableUserTotp(UUID id)` and `.adminRegenerateRecoveryCodes(UUID id)` → refactor to call `userService.getUser(id)` (existing tenant-scoped method).
+  - `SubscriptionService.delete(UUID id)` → route through `findByIdOrThrow` (pulls `tenantId` from `TenantContext`, matching the other four VULN-HIGH fixes — no signature change).
+- **2 VULN-MED service fixes:**
+  - `AccessCodeController.generateAccessCode` line 47 (target-user lookup) and line 51 (admin-user lookup) → replace bare `userRepository.findById` with `userService.getUser(id)` / `userService.findById(adminId)` for consistency per D6.
+- **Batch-callable service hardening:** `EscalationPolicyService.findById(UUID)` renamed to `findByIdForBatch` with ArchUnit rule restricting callers to `org.fabt.referral.batch.*`. `SubscriptionService.markFailing` / `.deactivate` / `.recordDelivery` renamed to `*Internal` suffix with ArchUnit rule restricting callers to `WebhookDeliveryService`. `ReservationService.expireReservation` stays as-is but gains an explicit `@TenantUnscoped("system-scheduled reservation expiry — tenant context is set from the fetched row")` annotation.
+- **New enforcement primitive — `@TenantUnscoped("justification")` annotation** with an ArchUnit rule that fails the build if any class in `org.fabt.*.service` or `org.fabt.*.api` calls `*Repository.findById(UUID)` OR `*Repository.existsById(UUID)` on a tenant-owned table without either (a) the annotation on the calling method with a non-empty justification, or (b) the repository method being on the `findByIdAndTenantId` allowlist. Strict from day one (build-failing, not advisory).
+- **`referral_token` RLS policy comment correction** — the v0.39 service-layer fix patched behavior but left a misleading claim in V21's policy (`USING` clause only checks shelter existence, not tenant ownership). Ship a new migration **V56** that runs `COMMENT ON POLICY dv_referral_token_access ON referral_token IS '...this policy enforces dv_access only; tenant isolation is enforced by service-layer findByIdAndTenantId...'` so `psql \d+` shows the truth. Flyway immutability rule precludes editing V21 directly.
+- **Parameterized cross-tenant regression test** — `CrossTenantIsolationParameterizedTest` with `@ParameterizedTest` + `@MethodSource` yielding one row per `(endpoint, verb, role, pathVariableSupplier)` triple for every tenant-owned resource. PR-checklist requirement: every new tenanted endpoint adds a row.
+- **Javadoc audit** — `grep -n 'RLS' backend/src/main/java/**/*Service*.java` and fix every comment asserting tenant isolation via RLS. V21 is the known case; audit for others.
+- **RLS coverage map** — new `docs/security/rls-coverage.md` enumerating every table: RLS status (enforced / not enforced), what the policy actually enforces, and the corresponding service-layer guard. Elena-authored.
+- **Cross-tenant 404 observability counter** — `fabt.security.cross_tenant_404s` Micrometer counter emitted from `GlobalExceptionHandler` on 404s against tenanted resources (tagged by `resource_type`). Grafana panel showing per-minute rate.
+- **E2E cross-tenant test — dual-framework coverage:** one Playwright spec exercising the 5 admin UI surfaces cross-tenant (browser-level, catches nginx/CORS/JWT-filter regressions Spring tests miss); one Karate spec exercising the same 5 HTTP endpoints (contract-level, catches handler changes). Both run in the post-deploy smoke suite.
+- **Documentation:** runbook note on the new 404 behavior ("cross-tenant is forbidden by design"); CONTRIBUTING update on the `@TenantUnscoped` contract.
+
+## Capabilities
+
+### New Capabilities
+
+_No new capabilities._ This change hardens and adds contract scenarios to four existing capabilities. No new spec files are created.
+
+### Modified Capabilities
+
+- `multi-tenancy`: add the `findByIdAndTenantId` / `findByIdOrThrow` service-layer convention, the `@TenantUnscoped` annotation contract, and the explicit 404-not-403 rule as requirement-level scenarios under `tenant-isolation`. Add a new requirement `tenant-guard-enforcement` for the ArchUnit rule.
+- `rls-enforcement`: clarify that RLS policies on the four tenanted tables with `dv_access` enforcement (`shelter`, `referral_token`, `notification`, others per the coverage map) are defense-in-depth for `dv_access` ONLY; tenant scoping is the service layer's job. Add scenario for the `referral_token` policy's corrected semantics.
+- `cross-tenant-isolation-test`: add requirements for the parameterized-fixture pattern, the ArchUnit rule, the Playwright E2E spec, and the Karate E2E spec. The existing concurrent-isolation requirements stay.
+- `observability`: add the `fabt.security.cross_tenant_404s` counter requirement and the Grafana panel scenario.
+
+## Impact
+
+- **Affected code paths:** 7 service/controller methods (fix), ~4 repository interfaces (add method), 1 new annotation, 1 new ArchUnit test class, 1 new integration test class, 1 new Playwright spec, 1 new Karate spec, 1 new Micrometer counter + Grafana panel, 1 new Flyway migration (V56 comment-only), 1 new docs page.
+- **Breaking changes:** **None for single-tenant deployments** (the demo site). For hypothetical multi-tenant deployments where an admin was accidentally reaching cross-tenant resources, those paths now 404. This is the intended correction, not a regression. Runbook documents the behavior.
+- **API shape:** no request-body changes. Response-code changes: 5 HIGH + 2 MED endpoints return 404 instead of 200/500 when accessed cross-tenant.
+- **Migrations:** V56 (comment-only, trivially reversible).
+- **Dependencies:** no new Maven dependencies. ArchUnit is already in the test classpath.
+- **Deploy footprint:** single backend + frontend deploy at the end of the phased sequence. No flag. No canary (single-tenant demo). ~2 weeks engineering time.
+- **Non-scope:** adding RLS policies to `tenant_oauth2_provider`, `api_key`, `subscription` (considered and rejected per D4 — service layer is the guard; RLS is binary `dv_access` only). The rejection is recorded in design.md.
