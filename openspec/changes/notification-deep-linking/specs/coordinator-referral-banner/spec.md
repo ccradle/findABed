@@ -8,13 +8,24 @@ This replaces the prior behavior ("scroll to the first DV shelter with pending r
 
 The click handler SHALL read the routing hint (`firstPending.referralId`) returned by `GET /api/v1/dv-referrals/pending/count` (see pending-count-endpoint requirement below) and navigate via React Router to `/coordinator?referralId=${firstPending.referralId}`. The `useDeepLink` state machine owns every subsequent step: resolve → expand → scroll → focus the referral row. The banner MUST NOT carry its own resolve/scroll logic — the two code paths (notification bell click and banner click) converge on a single implementation.
 
-#### Scenario: Banner click with referralId query param already in URL (notification deep-link in flight)
+#### Scenario: Banner click with referralId query param already in URL AND matches firstPending (deep-link still valid)
 
 - **GIVEN** the coordinator arrived via `/coordinator?referralId=abc-123` from a notification click
+- **AND** the `GET /api/v1/dv-referrals/pending/count` response has `firstPending.referralId === "abc-123"` (the URL points at the current oldest pending referral)
 - **AND** the `useDeepLink` hook has already processed that intent (state is `done` or `stale`)
 - **WHEN** the coordinator clicks the banner
 - **THEN** the click handler SHALL NOT re-navigate (re-clicking the same URL adds no information)
-- **AND** the click handler SHALL NOT fall back to the `firstPending` hint (the user-initiated deep-link wins)
+
+#### Scenario: Banner click with stale referralId query param (user-reported 2026-04-14 regression)
+
+- **GIVEN** the coordinator arrived via `/coordinator?referralId=abc-123` from a prior notification click
+- **AND** the coordinator has already actioned `abc-123` (accept / reject), removing it from the pending set
+- **AND** `GET /api/v1/dv-referrals/pending/count` now returns `{ count: 1, firstPending: { referralId: "xyz-789", shelterId: "<Harbor House UUID>" } }` (a different referral is now the oldest pending)
+- **AND** the URL still carries the stale `?referralId=abc-123` (this app does not scrub the URL after action — stale branch leaves URL intact per D10)
+- **WHEN** the coordinator clicks the banner
+- **THEN** the click handler SHALL rewrite the URL to `/coordinator?referralId=xyz-789`
+- **AND** `useDeepLink` SHALL resolve `xyz-789`, expand Harbor House, scroll to and focus the screening row
+- **AND** the click handler MUST NOT short-circuit on `source === 'url'` — the server's `firstPending` is the source of truth for "where the user should go next"
 
 #### Scenario: Banner click without referralId query param (genesis gap closure)
 

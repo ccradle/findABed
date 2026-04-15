@@ -180,6 +180,14 @@ NOT called on:
 
 **Back-compat (Marcus Webb):** Purely additive — existing consumers that destructure `{ count }` ignore the new field. No version bump. No OpenAPI breaking change.
 
+**Click-precedence amendment (warroom, 2026-04-14, triggered by user-reported URL-stale regression):** The original D-BP wording said "on click without an existing `?referralId` query param, navigate to `/coordinator?referralId=${firstPending.referralId}`." That wording implicitly made the URL-wins rule absolute, which was wrong. When the URL carries a referralId from a PRIOR notification click that has since been actioned, the URL is stale and the banner must route to the server-current `firstPending` instead. The corrected precedence (codified in `computeBannerClickTarget` and banner-click-navigation scenarios):
+1. `firstPending` present AND `referralId === firstPending.referralId` → `source='url'` (no-op; deep-link is still current)
+2. `firstPending` present AND differs from URL → `source='hint'` (server-of-truth wins; URL is stale)
+3. `firstPending === null` AND URL present → `source='url'` (direct-nav or pre-Section-16 backend)
+4. neither → `null` (banner shouldn't be rendered anyway; defensive)
+
+Keisha's UX principle, restated: "the banner's only job is to show me the work I still need to do." When the URL no longer matches reality, reality wins.
+
 ### D7: Notification lifecycle visual states
 
 **Decision:** Three visual states in the bell:
