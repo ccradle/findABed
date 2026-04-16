@@ -1,9 +1,9 @@
-## cross-tenant-isolation-test
-
-Concurrent virtual thread multi-tenant data isolation verification.
+## MODIFIED Requirements
 
 ### Requirement: concurrent-virtual-thread-isolation
 The project SHALL maintain a concurrent multi-tenant data isolation test that uses genuine virtual-thread concurrency (not sequential execution) to verify no Tenant A data can appear in any Tenant B API response under load. The test SHALL fire at least 50 requests per tenant simultaneously, cover `/api/v1/shelters` (list + direct-object-reference), cover the bed search endpoint (`/api/v1/queries/beds`) for DV shelter isolation under `dvAccess` variance, and run in CI on every PR that touches `TenantContext`, `RlsDataSourceConfig`, or authentication filters. The test class SHALL be named `CrossTenantIsolationTest`.
+
+_This requirement consolidates the prior `REQ-ISO-1` through `REQ-ISO-8` bullet list into the current `### Requirement: <name>` heading format with scenario sub-sections. Behavior is unchanged; the reformat is structural so this spec merges cleanly with the new requirements added by this change._
 
 #### Scenario: Concurrent shelter list isolation
 - **GIVEN** Tenant A has shelters `["Safe Haven A1", "Safe Haven A2"]` and Tenant B has shelters `["Harbor House B1"]`
@@ -31,6 +31,8 @@ The project SHALL maintain a concurrent multi-tenant data isolation test that us
 - **WHEN** a PR modifies `TenantContext`, `RlsDataSourceConfig`, or any class in `org.fabt.shared.auth`
 - **THEN** `CrossTenantIsolationTest` runs as part of the required CI check set
 - **AND** the build fails if the test class does not exist or is renamed
+
+## ADDED Requirements
 
 ### Requirement: parameterized-cross-tenant-fixture
 The project SHALL maintain a parameterized JUnit 5 integration test `CrossTenantIsolationParameterizedTest` that exercises every tenant-owned state-mutating endpoint against a cross-tenant UUID and asserts 404. The fixture SHALL use `@ParameterizedTest` with `@MethodSource` yielding one row per `(endpoint path, HTTP verb, caller role, path-variable UUID supplier)` tuple. Every new tenant-owned endpoint SHALL add a row to the fixture as a PR-checklist requirement.
