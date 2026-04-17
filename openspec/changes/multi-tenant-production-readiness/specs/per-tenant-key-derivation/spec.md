@@ -109,25 +109,34 @@ The system SHALL support two deployment tiers for master KEK storage (per A5, D3
 - **AND** the master KEK never leaves the Vault container
 
 ### Requirement: ciphertext-reencryption-migration
-The system SHALL re-encrypt existing ciphertexts (TOTP secrets, webhook callback secrets) under per-tenant DEKs during the v-next deploy (per A6). Rollout SHALL be zero-downtime via a dual-key-accept grace window in which decrypt tries the new tenant DEK first and falls back to the legacy platform key.
+The system SHALL re-encrypt existing v0 ciphertexts (TOTP secrets, webhook callback secrets, OAuth2 client secrets, HMIS API keys — all four per-tenant-scoped encrypted columns) under per-tenant DEKs during the Phase A deploy (task 2.13, Flyway V74 per A3 D22). Rollout SHALL be idempotent via v1 magic-byte detection, and the v0 decrypt path SHALL remain permanently available as defense-in-depth for any row V74 could not sweep (e.g., transient lock, post-deploy manual edit).
 
-#### Scenario: Existing TOTP ciphertext re-wrapped by V73
-- **GIVEN** a user row with `totp_secret_encrypted` written under the single platform key pre-deploy
-- **WHEN** Flyway V73 runs
+#### Scenario: Existing TOTP ciphertext re-wrapped by V74
+- **GIVEN** a user row with `totp_secret_encrypted` written under the single platform key pre-Phase-A
+- **WHEN** Flyway V74 runs
 - **THEN** the row is re-encrypted under the tenant's per-tenant DEK
-- **AND** the ciphertext `kid` reflects `(tenant_id, dek_version=1)`
+- **AND** the stored bytes begin with the v1 magic (`FABT\x01`) + opaque kid resolving via `kid_to_tenant_key` to the tenant
 
-#### Scenario: Grace window decrypts legacy ciphertext
-- **GIVEN** V73 is mid-migration and a partial set of rows still carry the legacy platform-key ciphertext
-- **WHEN** a user attempts TOTP verify during this window
-- **THEN** decrypt tries the new tenant DEK first, falls back to the legacy platform key on failure
-- **AND** verify succeeds regardless of which side of the migration the row is on
+#### Scenario: V74 sweeps all four encrypted columns in one migration
+- **GIVEN** the pre-deploy DB has v0 ciphertexts in `app_user.totp_secret_encrypted`, `subscription.callback_secret_hash`, `tenant_oauth2_provider.client_secret_encrypted`, and `tenant.config → hmis_vendors[].api_key_encrypted`
+- **WHEN** V74 runs
+- **THEN** every v0 row in all four columns is re-encrypted under the owning tenant's per-tenant DEK for the corresponding KeyPurpose
+- **AND** no v0 row remains readable via the v1 path; no v1 row is touched
 
-#### Scenario: Grace window closes after 7 days
-- **GIVEN** the grace window is configured for 7 days post-migration
-- **WHEN** a decrypt attempt uses the legacy platform key 8 days after the migration
-- **THEN** the decrypt fallback path is disabled by configuration
-- **AND** only the per-tenant DEK path is consulted
+#### Scenario: v0 fallback decrypts legacy ciphertext (defense-in-depth, permanent)
+- **GIVEN** a row that V74 did not sweep (e.g., skipped due to transient lock, introduced post-V74 by a direct DB edit, or pre-existing NULL `tenant_id`)
+- **WHEN** a read path decrypts that row
+- **THEN** the runtime routes it to the v0 decrypt path (via `isV1Envelope == false` detection, NOT exception-catch fallback)
+- **AND** verify succeeds under the single-platform key
+- **AND** the `fabt.security.v0_decrypt_fallback.count` counter increments with `purpose` + `tenant_id` tags
+- **AND** a throttled `CIPHERTEXT_V0_DECRYPT` audit event is emitted (≤ once per tenant + purpose per 60s window)
+
+#### Scenario: V74 is idempotent on re-run
+- **GIVEN** V74 has already applied and all candidate rows are v1
+- **WHEN** V74 re-runs (e.g., after `DELETE FROM flyway_schema_history WHERE version = '74'`)
+- **THEN** every row is skipped via v1 magic-byte detection
+- **AND** a second `SYSTEM_MIGRATION_V74_REENCRYPT` audit row is written with zero counts
+- **AND** no data mutation occurs
 
 ### Requirement: jwt-claim-kid-binding
 The system SHALL cross-check the `tenantId` claim in the JWT body against the tenant resolved from the `kid` header (per A7, D1). A token signed with tenant A's key but carrying `tenantId=<tenantB>` in the body SHALL be rejected.
