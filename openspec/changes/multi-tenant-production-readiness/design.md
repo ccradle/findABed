@@ -32,13 +32,13 @@ Marcus Webb's SME review flagged that the STUB's originally-proposed `kid=tenant
 
 ### D2 — HKDF derivation rooted in a single platform KEK; per-tenant DEK/JWK rotation
 
-Derivation: `derivedKey = HKDF(master_kek, salt=<tenant_uuid>, info="fabt:v1:<tenant-uuid>:<purpose>")`. Purposes scoped today: `jwt-sign`, `totp`, `webhook-secret`, `oauth2-client-secret`, `hmis-api-key`. Context strings are versioned (`v1`) for future migration. `kid=<opaque-uuid>` stored alongside ciphertext includes the DEK version, enabling in-place rotation with an old-key decrypt grace window.
+Derivation: `derivedKey = HKDF(masterKekBytes, salt=<tenant_uuid>, info="fabt:v1:<tenant-uuid>:<purpose>")` where `masterKekBytes` is the 32-byte value already established as `FABT_ENCRYPTION_KEY` in Phase 0. Purposes scoped today: `jwt-sign`, `totp`, `webhook-secret`, `oauth2-client-secret`, `hmis-api-key`. Context strings are versioned (`v1`) for future migration. `kid=<opaque-uuid>` stored alongside ciphertext includes the DEK version, enabling in-place rotation with an old-key decrypt grace window.
 
 Rejected alternative: per-tenant randomly-generated keys stored wrapped under KEK. Rejected because HKDF is deterministic, auditable, and allows re-derivation of lost keys from KEK + tenant_uuid without needing key-escrow infrastructure.
 
 ### D3 — Master KEK storage: env var (standard) + Vault Transit (regulated)
 
-Standard tier (current Oracle Always Free demo + most pilot CoCs): `FABT_KEK_MASTER` env var sourced from `~/fabt-secrets/.env.prod` with filesystem permissions 400, `root:fabt` ownership, prod-profile-rejects-dev-key guard (extends `feedback_dev_keys_prod_guard.md`), kernel keyring for memory hygiene. Documented as acceptable for non-regulated pooled tenants.
+Standard tier (current Oracle Always Free demo + most pilot CoCs): the `FABT_ENCRYPTION_KEY` env var introduced in Phase 0 is the master KEK for HKDF derivation. Sourced from `~/fabt-secrets/.env.prod` (or the systemd drop-in `/etc/systemd/system/fabt-backend.service.d/encryption-key.conf` per Phase 0 oracle notes) with filesystem permissions 400, `root:fabt` ownership, prod-profile-rejects-dev-key guard (already shipped as the C2 hardening of `SecretEncryptionService` in Phase 0). No new env var; Phase A reads the same bytes. Documented as acceptable for non-regulated pooled tenants.
 
 Regulated tier (HIPAA BAA, VAWA-exposed): HashiCorp Vault Transit engine with `derived=true` keys + per-tenant context. `FABT_KEK_VAULT_TOKEN` + `FABT_KEK_VAULT_ADDR` env vars replace the direct master key; `SecretEncryptionService` proxies through Vault for derivation. Regulated-tier deploy is a silo, not pooled.
 
@@ -210,7 +210,7 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 ## Open Questions
 
-1. **Q: `FABT_KEK_MASTER` env var for standard tier — acceptable under HIPAA BAA for a regulated pilot that doesn't need full Vault?** — Casey to advise. If `No`, regulated tier deploy MUST use Vault Transit (D3).
+1. **Q: `FABT_ENCRYPTION_KEY` env var (the Phase 0 master KEK) for standard tier — acceptable under HIPAA BAA for a regulated pilot that doesn't need full Vault?** — Casey to advise. If `No`, regulated tier deploy MUST use Vault Transit (D3).
 
 2. **Q: Asheville tenant — keep name as "Asheville CoC (demo)" or rename to fictional city pre-merge?** — User (Corey) final call per M2 review with Casey. Proposal assumes Asheville-with-disclaimer; pre-merge review can change.
 
