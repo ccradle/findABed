@@ -9,7 +9,7 @@
 - [x] 1.7 Integration test: round-trip OAuth2 client secret through encryption; pre-fix state simulated via manual INSERT of plaintext + verify migration encrypts on startup
 - [x] 1.8 Integration test: round-trip HMIS apiKey through encryption
 - [x] 1.9 Update CHANGELOG.md with Phase 0 bullet under `## [Unreleased]`
-- [ ] 1.10 Commit Phase 0 + open PR #XXX with Casey review (legal-scan of code comments) + Marcus review (threat-model of encryption path)
+- [x] 1.10 Commit Phase 0 + open PR #127 with Casey review (legal-scan of code comments) + Marcus review (threat-model of encryption path)
 
 ## 2. Phase A — Per-tenant JWT + DEK derivation (2 weeks)
 
