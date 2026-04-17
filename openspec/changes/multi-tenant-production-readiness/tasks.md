@@ -20,17 +20,17 @@
 - [x] 2.5 Implement `KeyDerivationService` — HKDF-SHA256 with context `"fabt:v1:<tenant-uuid>:<purpose>"` (per D2)
 - [x] 2.6 Refactor `SecretEncryptionService` to delegate to per-tenant DEK via `KeyDerivationService.forTenant(tenantId).derive("totp" | "webhook-secret" | "oauth2-client-secret" | "hmis-api-key")` — typed `encryptForTenant(tenantId, KeyPurpose, plaintext)` + `decryptForTenant(tenantId, KeyPurpose, stored)` per A3 D17/D19
 - [x] 2.7 Add `kid` prefix to ciphertext format: v1 envelope `[FABT magic + version + kid + iv + ct+tag]`; backward-compat decrypt detects v0 by magic-bytes-absence per A3 D18/D21
-- [ ] 2.8 Refactor `JwtService.sign` to use per-tenant signing key (derived via `KeyDerivationService.forTenant(tenantId).derive("jwt-sign")`); emit `kid=<random-uuid>` in JWT header (D1); insert row into `kid_to_tenant_key`
-- [ ] 2.9 Refactor `JwtService.validate` to resolve `kid` via `kid_to_tenant_key` cache → tenant + generation → derive signing key → verify (D1)
-- [ ] 2.10 Add `JwtService.validate` assertion: `claim.tenantId` MUST equal `kid`-resolved tenant (A7); reject if mismatch with dedicated audit event
-- [ ] 2.11 Add `kid_to_tenant_key` in-memory cache (Caffeine; bounded ~100k entries; TTL 1 hour) for sub-microsecond validate
-- [ ] 2.12 Implement `TenantLifecycleService.bumpJwtKeyGeneration(tenantId)` — increments generation + adds all outstanding kids of the prior generation to `jwt_revocations` with their natural expiry
+- [x] 2.8 Refactor `JwtService.sign` to use per-tenant signing key (derived via `KeyDerivationService.forTenant(tenantId).derive("jwt-sign")`); emit `kid=<random-uuid>` in JWT header (D1); insert row into `kid_to_tenant_key`
+- [x] 2.9 Refactor `JwtService.validate` to resolve `kid` via `kid_to_tenant_key` cache → tenant + generation → derive signing key → verify (D1)
+- [x] 2.10 Add `JwtService.validate` assertion: `claim.tenantId` MUST equal `kid`-resolved tenant (A7); reject if mismatch with dedicated audit event
+- [x] 2.11 Add `kid_to_tenant_key` in-memory cache (Caffeine; bounded ~100k entries; TTL 1 hour) for sub-microsecond validate — implemented in A3 (`KidRegistryService.kidToResolutionCache`) + A4.1 (`RevokedKidCache` for revocation fast-path)
+- [x] 2.12 Implement `TenantLifecycleService.bumpJwtKeyGeneration(tenantId)` — increments generation + adds all outstanding kids of the prior generation to `jwt_revocations` with their natural expiry — landed as `TenantKeyRotationService` (org.fabt.shared.security) per warroom Q3; Phase F can absorb later
 - [ ] 2.13 Flyway V74 — re-encrypt existing `totp_secret_encrypted` + `subscription.callback_secret_encrypted` under per-tenant DEKs (idempotent; dual-key-accept grace during migration)
 - [x] 2.14 Add prod-profile guard on `FABT_ENCRYPTION_KEY` (the master KEK in Phase A's HKDF derivation) — already shipped as the Phase 0 C2 hardening; this task subsumed by Phase 0 work since Phase A reuses the same env var rather than introducing a new one
 - [ ] 2.15 Add HashiCorp Vault Transit integration adapter (`VaultTransitKeyDerivationService`) as alternative `KeyDerivationService` implementation for regulated tier (D3); env-var-selectable via `FABT_KEY_SOURCE=env|vault`
 - [ ] 2.16 Document `docs/security/key-rotation-runbook.md` — per-tenant DEK rotation + master KEK rotation procedures with RTO per scenario (L10)
-- [ ] 2.17 Integration test: rotation `bumpJwtKeyGeneration(A)`; assert old-gen JWTs rejected, new accepted, Tenant B unaffected
-- [ ] 2.18 Integration test: cross-tenant kid confusion — sign with Tenant A key, swap body tenantId to B, verify rejected with dedicated audit
+- [x] 2.17 Integration test: rotation `bumpJwtKeyGeneration(A)`; assert old-gen JWTs rejected, new accepted, Tenant B unaffected — `TenantKeyRotationServiceIntegrationTest` (10 cases including atomicity, concurrent-rotation race, cross-tenant isolation, audit row contract)
+- [x] 2.18 Integration test: cross-tenant kid confusion — sign with Tenant A key, swap body tenantId to B, verify rejected with dedicated audit — `JwtServiceV1IntegrationTest.crossTenantRejection` + `GlobalExceptionHandlerJwtTest` (audit JSONB shape contract)
 - [ ] 2.19 Unit test: HKDF derivation reproducibility — same tenantId + same purpose + same KEK → same derived key
 - [ ] 2.20 Unit test: HKDF derivation separation — different tenantId OR different purpose → different derived key
 - [ ] 2.21 Commit Phase A + open PR (coordinated 7-day re-login notice window begins)
