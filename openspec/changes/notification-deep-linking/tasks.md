@@ -239,7 +239,7 @@
 
 - [ ] 15.1 Update deployment status memory after ship. **Post-deploy gate (cannot close pre-ship).**
 - [ ] 15.2 Monitor Grafana time-to-action histogram for 1 week. Collect baseline data. **Post-deploy gate (requires 1 week of pilot traffic).**
-- [ ] 15.3 Close Issue #106 with release notes summarizing measured improvement. **Post-deploy gate (depends on 15.2 baseline data).**
+- [x] 15.3 Close Issue #106 with release notes summarizing measured improvement. ~~**Post-deploy gate (depends on 15.2 baseline data).**~~ (Closed 2026-04-16 as shipped-pending-measurement; 15.2 + 15.4 remain as separate measurement work, decoupled from issue-close.)
 - [ ] 15.4 Document the measurable outcome in sustainability-narrative.md (Priya): "After deep-linking shipped, median coordinator time-from-notification-to-referral-accept decreased from X to Y." **Post-deploy gate (depends on 15.2 baseline data).**
 
 ## 16. Phase 4 — Coordinator banner genesis-gap closure (added 2026-04-14, DEMO-DEPLOY BLOCKER)
