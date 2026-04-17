@@ -1,7 +1,9 @@
-# Phase A Checkpoint A4 — JwtService refactor design (DRAFT for warroom)
+# Phase A Checkpoint A4 — JwtService refactor design (APPROVED)
 
-**Status:** DRAFT — pre-implementation. Warroom review precedes code in
-`feature/multi-tenant-production-readiness-phase-a` Checkpoint A4.
+**Status:** APPROVED post-warroom 2026-04-17. 8 personas weighed in; all 6
+open questions resolved unanimously; 9 enhancements (W1–W9) folded into
+the decisions + implementation plan below. Casey + Marcus + Sam formal
+review of the eventual A4 PR will reference this doc.
 
 **Scope:** tasks 2.8, 2.9, 2.10, 2.11, 2.12, 2.17, 2.18. Refactors
 `JwtService` to sign with per-tenant HKDF-derived signing keys + opaque
@@ -75,6 +77,13 @@ Tenant A's signing key can sign JWTs for Tenant A's kid, but they
 can't forge a JWT for Tenant B's kid+key combo even if they swap the
 body `tenantId` claim.
 
+**W1 (Marcus):** the `CROSS_TENANT_JWT_REJECTED` audit event's `details`
+JSONB carries the offending JWT's body claims to aid incident response:
+`{kid, expectedTenantId, actualTenantId, actorUserId, sourceIp,
+claimsTenantId, claimsSub, claimsIat, claimsExp}`. Incident responders
+can reconstruct what the attacker presented without retrieving the
+token from logs.
+
 ### D26 — `jwt_revocations` fast-path check before signature verify
 
 V61 `jwt_revocations(kid, expires_at, revoked_at)` is a blocklist
@@ -98,6 +107,12 @@ Caffeine cache on the revoked-kid lookup (separate from the
 KidRegistryService caches — different lifecycle). 1-minute TTL —
 revocations need to propagate fast across replicas.
 
+**Marcus + Jordan:** the cache MUST expose an `invalidateKid(UUID)`
+bypass method (parallel to `KidRegistryService.invalidateKidResolution`)
+so emergency revocations propagate sub-second instead of waiting up to
+60s for natural eviction. The `bumpJwtKeyGeneration` flow (D27 step 5)
+calls this for every kid it adds to `jwt_revocations`.
+
 ### D27 — `bumpJwtKeyGeneration(tenantId)` for rotation + suspend
 
 New method on `TenantLifecycleService` (Phase F territory but starts
@@ -115,13 +130,18 @@ public void bumpJwtKeyGeneration(UUID tenantId) {
         "UPDATE tenant_key_material SET active = FALSE, rotated_at = NOW() "
         + "WHERE tenant_id = ? AND generation = ?", tenantId, currentGen);
 
-    // 2. Insert new active generation
+    // 2. Insert new active generation (W4: ON CONFLICT for retry idempotency)
     int nextGen = currentGen + 1;
     jdbc.update(
         "INSERT INTO tenant_key_material (tenant_id, generation, active) "
-        + "VALUES (?, ?, TRUE)", tenantId, nextGen);
+        + "VALUES (?, ?, TRUE) ON CONFLICT DO NOTHING", tenantId, nextGen);
 
     // 3. Add all outstanding kids of prior gen to jwt_revocations
+    //    W5: expires_at = 7 days is the conservative ceiling — JWT max
+    //    lifetime is 7d (refresh tokens), so any token signed under an
+    //    old kid will be naturally expired by then. Some prune-table
+    //    bloat is acceptable; tracking exact per-kid max-exp is
+    //    complexity not worth the storage.
     jdbc.update(
         "INSERT INTO jwt_revocations (kid, expires_at) "
         + "SELECT kid, NOW() + INTERVAL '7 days' "
@@ -133,15 +153,31 @@ public void bumpJwtKeyGeneration(UUID tenantId) {
         "UPDATE tenant SET jwt_key_generation = ? WHERE id = ?",
         nextGen, tenantId);
 
-    // 5. Invalidate KidRegistryService caches
+    // 5. Invalidate KidRegistryService cache + revocation cache
     kidRegistryService.invalidateTenantActiveKid(tenantId);
     // (kidToResolutionCache stays — old kids' resolutions are still
-    //  valid for the dual-key-accept grace; revoked check above handles them)
+    //  valid for the dual-key-accept grace; revoked check below handles them)
+    // For each newly-revoked kid, bypass the revocation cache TTL so
+    // sub-second propagation across replicas:
+    revokedKidCache.invalidateAll(jdbc.queryForList(
+        "SELECT kid FROM kid_to_tenant_key WHERE tenant_id = ? AND generation = ?",
+        UUID.class, tenantId, currentGen));
+
+    // 6. W3 (Casey): publish JWT_KEY_GENERATION_BUMPED audit event so
+    //    operators can demonstrate "we rotated keys per schedule" via
+    //    audit query. details JSONB:
+    //    {tenantId, oldGen, newGen, actorUserId, revokedKidCount}
+    eventPublisher.publishEvent(new AuditEventRecord(
+        currentActorUserId(), null, "JWT_KEY_GENERATION_BUMPED",
+        Map.of("tenantId", tenantId.toString(),
+               "oldGen", currentGen, "newGen", nextGen,
+               "revokedKidCount", revokedCount), null));
 }
 ```
 
 Atomic via `@Transactional`. Cache invalidation per the post-A3
-warroom hooks (added this session).
+warroom hooks (added this session). All 6 steps run inside the same
+transaction; partial failure rolls everything back.
 
 ### D28 — Backward-compat path: legacy JWTs accepted during cutover window
 
@@ -167,6 +203,36 @@ cutover"* — but option B reduces the outage to "users get a fresh
 login on first access" rather than "all sessions die at deploy
 moment." Operationally smoother. The 7-day window is bounded by
 refresh-token max age; after that no legacy tokens exist by definition.
+
+**W2 (Alex):** path selection MUST use explicit if/else on header
+presence — NOT try-new-catch-fall-back-to-legacy. The latter would
+silently legacy-accept a JWT with an unknown kid (a forgery attempt
+where the attacker invented a `kid` value). Pseudocode:
+
+```java
+public Authentication validate(String token) {
+    if (parseHeader(token).get("kid") == null) {
+        return legacyValidate(token);   // FABT_JWT_SECRET HMAC
+    }
+    return newValidate(token);          // throws on any failure
+                                         // (unknown kid, sig fail, revoked, etc.)
+}
+```
+
+**Marcus:** add `fabt.security.legacy_jwt_validate.count` counter every
+time the legacy path runs. A spike during the 7-day window could
+indicate the cleanup is not happening (forgotten clients) OR
+compromise (forged legacy tokens). Operator can monitor + decide.
+
+**Jordan J1:** at A4 deploy moment, file a 7-day calendar reminder +
+follow-up issue: "remove legacy JwtService.legacyValidate code path +
+delete `fabt.security.legacy_jwt_validate.count` counter." After the
+window, the calendar fires and the cleanup PR ships.
+
+**Marcus also:** add an ArchUnit Family A rule preventing references
+to `FABT_JWT_SECRET` from any class outside `JwtService.legacyValidate`
+during the window, so accidental new uses can't compound the cleanup
+debt.
 
 ### D29 — `kid_to_tenant_key` Caffeine cache for sub-µs validate
 
@@ -194,33 +260,31 @@ shape, different TTL), but that's a small addition inside JwtService.
 | Legacy code path removal after grace window | Calendar reminder + ArchUnit rule "no class outside JwtService.legacyValidate may reference FABT_JWT_SECRET" | Deferred to post-cutover |
 | `CrossTenantJwtException` 403 vs UnauthorizedException 401 confusion | Distinct mapping in GlobalExceptionHandler — 403 for forgery, 401 for missing/expired | Clear |
 
-## Open questions for warroom
+## Resolved questions (warroom 2026-04-17)
 
-1. **Hard cutover vs dual-validate window (D28).** My lean: dual-validate
-   for 7 days = bounded by refresh-token max lifetime. Casey/Marcus check
-   for whether the cleanup commitment ("delete legacy code path after
-   7 days") is operationally realistic.
-2. **`jwt_revocations` cache TTL.** 1 minute = balance between
-   cross-replica propagation speed + DB load. Open to 30s if Marcus
-   wants tighter. Or longer if Sam wants less DB churn.
-3. **Where does `bumpJwtKeyGeneration` live?** `KeyDerivationService`?
-   New `TenantKeyRotationService`? Phase F's `TenantLifecycleService`?
-   My lean: new `TenantKeyRotationService` in
-   `org.fabt.shared.security` for now; Phase F can absorb it later.
-4. **Operator endpoint to trigger rotation in Phase A.** Just for
-   testing? Or production-ready admin UI? My lean: admin-only
-   `POST /api/v1/admin/tenants/{id}/rotate-jwt-key` returning 202 +
-   audit event, no UI yet (Phase F adds the UI).
-5. **`CrossTenantJwtException` vs reusing `CrossTenantCiphertextException`.**
-   Different conceptual surface (JWT vs ciphertext) but same audit
-   pattern. Distinct exception = grep-friendly per Casey/Marcus's
-   reasoning in A3 Q4. My lean: distinct.
-6. **JJWT version + algorithm selection.** Existing JwtService likely
-   uses HS256 (HMAC-SHA256) under FABT_JWT_SECRET. Phase A keeps HS256
-   but with per-tenant derived keys. Should I confirm JJWT supports
-   per-call `SecretKey` injection (vs requiring a static signing key)?
-   Belief: yes, but worth a quick code-read of existing JwtService
-   before implementation.
+1. **Cutover:** dual-validate (D28). Unanimous. Casey: not a HIPAA
+   downgrade (new path is strictly stronger; legacy path uses the same
+   platform key Phase 0 already validates). Marcus: net-neutral attack
+   surface; legacy code path doesn't expand exposure beyond pre-A baseline.
+   See D28 for path-selection logic clarification (W2) + counter (Marcus)
+   + ArchUnit rule + 7-day cleanup reminder (Jordan J1).
+2. **`jwt_revocations` cache TTL:** 1 minute + `invalidateKid(UUID)`
+   bypass for emergency revoke. Elena: DB load negligible at FABT scale.
+3. **Service location:** new `TenantKeyRotationService` in
+   `org.fabt.shared.security`. Alex: don't couple to Phase F's
+   not-yet-existent `TenantLifecycleService`. Phase F absorbs later.
+4. **Operator endpoint:** admin-only
+   `POST /api/v1/admin/tenants/{id}/rotate-jwt-key` → 202 + audit event,
+   rate-limited to 1 rotation/tenant/min (Marcus + Jordan, prevents
+   accidental rapid-rotation that could exhaust DB connections). Dry-run
+   mode (`?dry-run=true`) deferred to follow-up.
+5. **Custom exception types:** `CrossTenantJwtException` (→ 403) +
+   `RevokedJwtException` (→ 401). Parallel to A3's pattern; grep-friendly
+   for incident response.
+6. **JJWT version + algorithm:** code-read of existing `JwtService` is
+   step 1 of the implementation plan. Pin to a specific JJWT version +
+   write a sanity test asserting kid header presence in parsed token
+   (Riley).
 
 ## Implementation plan (post-warroom approval)
 
@@ -237,29 +301,46 @@ shape, different TTL), but that's a small addition inside JwtService.
    and `RevokedJwtException` (401).
 8. New `POST /api/v1/admin/tenants/{id}/rotate-jwt-key` controller +
    admin auth.
-9. Integration tests:
-   - Sign + validate round-trip per tenant (T1)
-   - Cross-tenant kid confusion: sign with A's key, swap body to B's
-     tenantId, assert validate rejects + audit (T2)
-   - Rotation: bump tenant A's gen, assert old-gen JWTs rejected,
-     new-gen accepted, tenant B unaffected (T3)
-   - Legacy JWT (no kid header) signed under FABT_JWT_SECRET → still
-     accepted via D28 path (T4)
-   - jwt_revocations fast-path: revoke a kid, assert validate rejects
-     within cache TTL (T5)
-   - Rotation cache invalidation: bump gen, assert next sign uses new
-     kid (T6)
+9. Integration tests (8 cases per warroom W7 + W8):
+   - T1 sign + validate round-trip per tenant
+   - T2 cross-tenant kid confusion: sign with A's key, swap body to B's
+     tenantId, assert validate rejects + audit (with W1 enriched JSONB)
+   - T3 rotation: bump tenant A's gen, assert old-gen JWTs rejected,
+     new-gen accepted, tenant B unaffected
+   - T4 legacy JWT (no kid header) signed under FABT_JWT_SECRET → still
+     accepted via D28 path
+   - T5 jwt_revocations fast-path: revoke a kid, assert validate
+     rejects within cache TTL
+   - T6 rotation cache invalidation: bump gen, assert next sign uses
+     new kid (no stale-cache window)
+   - **T7 (W8) dual-key-accept grace:** rotate, assert old-gen kid
+     STILL validates BETWEEN the rotation and revocation expiry, then
+     stops validating after revocation expires
+   - **T8 (W7) rotation atomicity:** simulate D27 step 4 failure (e.g.,
+     UPDATE tenant trips a CHECK constraint), assert NONE of steps 1-3
+     persisted (tenant_key_material rollback, jwt_revocations rollback)
+10. Plus a `GlobalExceptionHandlerJwtTest` covering both
+    `CrossTenantJwtException` (403, audit shape) and `RevokedJwtException`
+    (401, no audit) — parallel to A3's `GlobalExceptionHandlerCrossTenantTest`.
 
 ## Approval gate
 
-Before implementation: warroom thumbs-up from Marcus + Alex + Elena +
-Riley + **Sam** (perf) + **Casey** (legal — D28 dual-validate window
-+ rotation audit shape) + **Jordan** (operator-trigger endpoint).
+**APPROVED 2026-04-17 via warroom.** All 8 personas weighed in;
+unanimous on the 6 open questions; 9 enhancements (W1–W9) folded into
+the design above. No further approval needed before implementation —
+Casey + Marcus + Sam will review the eventual A4 PR using this doc as
+the canonical pre-flight record.
 
 ## Out of scope for A4
 
 - Vault Transit alternative path (task 2.15)
-- `docs/security/key-rotation-runbook.md` (task 2.16)
+- `docs/security/key-rotation-runbook.md` (task 2.16, Devon training note)
 - Phase F's `TenantLifecycleService` integration (Phase F)
 - Asymmetric JWT signing (RS256 / regulated-tier — separate proposal)
 - Token theft detection / anomaly alerting (separate scope)
+- **W6:** `kid_to_tenant_key` orphan-row GC scheduled task — Alex's
+  concern about post-rotation accumulation; Phase F crypto-shred handles
+  tenant-level cleanup, rotation-only cleanup is a follow-up issue
+- **W9 (Maria + Devon):** pilot cutover communication + admin-rotation-
+  feature mention in onboarding docs — folded into Devon's existing
+  training task + Casey's runbook authoring
