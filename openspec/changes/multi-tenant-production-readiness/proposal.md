@@ -1,105 +1,288 @@
 ## Why
 
-Companion change to `cross-tenant-isolation-audit` (Issue #117). That audit closes the LIVE VULN-HIGH vulnerabilities (`findById`, URL-path-sink, `audit_events` cross-tenant read, SSRF in webhook/OAuth2/HMIS URLs) and installs mechanical guards (ArchUnit Family A+B, `TenantPredicateCoverageTest`, `SafeOutboundUrlValidator`, `@TenantUnscoped` annotations, `app.tenant_id` session variable as defense-in-depth infrastructure).
+Companion change to `cross-tenant-isolation-audit` (Issue #117), shipped as FABT v0.40.0 on 2026-04-16. That audit closed the LIVE VULN-HIGH vulnerabilities (`findById`, URL-path-sink, `audit_events` cross-tenant read, SSRF in webhook/OAuth2/HMIS URLs) and installed mechanical guards (ArchUnit Family A+B, `TenantPredicateCoverageTest`, `SafeOutboundUrlValidator`, `@TenantUnscoped` annotations, `app.tenant_id` session variable as defense-in-depth infrastructure). That work moved the posture from "per-town dedicated instance is safe" toward "pool-ready." **This change closes the remaining gap.**
 
-This change completes the posture shift from **"per-town dedicated instance is safe"** to **"multiple towns can pool safely on one shared instance"** — by closing the architectural gaps the audit identified but deferred: per-tenant JWT signing keys, tenant-scoped caches, tenant-scoped RLS on regulated tables, per-tenant operational boundaries (rate limit, pool budget, SSE buffer sharding), and an audit of file/blob storage and the deferred URL-path-sink sibling controllers.
+Post-audit three-agent research consolidation (2026-04-16) — SME persona-lens review (Marcus Webb + Alex Chen + Elena Vasquez + Casey Drummond + Jordan Reyes + Sam Okafor + Riley Cho) + codebase reality-check + 2026 industry web research — identified approximately 80 sub-items across 12 themes that must land before any multi-tenant procurement security review can answer "yes, safe to pool." The v0.40 audit was necessary; it is not sufficient. Without this change, the honest answer to any CoC is "take a dedicated instance today; pool when this lands." With this change, pooling becomes the default recommendation — for the standard tier. Regulated-tier (HIPAA BAA, VAWA-exposed DV CoCs) remains silo with an explicit upgrade path.
 
-**This is the change that answers a multi-tenant procurement security review.** Without it, Corey's honest answer to a town is "pool with other towns once this lands; today, take a dedicated instance." With it, pooling is the default recommendation.
+**Scope shape:**
+
+- Cryptographic isolation at the per-tenant key level (JWT + DEK)
+- Database-layer hardening using the `app.tenant_id` session variable installed in v0.40 Phase 4.8 — with Postgres 16.5+ pin for CVE-2024-10976, LEAKPROOF-wrapped policies, audit-log tamper-evidence, and `fabt_app` role restriction
+- Cache isolation (`TenantScopedCacheService` + ArchUnit coverage of every Caffeine cache)
+- Per-tenant operational boundaries (rate limit, connection pool budget via per-tenant `statement_timeout`, SSE buffer sharding, background-worker fair queueing, virtual-thread pinning guard)
+- Tenant lifecycle FSM (create → active → suspended → offboarding → archived → deleted) with crypto-shredding for GDPR Article 17 + EDPB Feb 2026 erasure-in-backups compliance
+- Audit + observability isolation (per-tenant hash-chained audit, OTel baggage, alert routing, log retention)
+- Compliance documentation (HIPAA BAA template, VAWA 24-hour OVW pipeline, DV-safe breach notification, tenancy-model ADR, per-tenant retention matrix)
+- Defense-in-depth hardening (opaque JWT `kid`, timing-attack mitigation, inbound webhook signing, ingress tenant-header rewrite, egress allowlist)
+- Testing + validation (reflection-driven cache-bleed, SSE replay cross-tenant, breach simulation, noisy-neighbor Gatling, superuser-bypass CI guard, multi-tenant pentest engagement)
+- Breach response (tenant-quarantine break-glass, forensic query tooling, IR runbook per class)
+- Developer guardrails (`TenantScoped<T>` SPI, typed per-tenant config, per-tenant feature flags, stage environment with synthetic tenants, per-tenant canary)
+- **Demo-site multi-tenant validation** (permanent second tenant seed on `findabed.org`: Asheville CoC (demo) with full user/shelter/referral matrix — pooling works as a live public proof, not just a design document)
+
+**Change-closure gate:** This change is NOT closed until the live demo at `findabed.org` serves two pooled tenants, and a cross-tenant isolation probe against the live site from a demo visitor's browser returns 404 with an educational message. Per Maria + Teresa: a design document alone does not answer "can you show multi-tenant isolation live?" Per Riley: the live second tenant is also the most convincing regression guard against cross-tenant leakage in production.
+
+**Also absorbs two latent pre-existing issues** surfaced during pre-scope codebase audit:
+
+1. `TenantOAuth2Provider.clientSecretEncrypted` and `HmisVendorConfig.apiKeyEncrypted` are **stored plaintext** despite the names (TODO comments in code acknowledge deferral to "production"). Encrypted on day-one of this change.
+2. The originally-proposed `kid=tenant:<uuid>` JWT header would have leaked tenant UUIDs in every captured token. Redesigned to an opaque `kid=<random-uuid>` that resolves to `(tenant_id, key_generation)` server-side.
 
 ## What Changes
 
-### Per-tenant JWT signing keys (J class)
+Organized into 12 workstream themes (A–L). No deferrals; every item ships in this change. Items flagged **[LATENT]** close pre-existing issues.
 
-- Replace single platform-wide HMAC-SHA256 secret with HKDF-derived per-tenant signing keys rooted in a platform master key.
-- `JwtService.sign` uses the caller's tenant key; `JwtService.validate` derives the key from the token's `kid` claim (which encodes `tenant:<uuid>`).
-- Key rotation: per-tenant rotation becomes trivial; platform master key rotation is a defined operational procedure.
-- Compromise scope: a tenant's leaked key no longer forges other tenants' tokens.
+### A. Cryptographic isolation
 
-### Per-tenant encryption DEKs for data-at-rest (J class)
+- **A1. Per-tenant JWT signing keys** — HKDF-derived from platform KEK via `fabt:v1:<tenant-uuid>:jwt-sign` context string. Opaque `kid=<random-uuid>` in JWT header resolves to `(tenant_id, key_generation)` server-side (NOT `kid=tenant:<uuid>` — that leaks tenant IDs in captured tokens; Marcus). `JwtService.sign` uses the caller's current key; `JwtService.validate` resolves `kid` → tenant key → verify. Token claims cross-checked: the `tenantId` claim MUST equal the kid-resolved tenant. Bounded cache of kid→key for sub-microsecond validate.
+- **A2. JWT revocation and suspend semantics** — `tenant.jwt_key_generation` column bumps on suspend, atomically invalidating all existing JWTs for that tenant. Fast-path `jwt_revocations(kid, expires_at)` list checked on validate; pruned daily.
+- **A3. Per-tenant encryption DEKs** — HKDF-derived per-tenant via `fabt:v1:<tenant-uuid>:<purpose>` context strings (purpose ∈ {totp, webhook-secret, oauth2-client-secret, hmis-api-key, future}). Ciphertext prefixed with `kid` (tenant + DEK version) for in-place rotation with old-key decrypt grace.
+- **A4. [LATENT] Encrypt OAuth2 + HMIS credentials NOW** — `TenantOAuth2Provider.clientSecretEncrypted` and `HmisVendorConfig.apiKeyEncrypted` are plaintext today (TODO comments in code). Call `SecretEncryptionService.encrypt()` on storage, `decrypt()` on retrieval. Flyway V59 re-encrypts existing rows idempotently with a `looksLikeCiphertext` guard. First PR of this change — does not wait for per-tenant DEKs (A3).
+   - **Scoped out of A4 (folded into platform-hardening):** the typed HMIS vendor-CRUD endpoints (`HmisExportController.addVendor` / `updateVendor`) are stubbed 501 today. Until they ship, tenant-admin writes flow through the generic `PUT /api/v1/tenants/{tenantId}/config`, which serializes whatever JSONB the admin sends — including any net-new `hmis_vendors[].api_key_encrypted` plaintext. A4 closes the **read-side** gap (decrypt-on-read in `HmisConfigService` + V59 re-encryption of existing rows), exposes `HmisConfigService.encryptApiKey` for the future typed-write path, and accepts the residual write-side gap until platform-hardening lands those typed endpoints. OAuth2 has no equivalent gap — `TenantOAuth2ProviderService.create/update` is the sole write surface and encrypts unconditionally.
+- **A5. Master KEK storage posture** — Oracle Always Free (standard tier): env var with filesystem permissions + kernel keyring + prod-profile guard + sealed-secrets tooling (extends `feedback_dev_keys_prod_guard.md`). Regulated tier: HashiCorp Vault Transit engine with derived keys. Rotation-procedure runbook (per-tenant + master-level) with documented RTO per scenario.
+- **A6. Re-encryption migration for existing ciphertexts** — TOTP secrets + webhook callback secrets currently encrypted under the single platform key. Flyway + service migration re-wraps each under per-tenant DEK during v-next deploy. Dual-key-accept grace window for zero-downtime rollout.
+- **A7. JWT `aud` / `iss` claim binding** — validate path asserts the `tenantId` claim matches the `kid`-resolved tenant key pair. A token signed with Tenant A's key but claiming Tenant B is rejected.
 
-- `SecretEncryptionService` currently uses one platform `FABT_ENCRYPTION_KEY` for TOTP secrets and webhook callback secrets across all tenants.
-- HKDF-derive per-tenant DEKs from the platform KEK; store `kid=tenant:<uuid>` next to ciphertext.
-- Rotation scoped to one tenant at a time.
+### B. Database-layer hardening (D14 realization + Elena's Postgres extensions)
 
-### `TenantScopedCacheService` wrapper (D class)
+- **B1. Postgres ≥ 16.5 pin** — CVE-2024-10976 (RLS policies evaluated below subqueries retain old role context under `SET ROLE`) is directly exploitable against v0.40's `app.tenant_id` pattern. Update `docs/oracle-update-notes-*.md` runbook floor; add CI check rejecting < 16.5.
+- **B2. D14 tenant-RLS policies on regulated tables** — `audit_events`, `hmis_audit_log`, plus expansion to `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox`. Policy shape: `USING (tenant_id::text = fabt_current_tenant_id())` where `fabt_current_tenant_id` is a `STABLE LEAKPROOF` SQL function wrapping `current_setting('app.tenant_id', true)` (avoids index disablement + error-message side-channel leaks).
+- **B3. `FORCE ROW LEVEL SECURITY`** on all regulated tables — prevents owner bypass during admin sessions and migrations. Per Elena's non-negotiable.
+- **B4. RLS index coverage + EXPLAIN regression** — `CREATE INDEX` on `(tenant_id, ...)` for every RLS-protected table. Integration test: EXPLAIN the canonical query per table; assert Index Scan, not Seq Scan.
+- **B5. `pg_policies` snapshot as git-tracked artifact** — `docs/security/pg-policies-snapshot.md` is the output of `SELECT * FROM pg_policies` post-migration. CI diffs a live-DB snapshot against the git copy; drift fails the build. Elena's ground-truth tool for incident response.
+- **B6. `SECURITY DEFINER` governance** — today: zero `SECURITY DEFINER` functions (correct per D1 intent). Future-proof: any Flyway migration that introduces one fails CI unless the migration header includes `@security-definer-exception: <justification>`. Migration-test guard.
+- **B7. pgaudit extension enabled** — per-query DB-layer audit log (NOT application-layer). Format includes `app.tenant_id`. HIPAA BAA-class requirement. Log-rotation policy documented.
+- **B8. Partition `audit_events` + `hmis_audit_log` by `tenant_id`** — list partitioning. Enables per-tenant backup via partition export, per-tenant VACUUM attribution, per-tenant retention windows.
+- **B9. Per-tenant `statement_timeout` + `work_mem`** — `SET LOCAL statement_timeout = :tenant_timeout_ms` and `SET LOCAL work_mem = :tenant_work_mem` on every `@Transactional` entry AFTER `app.tenant_id` is set. Values sourced from `tenant_rate_limit_config` (E2) per tier.
+- **B10. Logical replication + `pg_dump` + PITR posture** — document (v1 stance): no logical replication in use; per-tenant backup via `pg_dump --where="tenant_id = '<uuid>'"` with policy-strip step; PITR restores whole cluster only (per-tenant rollback unavailable, documented boundary).
+- **B11. `SET LOCAL` + `@Transactional` ordering ArchUnit rule** — per `feedback_transactional_rls_scoped_value_ordering.md`. Rule: tenant-scoped `@Transactional` methods must not call `TenantContext.runWithContext()` inside the transaction; tenant context must be set BEFORE the `@Transactional` boundary.
+- **B12. Connection-pool partial-failure test** — inject `SET ROLE` failure mid-setup; assert connection removed from pool, not returned in a mutated state. Extends existing `TenantIdPoolBleedTest`.
+- **B13. Testcontainers-vs-prod RLS parity** — integration tests assert `current_user = 'fabt_app'` post-connection-borrow; fail if still `fabt` (superuser bypasses RLS silently — `feedback_rls_hides_dv_data.md`).
 
-- `TieredCacheService` currently takes arbitrary string keys — no mechanical tenant-in-key enforcement.
-- Add `TenantScopedCacheService` that prepends `TenantContext.getTenantId()` to every key.
-- ArchUnit rule: direct `TieredCacheService.get/put` calls on tenant-sensitive caches require `@TenantUnscopedCache("justification")` annotation; otherwise the caller must go through `TenantScopedCacheService`.
-- Audit `EscalationPolicyService.policyById` — change key to `(tenantId, id)` composite to eliminate residual cache-bleed exposure.
+### C. Cache isolation
 
-### Tenant-scoped RLS on regulated tables (D14 realization)
+- **C1. `TenantScopedCacheService` wrapper** — prepends `TenantContext.getTenantId()` to every key; throws `IllegalStateException` if no tenant context (fail-fast). ArchUnit **Family C** rule: direct `TieredCacheService.get/put` requires `@TenantUnscopedCache("justification")`.
+- **C2. Extend ArchUnit Family C to every `Caffeine.newBuilder()`** in `*.service` — covers `JwtService.claimsCache`, `EscalationPolicyService.policyById`, `ApiKeyAuthenticationFilter.rateLimitBuckets`, and any future Caffeine instance. All pass Family C or carry the annotation with justification.
+- **C3. [LATENT] Fix `EscalationPolicyService.policyById` cache key** — currently keyed by UUID only (cross-tenant leak risk if policies are ever shared); change to composite `CacheKey(tenantId, policyId)`.
+- **C4. Redis pooling ADR** — explicit decision document: Redis ACL-per-tenant pattern OR separate logical DB per tenant OR "single-tenant Redis; multi-tenant pooling not safe with shared Redis." Current `project_standard_tier_untested.md` stance becomes formal.
+- **C5. Reflection-driven cache-bleed test fixture** — discovers every `@Cacheable` and `TieredCacheService.get` call site via reflection; for each, generates a test: `tenantA.write(k); tenantB.read(k)` → expect cache miss.
+- **C6. Negative-cache tenant scoping** — every 404 / null cache entry is tenant-scoped. Prevents Tenant A's 404 masking Tenant B's later create.
 
-- Leverages `app.tenant_id` session variable installed in the cross-tenant-isolation-audit Phase 4.8.
-- Add RLS policies to: `audit_events`, `hmis_audit_log`. Possibly `one_time_access_code` and `hmis_outbox` — decide in design.
-- Policy shape: `USING (tenant_id::text = current_setting('app.tenant_id', true))`. Platform-admin role exempted.
-- Service-layer guard stays primary; RLS is DB-layer defense-in-depth for regulated data.
+### D. Control-plane hardening
 
-### Deferred URL-path-sink sibling controllers (B class)
+- **D1. Deferred URL-path-sink sibling controllers** — Phase 2.1's D11 pattern applied to: `TenantController PUT /{id}/*`, `TenantConfigController.updateConfig`, `OAuth2ProviderController.list` (read-side enumeration filter). Plus a codebase sweep for any write-path controller with `{tenantId}` or `{id}` in the URL that the v0.40 audit missed.
+- **D2. `TenantConfigController` stricter than write-path controllers** — tenant config is the root of every other tenant security boundary (rate-limit override, hold duration, webhook allowlist, statement_timeout, key rotation cadence). Validates against typed schema (L5); changes produce audit events; revertible.
+- **D3. Nginx tenant-header rewrite from JWT** — any `X-Scope-OrgID` / `X-Tenant-Id` header from the client is rewritten by container nginx to the authenticated JWT's `tenantId` before reaching the backend. `proxy_set_header` REPLACES client value. T-Mobile 2021 lesson.
+- **D4. mTLS or signed-header ingress binding (regulated tier only)** — for HIPAA BAA / VAWA-exposed tenants, nginx↔backend uses mTLS; belt-and-suspenders against `kid`-strip / Host-confusion. Standard tier continues without (acceptable trade-off documented in tenancy-model ADR, H1).
 
-- `TenantController PUT /{id}/*` — verify if COC_ADMIN can reach; if yes, apply D11 pattern.
-- `TenantConfigController.updateConfig` — same.
-- `OAuth2ProviderController.list` read-side enumeration — filter by caller tenant or 404 on URL-path mismatch.
+### E. Per-tenant operational boundaries
 
-### Per-tenant rate limiting (L class)
+- **E1. Per-tenant rate limiting** — bucket key:
+  - Unauthenticated paths (login, password reset, forgot-password): `(api_key_hash, ip)` — tenant isn't known pre-auth; the previously-proposed `(tenant_id, ip)` is impossible (Marcus finding, Agent A).
+  - Authenticated paths: `(tenant_id, ip)` composite.
+- **E2. `tenant_rate_limit_config` typed table** — per-tenant overrides for each endpoint-class rule (login, password-change, admin-reset, forgot-password, verify-totp, api-key, statement_timeout_ms, work_mem). Audit event on config change. Fail-safe defaults when config load fails (never fail-open).
+- **E3. Per-tenant Hikari connection budget** — option (b) from the original stub: `SET LOCAL statement_timeout` per B9 sized per tenant tier. Sub-pool (option a) rejected as overcomplicated for current scale (~20-tenant ceiling).
+- **E4. Per-tenant SSE event buffer shard** — replace global `ConcurrentLinkedDeque` in `NotificationService` with `Map<UUID, ConcurrentLinkedDeque>`; per-tenant cap (100 events) + per-platform cap (OOM guard).
+- **E5. Per-tenant SSE delivery fairness** — dispatch loop round-robins over tenant queues, not FIFO. Per-tenant SSE connection limit (on `emitters` map, `NotificationService`).
+- **E6. Fair-queue dispatch in background workers** — `HmisPushService`, `WebhookDeliveryService`, `EmailService`, future notifications workers: per-tenant inner queues + round-robin dispatch. Today's HMIS push processes one tenant's backlog before another's.
+- **E7. Virtual-thread carrier-thread starvation guard** — forbidden-APIs / ArchUnit rule: no `synchronized` blocks in tenant-dispatched virtual-thread paths (pinned carrier threads can starve other tenants). `ReentrantLock` mandatory. Per `feedback_transactional_rls_scoped_value_ordering.md` + 2026 Java virtual-thread guidance.
+- **E8. Per-tenant metrics for scheduled tasks** — `ReservationExpiryService`, `ReferralTokenPurgeService`, `AccessCodeCleanupScheduler`, `HmisPushScheduler`, `SurgeExpiryService` each emit per-tenant invocation + duration counters. Detects one tenant starving the batch window.
 
-- `ApiKeyAuthenticationFilter` rate-limit buckets currently keyed per-IP only. One tenant's noisy IP (shared NAT, Tor exit) can throttle another tenant's users.
-- Shard buckets by `(tenant_id, ip)` composite key.
-- New per-tenant rate-limit configuration in `tenant_config` table.
+### F. Tenant lifecycle FSM (cross-persona consensus gap #1)
 
-### Per-tenant Hikari connection budget (Jordan)
+- **F1. `TenantState` enum on `tenant` table** — `ACTIVE`, `SUSPENDED`, `OFFBOARDING`, `ARCHIVED`, `DELETED`. FSM transitions documented + state-machine test asserting valid transitions only.
+- **F2. `TenantLifecycleService.findByIdAndActiveTenantId`** — state-aware variant used by all tenant-owned repositories. Inactive tenant returns 404 (not 403 — D3 existence-leak consistency). Replaces `findByIdAndTenantId` at service-layer boundaries; repository-layer `findByIdAndTenantId` preserved for internal use.
+- **F3. Tenant create workflow** — atomic: insert row, derive per-tenant JWT key + DEK (A1/A3), apply default config (typed per L5), bootstrap audit with `TENANT_CREATED` event, verify RLS predicates with a test query. Idempotent with rollback on partial failure.
+- **F4. Tenant suspend workflow** — atomic 5-action quarantine: (a) bump `jwt_key_generation` (A2, invalidates existing tokens), (b) disable all API keys, (c) stop worker dispatch, (d) set `state=SUSPENDED` (writes return 503, reads preserved), (e) continue audit append. Operator break-glass command.
+- **F5. Tenant offboard with JSON export** — schema'd export of all data classes (shelters, beds, users, referrals, audit events, HMIS history, config). 30-day delivery per GDPR Article 20 + EU Data Act (September 2025). Format stability contract documented.
+- **F6. Tenant hard-delete with crypto-shredding** — primary data cascade by `tenant_id`, destroy per-tenant DEK (crypto-shred — ciphertexts computationally unrecoverable even from backups), document audit-log retention resolution (HIPAA 6-year vs GDPR erasure — per H7), document PITR backup-retention window ("tenant data persists in PITR for X days post-delete; after X days, provably destroyed"). Satisfies GDPR Article 17 + EDPB Feb 2026 erasure-in-backups coordinated enforcement framework.
+- **F7. `data_residency_region` column on `tenant`** — per-tenant jurisdiction tag. Standard tier: `us-any`. Regulated tier: `us-<region>` or `silo`. Controls that depend on residency set (today: informational; enforced when any federal / EU tenant onboards).
+- **F8. Lifecycle audit events** — every state transition produces a `platform_admin_access_log` + `audit_events` row with actor, target, prior state, new state, justification string.
 
-- Default HikariCP pool is single shared. One tenant's slow query starves others.
-- Two options: (a) per-tenant sub-pool via DataSource wrapper, (b) per-tenant `statement_timeout` via `SET LOCAL` keyed on `app.tenant_id`. Option (b) is lighter-weight; decide in design.
+### G. Audit + observability isolation
 
-### SSE event buffer sharding (P class, new finding)
+- **G1. Audit-log hash-chaining per tenant** — each `audit_events` row computes `row_hash = SHA256(prev_tenant_hash || canonical_json(row))`. Per-tenant chain head stored; externally anchored weekly (S3 Object Lock or equivalent append-only store) for tamper-evidence beyond DB-layer protection. VAWA-defensible audit (H4).
+- **G2. `REVOKE UPDATE, DELETE FROM fabt_app` on audit tables** — `audit_events`, `hmis_audit_log`, `platform_admin_access_log` become INSERT-only for the application role. Tamper-evident at the DB layer.
+- **G3. `platform_admin_access_log` table** — every platform-admin read of tenant-owned data logs `(admin_user_id, tenant_id, resource, justification, timestamp)`. Annotation-driven capture on `@PlatformAdminOnly` methods. Supports VAWA "comparable database" audit requirement (H4).
+- **G4. OTel baggage tenant_id propagation** — W3C tracecontext `baggage: fabt.tenant.id=<uuid>` on every span. Resource attribute `fabt.tenant.id` for span-level filter in Jaeger / Tempo. No formal OpenTelemetry semantic convention for tenancy yet (2026); `fabt.*` namespace used as custom attribute.
+- **G5. Per-tenant Grafana alert routing** — alerts include `tenant_id` label; Alertmanager routes to `tenant.oncall_email` (new column on `tenant`). Platform on-call receives platform-wide; tenant on-call receives tenant-scoped.
+- **G6. Per-tenant metric cardinality budget** — explicit per-high-cardinality-metric budget documented (e.g., `http_server_requests_seconds` × `tenant_id` × 15 histogram buckets × N tenants). Exclude tenant tag from metrics that would exceed budget; provide per-tenant scoped queries via `$tenant` Grafana template variable (shipped in v0.40).
+- **G7. Per-tenant log retention policy** — documented per tenant class. HIPAA: 6 years. VAWA: per OVW guidance. Standard: 1 year. Implemented via Loki retention (if adopted) or external log store rules.
+- **G8. Reverse-proxy `X-Scope-OrgID` enforcement** — if Loki / Mimir adopted, nginx sets the tenant header from the JWT; never trusts client-supplied header. 2026 Grafana Loki / Mimir multi-tenant pattern.
+- **G9. Per-tenant observability read access (regulated tier)** — future: tenant admins see ONLY their own metrics/logs/traces (Grafana organizations + Loki / Mimir auth_enabled). Scoped to regulated tier; standard tier stays operator-only.
 
-- Global `NotificationService.eventBuffer` deque is shared across all tenants.
-- One tenant's high-volume events can evict another tenant's buffered events (and in the extreme, OOM the JVM).
-- Shard buffer per-tenant with per-tenant cap.
+### H. Compliance documentation
 
-### File / blob storage audit (H class)
+- **H1. Tenancy-model ADR** — `docs/architecture/tenancy-model.md`: pool-by-default + silo-on-trigger. Trigger criteria documented: (a) HIPAA BAA request, (b) VAWA-exposed DV CoC, (c) data-residency requirement, (d) procurement request. Non-scope documented explicitly: schema-per-tenant with upgrade-path note for regulated tier.
+- **H2. HIPAA BAA template + per-tenant BAA registry** — `docs/legal/baa-template.md` + `docs/legal/per-tenant-baa-registry.md`. Data-flow diagram, encryption-in-transit attestation, encryption-at-rest attestation with DEK scope, access-log retention commitment, breach-notification SLA.
+- **H3. VAWA 24-hour OVW breach reporting pipeline** — detection path (alert → classification → OVW notification draft) with `docs/security/vawa-breach-runbook.md` + pre-filled OVW notification template. Integration with G5 per-tenant alerting.
+- **H4. VAWA "Comparable Database" architecture document** — per-tenant encryption posture that prevents platform operators (Corey + contractors) from reading DV survivor PII without audited unseal. Aligns with `feedback_rls_hides_dv_data.md`'s `fabt` vs `fabt_app` role distinction. Documented as SLA to DV CoCs. Encryption-at-rest with tenant DEK (A3) is the primary control; `platform_admin_access_log` (G3) is the secondary.
+- **H5. DV-safe breach notification protocol** — survivor notification only through survivor-declared safe channels; explicit escalation procedure when safe channel unavailable. `docs/legal/dv-safe-breach-notification.md`. Email to shared household inbox is potentially lethal.
+- **H6. `breach_notification_contacts` per-tenant table** — tenant's legal, technical, and on-call recipients + acknowledgment SLA. Tabletop exercise at release validates notification flow.
+- **H7. Data-custody + retention-policy matrix** — `docs/legal/data-custody-matrix.md`: per data class (DV referral, shelter ops, analytics, audit) × per column (custodian, breach-recipient, retention-window, deletion-trigger, export-format, residency-pin). Resolves audit-log retention conflict (HIPAA 6-year vs GDPR erasure) case-by-case.
+- **H8. Contract clause template library** — per-tenant MSA / SLA addendum covering isolation mechanism, breach-SLA, retention, exit procedure, custody. Casey artifact.
+- **H9. Right-to-be-forgotten per-tenant procedure** — documented DELETE order across all tables referencing a user; cascade review verified; regression test that erasure is complete across `app_user`, `audit_events` (per H7 resolution), `one_time_access_code`, `password_reset_token`, `user_oauth2_link`, `totp_recovery`, `coordinator_assignment`, `referral_token` (historical terminal states). Integrates F6 crypto-shredding for per-user DEKs if per-user-keyed secrets ever introduced.
+- **H10. Children / FERPA carve-out** — explicit acknowledgment in `docs/legal/children-data.md`: FABT does not currently serve unaccompanied-youth CoCs directly; if added, FERPA obligations attach differently.
+- **H11. Legal-language scan extended to code comments** — `feedback_legal_scan_in_comments.md`: grep for "compliant", "equivalent", "guarantees" in any Javadoc / code comment added by this change. CI gate.
 
-- Dedicated audit of every file-write path: `ImportController` (CSV upload), `HicPitExportService` (export generation), `HmisPushService` (payload serialization), attachment paths if any.
-- Verify all paths are tenant-isolated (filename includes tenant hash, directory structure includes tenant, S3 prefix includes tenant, etc.).
-- Fix any shared-path findings; add regression tests.
+### I. Defense-in-depth hardening
 
-### Per-tenant backup + restore runbook (Jordan)
+- **I1. Timing-attack mitigation on `findByIdAndTenantId`** — either (a) constant-time 404 via fixed sleep floor + random jitter, OR (b) explicit ADR documenting UUID-is-not-secret acceptance. Decision in design.md; measured + documented either way.
+- **I2. Inbound webhook per-tenant signing verification** — HMIS inbound callback / OAuth2 callback / any inbound webhook verified via per-tenant signing secret (per-tenant DEK context per A3). Rejects requests with missing or incorrect signature.
+- **I3. Actuator authorization** — `/actuator/prometheus` → platform-admin only (metrics tagged by `tenant_id` visible only to cross-tenant operators). Other actuator endpoints unchanged per `feedback_actuator_security.md`.
+- **I4. Referral token session binding** — `referral_token` table gains `originating_session_id`; accept/reject validates session match to originator OR requires 2FA re-step. Warm-handoff safety.
+- **I5. Egress proxy per-tenant allowlist (regulated tier)** — per-tenant destination allowlist for webhook / OAuth2 / HMIS outbound. Belt-and-suspenders beyond v0.40's `SafeOutboundUrlValidator` IP checks. Standard tier continues without.
+- **I6. Delivery-time webhook re-validation** — `WebhookDeliveryService` re-runs `SafeOutboundUrlValidator.validateForDial` on every retry attempt (defeats post-creation URL swap).
 
-- Current Postgres PITR restores whole DB; cannot restore one tenant's state without touching others.
-- Document either (a) per-tenant logical backup via `pg_dump --where="tenant_id = '<uuid>'"` OR (b) schema-per-tenant alternative for regulated pilots.
-- This is primarily an operational / documentation deliverable, not code.
+### J. Testing + validation
 
-### Breach notification boundaries + data-custody documentation (Casey)
+- **J1. Per-workstream test coverage matrix** — `docs/security/test-coverage-matrix.md`: each workstream A1–L10 mapped to test file(s) + layer (unit / integration / E2E / Gatling).
+- **J2. Reflection-driven cache-bleed fixture** — parameterized over every Caffeine cache + every `TieredCacheService` call site. Test: `tenantA.write(k); tenantB.read(k)` → expect cache miss.
+- **J3. SSE replay cross-tenant test** — 2-tenant setup; both disconnect with events buffered; both reconnect with `Last-Event-ID`; assert each tenant's replay contains ZERO events from the other.
+- **J4. Per-tenant JWT key rotation test** — sign under key-gen 1, bump to 2, assert old token rejected at validate, new accepted, cross-tenant-key-confusion rejected (Tenant A token signed with Tenant A key but claiming Tenant B).
+- **J5. URL-path-sink coverage for every write-path controller** — `TenantPredicateCoverageTest`-style parameterized fixture extended to ALL controllers with path variables. Regression guard for future additions.
+- **J6. Tenant lifecycle tests** — create → provision users → suspend → 401 on all APIs → offboard → data preserved + no login → archived → reactivate blocked → delete → crypto-shred verified (DEK unrecoverable, encrypted columns now undecryptable).
+- **J7. Breach-simulation tests** — seed DV referral in Tenant A; attempt cross-tenant read via 15+ attack vectors (path parameter, query parameter, header, body, cached value, SSE replay, audit event read, webhook payload, HMIS outbox, rate-limit bucket enumeration, prometheus scrape, log grep, timing, DNS rebinding, host-header injection, cache-bleed). Every attempt fails.
+- **J8. Playwright cross-tenant cache-bleed** — login Tenant A, cache populated (DOM, Service Worker, IndexedDB); logout; login Tenant B; assert Tenant A data not visible anywhere.
+- **J9. Hospital-PWA tenant-isolation test** (Dr. Whitfield persona) — locked-down Chrome, Service Worker blocked; multi-tenant doesn't break.
+- **J10. Offline hold + tenant switch** (Darius persona) — queued offline hold, logout, login to different tenant; assert hold doesn't submit to new tenant.
+- **J11. DV canary extension to multi-tenant** — pooled-instance DV canary: Tenant A has DV shelter, Tenant B has no dvAccess; Tenant B cannot see Tenant A's DV shelter in any surface (search, audit, HMIS, cache, replay, prometheus).
+- **J12. Multi-tenant concurrent isolation at SCALE** — 20 tenants × 50 concurrent requests; zero cross-tenant leak + per-tenant p95 within SLO. Extends existing `CrossTenantIsolationTest`.
+- **J13. File-path tenant-isolation test harness** — generates a test for every file-write code path; fails CI if a new write-path doesn't include `tenant_id` in filename or path. (Current codebase has no file-write paths; this is regression infrastructure for future additions.)
+- **J14. Flyway migration rollback test** — drop each D14 tenant-RLS policy, re-add, assert identical state. Rehearsal for rollback plan.
+- **J15. ArchUnit rule negative tests** — intentional violations for every new Family C / D / E rule asserts rule fires as expected.
+- **J16. "What happens to the person in crisis if this test is missing?" comment** in every new tenant-isolation test — Riley's rule, enforced via PR review checklist.
+- **J17. Superuser-bypass CI guard** — fail if any test runs as DB owner (`fabt`). `SELECT current_user` assertion in test harness; must be `fabt_app`.
+- **J18. `NoisyNeighborSimulation` Gatling scenario** — two tenant simulations concurrent; Tenant A at 3× normal load; assert Tenant B p95 degrades ≤ 20%. Quantified SLO per-tenant.
+- **J19. Multi-tenant chaos approximation** — Gatling-approximation of AWS FIS on Oracle Always Free: hostile-load one tenant while monitoring another's SLO.
+- **J20. Pre-production external pentest** — OWASP Cloud Tenant Isolation checklist. Engaged before first pooled-tenant pilot. If external vendor not feasible (budget), self-audit against the checklist with evidence.
 
-- For each data class (DV referrals, shelter ops, analytics, audit), document: data custodian per tenant, breach-notification recipient per tenant, retention policy per tenant.
-- Required for HIPAA BAA and VAWA compliance reviews.
+### K. Breach response + incident response
+
+- **K1. Tenant-quarantine break-glass command** — atomic CLI + admin UI action: invalidate JWTs (A2), disable API keys, block inbound webhooks, freeze writes, preserve reads, audit the action (F8). E2E-tested.
+- **K2. Forensic query tooling** — pre-built SQL + Grafana panel: "given a user / token / IP / timestamp, list every row read + written across every tenant." Primary incident-response tool.
+- **K3. IR runbook per breach class** — `docs/security/ir-runbooks/`: (a) suspected cross-tenant read, (b) stolen credential, (c) vendor / infra compromise, (d) DV-specific breach (VAWA pipeline per H3).
+
+### L. Developer experience + guardrails
+
+- **L1. `TenantScoped<T>` SPI** — one type through which every per-tenant resource is acquired (signing key, DEK, Caffeine cache, rate-limit bucket, metrics tag, statement_timeout value). Replaces bespoke per-concern plumbing that would result from implementing A–G in isolation. Alex's architectural-coherence gate.
+- **L2. Tenant module boundary ArchUnit (Family F)** — no other module reads `tenant` table directly; must go through `TenantService` / `TenantLifecycleService`. Reinforces modular-monolith (`feedback_modular_monolith.md`).
+- **L3. Tenant-destructive migration review gate** — Flyway migration comment must include `@tenant-safe` or `@tenant-destructive: <justification>`. CI rejects if absent. Prevents silent cross-tenant `UPDATE`s in migrations.
+- **L4. Typed per-tenant feature flags** — `tenant_feature_flag` table (not JSON blob); strongly-typed config read via `FeatureFlagService.isEnabled(tenantId, flag)`. Canary rollout per-tenant supported.
+- **L5. Typed per-tenant config** — replace `tenant.config` JSONB with typed columns or typed sub-tables (hold duration, surge threshold, rate-limit overrides, webhook allowlist, statement_timeout, `work_mem`, key rotation cadence, `api_key_auth_enabled`, `default_locale`, `oncall_email`, `data_residency_region`).
+- **L6. Per-tenant canary deployment** — feature-flag-gated new-code paths per tenant; one tenant can run "next" while others stay on "current."
+- **L7. Stage environment with 3 synthetic tenants** — `stage.findabed.org` runs pooled 3-tenant setup. Demo (`findabed.org`) stays single-tenant. Any pool-readiness test runs against stage.
+- **L8. Per-tenant DR drill** — quarterly: "Tenant X corrupted; restore just X." Scripted; verification checklist in `docs/runbook.md`.
+- **L9. Cost allocation per tenant** — DB storage (per-tenant partition size after B8), CPU via OTel per-tenant baggage (G4), webhook outbound bytes. Quarterly attribution report.
+- **L10. Rotation runbooks** — per-tenant DEK rotation, per-tenant JWT key rotation, master KEK rotation — all with documented RTO and zero-downtime procedure.
+
+### M. Demo-site multi-tenant validation (change-closure gate)
+
+This theme is the **public proof-of-life** for the rest of the change. Without it, multi-tenant production-readiness is a design document; with it, any procurement review, pilot prospect, or security auditor can confirm isolation by pointing a browser at `findabed.org` and logging in as either tenant.
+
+- **M1. Permanent second tenant in seed data** — "Asheville CoC (demo)" added to `infra/scripts/seed-data.sql`. Tenant slug: `asheville-coc`. UUID pinned (e.g., `a0000000-0000-0000-0000-000000000002`). Full seed matrix mirrors the existing `dev-coc` scope: 6 role users (PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH), 3–5 shelters (at least one DV shelter so the DV-access cross-tenant boundary is exercisable), sample bed availability, 1 sample pending DV referral. Idempotent `INSERT ... ON CONFLICT DO UPDATE` pattern; safe to re-run. Credential convention: `admin@asheville.fabt.org` / `admin123` (mirrors dev-coc password for demo-visitor convenience).
+- **M2. Branding clarity — "Asheville (demo)" throughout the UI** — per Casey: `Asheville` is a real city with an existing City of Asheville relationship (Sarah Dickerson). To avoid any visitor mistaking the demo tenant for a real Asheville-Buncombe CoC deployment, the displayed tenant name is `Asheville CoC (demo)` in login UI, landing page, admin panel header, page title, and all training materials. Seed data uses demonstrably-fictional shelter names (e.g., "Example House North", "Example Family Center"), fictional addresses (obviously non-geocodable patterns), and persona-derived fake contact names.
+- **M3. Visible tenant indicator in UI** — Layout component (header or footer) shows current tenant name + subtle accent color differentiator. `<title>` element carries tenant name. Tenant switch between dev-coc and asheville-coc sessions produces obviously-different UI state (not just route, but visual identity). Accessibility: tenant name announced on page-load per WCAG 2.4.2.
+- **M4. Educational cross-tenant UX messaging** — when a demo visitor attempts cross-tenant access (URL manipulation, bookmark paste, copy-paste from another admin's UI), the 404 response body carries an educational message: *"This resource belongs to a different tenant. FABT's multi-tenant isolation prevents cross-tenant data access — this is the system working as designed."* This converts a silent 404 into a pool-readiness proof-point for the procurement audience. Guarded by an internal feature flag so the educational message can be toggled off if it ever becomes an information disclosure concern (it is not today — D3 prevents existence leak, the message does not reveal the other tenant's state).
+- **M5. Post-deploy smoke covers BOTH tenants** — cross-tenant Playwright + Karate smoke runs against dev-coc AND asheville-coc: login to each, attempt cross-tenant URL, expect 404 with educational envelope. Regression guard against "live multi-tenant deployment develops cross-tenant leak."
+- **M6. Multi-tenant demo walkthrough** — new doc `docs/training/multi-tenant-demo-walkthrough.md`: 3-minute scripted visitor walkthrough ("log in as dev-coc, observe shelters; log out; log in as asheville-coc, observe different shelters + different DV posture; attempt cross-tenant URL, observe educational 404"). Screenshot bundle folded into the `#120` pilot-readiness bundle. Linked from findabed.org landing page and FOR-COORDINATORS / FOR-COC-ADMINS audience docs.
+- **M7. Live-validation probe as Grafana panel (operator-facing)** — new panel on `fabt-cross-tenant-security` dashboard: "Tenant-pair last validation timestamp" — updates when the post-deploy smoke from M5 runs, so operator sees at a glance whether live multi-tenant isolation was validated in the last 24 hours. Green/yellow/red indicator.
+- **M8. Seed migration safety gate** — the Flyway migration (V75 or next available) that creates the Asheville tenant is reviewed pre-merge by Casey (real-city-name confirmation) + Marcus (no real-PII patterns) + Maria (procurement-audience language). Deploy sequence: migration lands in prod → seed populates → M5 post-deploy smoke green → only then does `opsx:archive` gate close.
+- **M9. Noisy-neighbor live validation** — `NoisyNeighborSimulation` (J18) gains an "against-live-demo" variant that can be operator-triggered: hostile-load asheville-coc while monitoring dev-coc p99. Proves per-tenant performance isolation on the actual production path, not just the test bench.
+- **M10. Tenant quarantine live drill** — `K1` tenant-quarantine break-glass is demonstrable on asheville-coc: operator quarantines asheville-coc, shows asheville-coc logins fail with 503, un-quarantines, shows login restored. Quarterly operator drill.
+- **M11. Offboard live drill** — once F5 export + F6 crypto-shred ship, an operator-run drill offboards asheville-coc (exports data, destroys DEK, re-seeds fresh). Proves end-to-end tenant lifecycle works on production. Quarterly.
 
 ## Capabilities
 
-### New Capabilities
+### New capabilities
 
-- `per-tenant-key-derivation`: covers HKDF JWT + encryption DEK derivation, kid handling, rotation procedure
-- `tenant-scoped-cache`: covers `TenantScopedCacheService`, caching conventions, ArchUnit guard
-- `tenant-rls-regulated-tables`: covers the narrow D14 carve-out (audit_events, hmis_audit_log)
-- `per-tenant-operational-boundaries`: rate limit, pool budget, SSE buffer shard, backup/restore
+- **`per-tenant-key-derivation`** — HKDF JWT + DEK derivation, opaque kid mapping, revocation semantics, rotation procedure, re-encryption migration (A1–A7, L10).
+- **`tenant-scoped-cache`** — `TenantScopedCacheService`, ArchUnit Family C, every Caffeine instance covered, Redis posture ADR, cache-bleed reflection test (C1–C6).
+- **`tenant-rls-regulated-tables`** — D14 carve-out + LEAKPROOF function + `FORCE ROW LEVEL SECURITY` + `pg_policies` snapshot + SECURITY DEFINER governance + pgaudit + partitioning + per-role statement_timeout (B2–B13).
+- **`tenant-lifecycle`** — TenantState FSM, state-aware repositories, create/suspend/offboard/hard-delete workflows, crypto-shredding, GDPR Article 17 + EDPB Feb 2026 erasure-in-backups, GDPR Article 20 + EU Data Act Sept 2025 portability, data residency tagging (F1–F8).
+- **`per-tenant-operational-boundaries`** — rate limit, Hikari budget via `statement_timeout`, SSE buffer shard + delivery fairness + connection cap, background-worker fair queuing, virtual-thread pinning guard, scheduled-task per-tenant metrics (E1–E8).
+- **`audit-log-tamper-evidence`** — per-tenant hash-chain + external anchor + DB-layer REVOKE + `platform_admin_access_log` (G1–G3).
+- **`per-tenant-observability-isolation`** — OTel baggage, alert routing, cardinality budget, retention per tenant class, reverse-proxy tenant-header enforcement, regulated-tier per-tenant read access (G4–G9).
+- **`tenancy-compliance-posture`** — tenancy-model ADR, HIPAA BAA, VAWA 24-hr pipeline + Comparable Database, DV-safe notification, data-custody matrix, right-to-be-forgotten, children/FERPA carve-out, legal-scan in comments (H1–H11).
+- **`tenant-defense-in-depth`** — timing-attack mitigation, inbound webhook signing, actuator authorization, session binding, egress allowlist, delivery-time re-validation (I1–I6).
+- **`tenant-breach-response`** — quarantine break-glass, forensic queries, IR runbooks per breach class (K1–K3).
+- **`tenant-developer-guardrails`** — `TenantScoped<T>` SPI, module boundary ArchUnit, migration gate, typed feature flags, typed config, per-tenant canary, stage environment, DR drill, cost allocation, rotation runbooks (L1–L10).
+- **`multi-tenant-demo-seed`** — permanent second tenant ("Asheville CoC (demo)") on `findabed.org` with full user/shelter/referral matrix, visible tenant indicator in UI, educational cross-tenant 404 envelope, post-deploy smoke against both tenants, multi-tenant walkthrough doc + screenshot bundle, operator-facing validation-timestamp Grafana panel, noisy-neighbor / quarantine / offboard live operator drills (M1–M11). **Change-closure gate: proposal does not archive until live demo serves both tenants AND a cross-tenant probe from a public browser against findabed.org returns an educational 404.**
 
-### Modified Capabilities
+### Modified capabilities
 
-- `multi-tenancy` — adds per-tenant key, per-tenant budgets, breach-notification scope requirements
-- `rls-enforcement` — adds tenant-RLS on regulated tables (D14)
-- `cross-tenant-isolation-test` — adds test coverage for cache bleed, file-path isolation, per-tenant rate limit
+- **`multi-tenancy`** — adds tenant-lifecycle FSM, per-tenant-state-aware repositories, per-tenant-keyed surfaces, per-tenant observability, breach-notification scope requirements.
+- **`rls-enforcement`** — adds tenant-RLS on regulated tables (D14), LEAKPROOF function wrapping, `FORCE ROW LEVEL SECURITY`, pgaudit, per-role `statement_timeout`, SECURITY DEFINER governance, `pg_policies` snapshot.
+- **`cross-tenant-isolation-test`** — adds cache-bleed reflection fixture, SSE replay cross-tenant, JWT rotation, tenant-lifecycle tests, breach simulation (15+ vectors), noisy-neighbor Gatling, superuser-bypass CI guard, URL-path-sink coverage for every write controller, Playwright cross-tenant cache-bleed, multi-tenant concurrent-at-scale.
+- **`observability`** — adds OTel baggage with `fabt.tenant.id`, per-tenant Grafana alert routing, per-tenant metric cardinality budget, per-tenant log retention, reverse-proxy `X-Scope-OrgID` enforcement (when Loki/Mimir adopted).
 
 ## Impact
 
-- **Affected code paths:** JwtService, SecretEncryptionService, TieredCacheService, RlsDataSourceConfig, ApiKeyAuthenticationFilter, NotificationService, TenantController, TenantConfigController, OAuth2ProviderController, import/export services, operational runbook.
-- **Breaking changes:** existing JWTs invalidated on first deploy (per-tenant key rotation). Requires coordinated re-login window for pilots. SSE reconnect on deploy (already required today).
-- **Migrations:** new tenant-RLS policies on `audit_events` and `hmis_audit_log`. New `tenant_rate_limit_config` table if per-tenant rate limit config is selected.
-- **Deploy footprint:** coordinated: logout-and-reissue banner for pilots; ~2-week calendar for engineering + 1-2 weeks rollout.
-- **Effort:** ~30-40 engineering days + 10-15 testing days = 8-10 weeks calendar with 1-2 engineers.
-- **Prerequisite:** `cross-tenant-isolation-audit` must be merged and deployed first. This change extends that audit's infrastructure (especially `app.tenant_id` session variable from Phase 4.8, `@TenantUnscoped` from Phase 1, `SafeOutboundUrlValidator` from Phase 2.14).
-- **Non-scope:** schema-per-tenant or DB-per-tenant architectural change. That would be a separate proposal; this change stays with the discriminator-column + RLS hybrid that FABT uses today.
+### Affected code paths
+
+`JwtService`, `SecretEncryptionService`, `TieredCacheService` (new wrapper + ArchUnit coverage), `RlsDataSourceConfig`, `ApiKeyAuthenticationFilter`, `NotificationService`, `TenantService` + new `TenantLifecycleService`, `TenantController`, `TenantConfigController`, `OAuth2ProviderController`, `TenantOAuth2ProviderService`, `HmisVendorConfig` + `HmisConfigService`, `HmisPushService`, `WebhookDeliveryService`, `EscalationPolicyService`, `ReservationExpiryService`, `ReferralTokenPurgeService`, `AccessCodeCleanupScheduler`, `SurgeExpiryService`, `HmisPushScheduler`, `GlobalExceptionHandler` (educational cross-tenant 404 envelope from M4), `frontend/src/components/Layout.tsx` (tenant indicator from M3), `logback-spring.xml`, `infra/docker/nginx.conf`, `infra/scripts/seed-data.sql` (Asheville tenant seed from M1), `prometheus.yml`, Grafana dashboards (per-tenant alert labels + M7 tenant-pair validation panel), `e2e/playwright/deploy/` post-deploy smoke specs (M5 both-tenant coverage), `docs/training/multi-tenant-demo-walkthrough.md` (M6), `docs/runbook.md`, `docs/security/*`, `docs/legal/*`, `docs/architecture/tenancy-model.md`, operational runbooks.
+
+### Breaking changes
+
+- **JWT invalidation on first deploy** — existing access tokens (15 min) + refresh tokens (7 days) invalidated when per-tenant keys activate. Coordinated logout banner + re-login window for pilots.
+- **Ciphertext re-encryption migration** (A6) — TOTP secrets + webhook callback secrets re-wrapped under per-tenant DEKs. Dual-key-accept grace window (old + new) for zero-downtime rollout over ~1 week.
+- **OAuth2 + HMIS credential encryption** (A4) — fields currently stored plaintext become encrypted; migration re-encrypts existing rows in-place on first deploy. No downtime.
+- **`audit_events` + `hmis_audit_log` + `platform_admin_access_log` INSERT-only for `fabt_app`** (G2) — any code path that does `UPDATE audit_events ...` fails. No such code exists today (verified); rule protects future.
+- **Tenant state-aware repository pattern** (F2) — every tenant-owned repository's `findByIdAndTenantId` becomes `findByIdAndActiveTenantId` at the service-layer boundary (404 on SUSPENDED / OFFBOARDING / ARCHIVED / DELETED). Same 404 as "doesn't exist" — consistent with D3 existence-leak-prevention.
+- **`X-Scope-OrgID` / `X-Tenant-Id` client headers rewritten by nginx** (D3) — any client currently setting these headers will see them replaced. No legitimate caller does this today.
+- **JWT `kid` format change to opaque UUID** (A1) — clients that inspect `kid` for debugging will see the new format. Tokens themselves still opaque to legitimate clients.
+
+### Migrations (Flyway V59–V75 range; exact numbering TBD in design.md)
+
+- **V59 — tenant table additions**: `state` (TenantState enum), `jwt_key_generation` (int), `data_residency_region` (varchar), `oncall_email` (varchar).
+- **V60 — `jwt_revocations`** table (kid, expires_at; daily-pruned).
+- **V61 — `tenant_rate_limit_config`** table (per-tenant per-endpoint overrides + statement_timeout_ms + work_mem).
+- **V62 — `tenant_feature_flag`** table (replaces JSON feature flags).
+- **V63 — `breach_notification_contacts`** per-tenant table.
+- **V64 — `platform_admin_access_log`** table.
+- **V65 — `audit_events` hash-chain columns** (`prev_hash`, `row_hash`).
+- **V66 — D14 tenant-RLS policies** on `audit_events`, `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox`.
+- **V67 — `fabt_current_tenant_id()` LEAKPROOF function** wrapping `current_setting('app.tenant_id', true)`.
+- **V68 — `FORCE ROW LEVEL SECURITY`** on every regulated table.
+- **V69 — `CREATE INDEX (tenant_id, ...)`** on every RLS-protected table (per B4).
+- **V70 — Partition `audit_events` + `hmis_audit_log`** by `tenant_id` (list partitioning).
+- **V71 — `REVOKE UPDATE, DELETE`** on audit tables from `fabt_app`.
+- **V72 — pgaudit extension enable** (or documented manual step if extension install is out-of-band on Oracle Always Free).
+- **V73 — Re-encrypt TOTP + webhook secrets** under per-tenant DEKs (A6 data migration).
+- **V74 — Re-encrypt OAuth2 + HMIS credentials** (A4 latent fix; done in first PR of the change, before the rest of the migration chain).
+- **V75 — Asheville CoC (demo) tenant seed** (M1) — idempotent `INSERT ... ON CONFLICT DO UPDATE` for tenant row + 6 users + 3–5 shelters (at least one DV) + sample availability + 1 sample pending DV referral. UUID pinned at `a0000000-0000-0000-0000-000000000002`. Seed reviewed pre-merge by Casey / Marcus / Maria per M8.
+
+### Deploy footprint
+
+- **Coordinated re-login window** — pilots receive notice; existing JWTs invalidated at cutover.
+- **Postgres minor-version upgrade** to ≥ 16.5 (CVE-2024-10976) — independent pre-cutover step.
+- **Stage environment spin-up** — `stage.findabed.org` with 3 synthetic tenants. One-time infrastructure addition.
+- **Effort estimate — ~13–19 weeks calendar with 1–2 engineers**:
+  - A. Cryptographic isolation: ~2 weeks
+  - B. DB-layer hardening: ~2 weeks
+  - C. Cache isolation: ~1 week
+  - D. Control-plane hardening: ~1 week
+  - E. Operational boundaries: ~2 weeks
+  - F. Tenant lifecycle FSM: ~2 weeks
+  - G. Observability isolation: ~1 week
+  - H. Compliance documentation: ~2 weeks (with Casey review loops)
+  - I. Defense-in-depth: ~1 week
+  - J. Testing + validation: ~2 weeks
+  - K. Breach response: ~1 week
+  - L. Developer guardrails: ~1–2 weeks
+  - M. Demo-site multi-tenant validation: ~1 week (seed data + UI indicator + post-deploy smoke + walkthrough doc)
+  - Sum raw: ~19 weeks; ~13–17 with parallelism + compression.
+
+### Prerequisite
+
+`cross-tenant-isolation-audit` (Issue #117) must be merged and deployed. Shipped as v0.40.0 on 2026-04-16. This change extends that audit's infrastructure (`app.tenant_id` session variable from Phase 4.8, `@TenantUnscoped` from Phase 1, `SafeOutboundUrlValidator` from Phase 2.14, ArchUnit Family A+B rules, `TenantPredicateCoverageTest`).
+
+### Non-scope
+
+- **Schema-per-tenant or DB-per-tenant architectural shift** — explicit ADR (H1) documents pool-by-default + silo-on-request for the regulated tier. Schema-per-tenant would be a separate proposal if it becomes necessary. Current discriminator + RLS hybrid is the architecture this change hardens.
+- **Per-tenant dedicated cloud instances** — addressed by the silo tier via separate deploy, not by this change.
+- **Continuous CTEM (Strobes / Pentera / XM Cyber) subscription** — J20 pre-production pentest engagement is scoped; continuous paid CTEM tools are nice-to-have.
+- **Bug bounty program** — nice-to-have; not in this change.
+- **SOC 2 Type II audit engagement** — formal Type II audit requires 3–12 months observation period; scoped as a post-pilot year-1 initiative, not in this change. Control-level groundwork (documented audit trail, tenant-scoped access logs, segregation of duties) is in this change.
 
 ## Status
 
-**STUB — scoping in progress.** Filed 2026-04-15 as the companion deferred-items tracker for `cross-tenant-isolation-audit`. Full proposal / design / specs / tasks artifacts will be authored once that audit is merged. This stub exists so the deferred items do not get lost.
+**SCOPED — ready for `/opsx:ff` to generate `design.md` + `specs/` + `tasks.md`.** Previous STUB (10 workstreams, 7869 chars) superseded by this expanded proposal (**13 themes A–M, ~90 sub-items**). Scope finalized 2026-04-16 via three-agent research consolidation: SME persona-lens review (Marcus + Alex + Elena + Casey + Jordan + Sam + Riley), codebase reality-check (16-point audit), 2026 industry web research (SaaS isolation best practices, Postgres RLS guidance, envelope encryption patterns, tenant lifecycle, SOC 2 / HIPAA / VAWA compliance). Theme M (demo-site multi-tenant validation) added 2026-04-16 via warroom review per user request as the change-closure gate — the live demo on `findabed.org` must serve two pooled tenants with live cross-tenant probe returning educational 404 before `/opsx:archive` closes. See `docs/architecture/tenancy-model.md` (H1) for the tenancy-model decision record produced as the first artifact of the change.
