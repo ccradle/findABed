@@ -13,10 +13,10 @@
 
 ## 2. Phase A — Per-tenant JWT + DEK derivation (2 weeks)
 
-- [ ] 2.1 Flyway V60 — `tenant` table additions: `state TenantState NOT NULL DEFAULT 'ACTIVE'`, `jwt_key_generation INT NOT NULL DEFAULT 1`, `data_residency_region VARCHAR(50) NOT NULL DEFAULT 'us-any'`, `oncall_email VARCHAR(255)`
-- [ ] 2.2 Create `tenant_key_material(tenant_id, generation, created_at, rotated_at, active)` table (Flyway addition)
-- [ ] 2.3 Create `kid_to_tenant_key(kid UUID PRIMARY KEY, tenant_id UUID NOT NULL REFERENCES tenant(id), generation INT NOT NULL, created_at TIMESTAMPTZ NOT NULL)` table
-- [ ] 2.4 Create `jwt_revocations(kid UUID PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)` table + daily pruning scheduled task
+- [x] 2.1 Flyway V60 — `tenant` table additions: `state TenantState NOT NULL DEFAULT 'ACTIVE'`, `jwt_key_generation INT NOT NULL DEFAULT 1`, `data_residency_region VARCHAR(50) NOT NULL DEFAULT 'us-any'`, `oncall_email VARCHAR(255)`
+- [x] 2.2 Create `tenant_key_material(tenant_id, generation, created_at, rotated_at, active)` table (Flyway addition) — bundled into V61
+- [x] 2.3 Create `kid_to_tenant_key(kid UUID PRIMARY KEY, tenant_id UUID NOT NULL REFERENCES tenant(id), generation INT NOT NULL, created_at TIMESTAMPTZ NOT NULL)` table — bundled into V61
+- [ ] 2.4 Create `jwt_revocations(kid UUID PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)` table + daily pruning scheduled task — table done (V61); daily pruning task ships with KeyDerivationService in Checkpoint A2
 - [ ] 2.5 Implement `KeyDerivationService` — HKDF-SHA256 with context `"fabt:v1:<tenant-uuid>:<purpose>"` (per D2)
 - [ ] 2.6 Refactor `SecretEncryptionService` to delegate to per-tenant DEK via `KeyDerivationService.forTenant(tenantId).derive("totp" | "webhook-secret" | "oauth2-client-secret" | "hmis-api-key")`
 - [ ] 2.7 Add `kid` prefix to ciphertext format: `base64(kid) || base64(iv || ciphertext || tag)`; update encrypt/decrypt; add backward-compat path for pre-migration ciphertexts (no prefix → single platform key fallback)
