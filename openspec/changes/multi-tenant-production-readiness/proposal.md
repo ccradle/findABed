@@ -230,25 +230,55 @@ This theme is the **public proof-of-life** for the rest of the change. Without i
 - **`X-Scope-OrgID` / `X-Tenant-Id` client headers rewritten by nginx** (D3) — any client currently setting these headers will see them replaced. No legitimate caller does this today.
 - **JWT `kid` format change to opaque UUID** (A1) — clients that inspect `kid` for debugging will see the new format. Tokens themselves still opaque to legitimate clients.
 
-### Migrations (Flyway V59–V75 range; exact numbering TBD in design.md)
+### Migrations (Flyway V59–V76 range)
 
-- **V59 — tenant table additions**: `state` (TenantState enum), `jwt_key_generation` (int), `data_residency_region` (varchar), `oncall_email` (varchar).
-- **V60 — `jwt_revocations`** table (kid, expires_at; daily-pruned).
-- **V61 — `tenant_rate_limit_config`** table (per-tenant per-endpoint overrides + statement_timeout_ms + work_mem).
-- **V62 — `tenant_feature_flag`** table (replaces JSON feature flags).
-- **V63 — `breach_notification_contacts`** per-tenant table.
-- **V64 — `platform_admin_access_log`** table.
-- **V65 — `audit_events` hash-chain columns** (`prev_hash`, `row_hash`).
-- **V66 — D14 tenant-RLS policies** on `audit_events`, `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox`.
-- **V67 — `fabt_current_tenant_id()` LEAKPROOF function** wrapping `current_setting('app.tenant_id', true)`.
-- **V68 — `FORCE ROW LEVEL SECURITY`** on every regulated table.
-- **V69 — `CREATE INDEX (tenant_id, ...)`** on every RLS-protected table (per B4).
-- **V70 — Partition `audit_events` + `hmis_audit_log`** by `tenant_id` (list partitioning).
-- **V71 — `REVOKE UPDATE, DELETE`** on audit tables from `fabt_app`.
-- **V72 — pgaudit extension enable** (or documented manual step if extension install is out-of-band on Oracle Always Free).
-- **V73 — Re-encrypt TOTP + webhook secrets** under per-tenant DEKs (A6 data migration).
-- **V74 — Re-encrypt OAuth2 + HMIS credentials** (A4 latent fix; done in first PR of the change, before the rest of the migration chain).
-- **V75 — Asheville CoC (demo) tenant seed** (M1) — idempotent `INSERT ... ON CONFLICT DO UPDATE` for tenant row + 6 users + 3–5 shelters (at least one DV) + sample availability + 1 sample pending DV referral. UUID pinned at `a0000000-0000-0000-0000-000000000002`. Seed reviewed pre-merge by Casey / Marcus / Maria per M8.
+> Numbering finalized 2026-04-17 to ensure Phase 0 ships before Phase A in
+> Flyway-version order (Phase 0 = V59; Phase A starts at V60). See `design.md`
+> §"Ciphertext re-encryption migration window" for the V59 / V74 split rationale.
+
+- **V59 — Re-encrypt OAuth2 + HMIS credentials** (A4 latent fix; first PR of the change, before the rest of the migration chain). Idempotent Java migration using single-platform `SecretEncryptionService` AES-GCM. Writes one `SYSTEM_MIGRATION_V59_REENCRYPT` row to `audit_events` inside the migration transaction.
+- **V60 — tenant table additions**: `state` (TenantState enum), `jwt_key_generation` (int), `data_residency_region` (varchar), `oncall_email` (varchar).
+- **V61 — `jwt_revocations`** table (kid, expires_at; daily-pruned).
+- **V62 — `tenant_rate_limit_config`** table (per-tenant per-endpoint overrides + statement_timeout_ms + work_mem).
+- **V63 — `tenant_feature_flag`** table (replaces JSON feature flags).
+- **V64 — `breach_notification_contacts`** per-tenant table.
+- **V65 — `platform_admin_access_log`** table.
+- **V66 — `audit_events` hash-chain columns** (`prev_hash`, `row_hash`).
+- **V67 — D14 tenant-RLS policies** on `audit_events`, `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox`.
+- **V68 — `fabt_current_tenant_id()` LEAKPROOF function** wrapping `current_setting('app.tenant_id', true)`.
+- **V69 — `FORCE ROW LEVEL SECURITY`** on every regulated table.
+- **V70 — `CREATE INDEX (tenant_id, ...)`** on every RLS-protected table (per B4).
+- **V71 — Partition `audit_events` + `hmis_audit_log`** by `tenant_id` (list partitioning).
+- **V72 — `REVOKE UPDATE, DELETE`** on audit tables from `fabt_app`.
+- **V73 — pgaudit extension enable** (or documented manual step if extension install is out-of-band on Oracle Always Free).
+- **V74 — Re-encrypt TOTP + webhook secrets** under per-tenant DEKs (A6 data migration); the V59 ciphertexts (single-platform key) are unwrapped and re-wrapped under per-tenant DEKs in the same pass. Dual-key-accept grace window for ~1 week post-migration.
+- **V76 — Asheville CoC (demo) tenant seed** (M1) — idempotent `INSERT ... ON CONFLICT DO UPDATE` for tenant row + 6 users + 3–5 shelters (at least one DV) + sample availability + 1 sample pending DV referral. UUID pinned at `a0000000-0000-0000-0000-000000000002`. Seed reviewed pre-merge by Casey / Marcus / Maria per M8. (V75 left unused as a breathing-room slot.)
+
+### Rollback procedures (per-phase)
+
+Every phase ships behind a feature flag where possible (L4 typed-flag table)
+and with an explicit rollback path documented in its `oracle-update-notes-vX.Y.Z.md`.
+
+- **Phase 0 (V59 + encryption wiring)** — pre-deploy backup of `tenant_oauth2_provider`
+  + `tenant.config` JSONB (pg_dump); rollback path is restore-from-backup +
+  delete the V59 row from `flyway_schema_history` + roll JAR back to v0.40.0.
+  V59 is idempotent; partial-failure-during-batch is recoverable by re-running
+  the migration on the next start.
+- **Phase A (per-tenant DEK + JWT)** — coordinated 7-day re-login window means
+  rollback within that window invalidates pilots' new tokens; mitigation is the
+  dual-key-accept grace (old single-platform + new per-tenant DEK) for the
+  re-encrypt migration so JWT validation tries both keys before failing.
+- **Phase B (RLS + FORCE RLS)** — every D14 policy has a `DROP POLICY` rollback
+  in its companion migration; the `FORCE ROW LEVEL SECURITY` step is reversible
+  via `ALTER TABLE ... NO FORCE ROW LEVEL SECURITY`. Tested in J14 Flyway rollback
+  test before each Phase B PR.
+- **Phase F (tenant FSM + crypto-shred)** — hard-delete is irreversible by
+  design; the 30-day archival state (F1) provides the rollback window before
+  the destructive step. Operators confirm via break-glass command, audit event
+  trails the decision.
+- **All phases** — every PR carries an `oracle-update-notes-vX.Y.Z.md` with the
+  per-deploy rollback procedure. Generic per-phase rollback rules above are the
+  defaults; phase-specific risks override them.
 
 ### Deploy footprint
 
