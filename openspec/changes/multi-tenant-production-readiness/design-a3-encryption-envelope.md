@@ -1,7 +1,9 @@
-# Phase A Checkpoint A3 — Encryption refactor design (DRAFT for warroom)
+# Phase A Checkpoint A3 — Encryption refactor design (APPROVED)
 
-**Status:** DRAFT — pre-implementation. Warroom review precedes code in
-`feature/multi-tenant-production-readiness-phase-a` Checkpoint A3.
+**Status:** APPROVED post-warroom 2026-04-17. 8 personas weighed in;
+all 6 open questions resolved unanimously; 5 enhancements (E1–E5) folded
+into the decisions + implementation plan below. Casey + Marcus formal
+review of the eventual A3 PR will reference this doc.
 
 **Scope:** tasks 2.6, 2.7. Refactors `SecretEncryptionService` to delegate
 per-tenant encryption to `KeyDerivationService` (Checkpoint A2) while
@@ -34,17 +36,35 @@ public class MasterKekProvider {
         // Single owner of the prod-fail-fast / non-prod-DEV_KEY-fallback
         // / wrong-length / dev-key-prod-rejection validation logic
     }
-    public byte[] getMasterKekBytes() { return keyBytes.clone(); }
+    /** Public — safe to surface a SecretKey for AES init; bytes never escape. */
     public SecretKey getPlatformKey() {
         return new SecretKeySpec(keyBytes, "AES");
     }
+    /**
+     * Package-private (E1) — only KeyDerivationService in the same
+     * org.fabt.shared.security package may call this. ArchUnit Family A
+     * rule prevents extra-package callers from accidentally serializing
+     * the master KEK to a log or response body.
+     */
+    byte[] getMasterKekBytes() { return keyBytes.clone(); }
 }
 ```
 
 `SecretEncryptionService` and `KeyDerivationService` both depend on
 `MasterKekProvider`. Validation lives in one place; both services consume it
 via well-typed accessors (`getPlatformKey()` for v0 / Phase-0 backward
-compat, `getMasterKekBytes()` for HKDF derivation).
+compat — public; `getMasterKekBytes()` for HKDF derivation — package-private).
+
+**E1 (warroom):** add `MasterKekProviderArchitectureTest` to ArchUnit
+Family A:
+
+```
+classes that reside outside org.fabt.shared.security
+should not call MasterKekProvider.getMasterKekBytes
+```
+
+Closes the "accidental serializer leaks raw KEK" foot-gun. Memory-hygiene
+zeroization deferred to regulated tier per design D3.
 
 **Risk surface:** the constructor change to `SecretEncryptionService` is
 visible to Phase 0's pre-existing test `SecretEncryptionServiceConstructorTest`.
@@ -123,9 +143,18 @@ Mitigations:
 - Use `INSERT ... ON CONFLICT (tenant_id, generation) DO NOTHING RETURNING kid` semantics; on conflict re-SELECT to get the winning kid.
 - Cache the `(tenant_id, generation) → kid` lookup with Caffeine to amortize.
 
-**V61 schema amendment needed:** add the unique index above. This is a
-small migration update — cleanest as a V61 in-place edit (still in the
-same Phase A branch, not yet merged).
+**V61 schema amendment needed:** add the unique index above. **E2 + E5
+(warroom):**
+
+- E2: `KidRegistryService` uses raw `JdbcTemplate` for the
+  INSERT-or-SELECT flow (Elena anti-Spring-Data-magic). Explicit SQL is
+  reviewable; Spring Data JDBC's repository abstractions don't
+  cleanly express the `INSERT ... ON CONFLICT (tenant_id, generation)
+  DO NOTHING RETURNING kid` pattern.
+- E5: V61 in-place edit means any developer who already ran their local
+  stack against the old V61 schema must `./dev-start.sh --fresh` after
+  pulling. The commit message that lands E5 must call this out. CI is
+  unaffected (Testcontainers spins fresh DB per run).
 
 ### D21 — Backward-compat decrypt: v0 detected by magic-bytes-absence
 
@@ -205,39 +234,30 @@ skipped due to a transient lock).
 | TOTP verify fails during V74 migration window | Dual-key-accept grace per design.md:147; verify tries old then new | Documented |
 | Forensic operator can't see purpose from raw bytes | Column name IS the purpose discriminator | Acceptable per D19 |
 
-## Open questions for warroom
+## Resolved questions (warroom 2026-04-17)
 
-1. **Magic bytes length.** "FABT" (4 bytes, ~1/4B collision) or "FABTv1" (6
-   bytes, ~1/300T collision)? My lean: 4 bytes — the version byte right
-   after gives effectively 5 bytes of discriminator (1 in 1T). Casey/Marcus check.
-
-2. **`kid_to_tenant_key` schema amendment in V61.** Need to add
-   `UNIQUE (tenant_id, generation)`. Should we revise V61 in place
-   (still on the feature branch, not yet shipped to any persistent DB
-   per `feedback_flyway_immutable_after_apply.md` exemption window) or
-   add a separate V61.1-style follow-up? My lean: in-place edit
-   to V61.
-
-3. **Should the encrypt path eagerly register all 5 purposes' kids on
-   tenant create**, or stay lazy? Lazy = simpler, eager = guarantees a
-   kid exists by the time the first encrypt happens (avoids the
-   first-encrypt race condition entirely). My lean: lazy + ON CONFLICT
-   handling — D20 already covers it.
-
-4. **Does the cross-tenant check in D21 throw a custom exception or reuse
-   `IllegalStateException`?** Custom is more grep-able for incident
-   response. My lean: new `CrossTenantCiphertextException` extending
-   `RuntimeException`, mapped to 403 by `GlobalExceptionHandler`.
-
-5. **Audit event for cross-tenant decrypt attempt** — what action name?
-   `CROSS_TENANT_CIPHERTEXT_REJECTED`? Same category as JWT 2.10's
-   `CROSS_TENANT_JWT_REJECTED`? My lean: yes — keep them parallel.
-
-6. **MasterKekProvider's `getMasterKekBytes()` returns a defensive
-   `clone()` per call.** Cheap (32 bytes). Memory-hygiene concern:
-   the cloned array lives in heap until GC. For Phase A's standard tier,
-   acceptable. The kernel-keyring + zeroize-on-finalize discipline is
-   regulated-tier territory (design D3). My lean: ship as-designed.
+1. **Magic bytes length:** **4 bytes "FABT"**. Unanimous. The 1-byte version
+   field after gives ~5 bytes of effective discrimination (1 in 1T
+   collision). Cost-vs-precision doesn't justify 6.
+2. **V61 schema amendment:** **in-place edit**. Unanimous. Migration on
+   feature branch only ever applied to ephemeral Testcontainers DBs — see E5.
+3. **Lazy vs eager kid registration:** **lazy** + UNIQUE
+   `(tenant_id, generation)` index + `ON CONFLICT DO NOTHING`.
+   Unanimous. Eager would couple to `TenantLifecycleService.create()` —
+   premature Phase F coupling.
+4. **Custom exception:** **new `CrossTenantCiphertextException extends
+   RuntimeException`**, mapped to 403 + D3 envelope by
+   `GlobalExceptionHandler`. Unanimous (Casey + Maria value the named
+   threat for incident-narrative writing).
+5. **Audit event name:** **`CROSS_TENANT_CIPHERTEXT_REJECTED`** —
+   parallel to task 2.10's eventual `CROSS_TENANT_JWT_REJECTED`.
+   Unanimous. `details` JSONB schema:
+   `{kid, expectedTenantId, actualTenantId, actorUserId, sourceIp}` so
+   incident responders can pivot.
+6. **`getMasterKekBytes()` defensive `clone()`:** **ship as-designed +
+   restrict visibility to package-private (E1)**. Marcus + Alex
+   reinforced. Closes the accidental-serializer leak. Memory-hygiene
+   zeroization stays regulated-tier (design D3).
 
 ## Implementation plan (post-warroom approval)
 
@@ -262,11 +282,26 @@ skipped due to a transient lock).
 8. Add `KidRegistryService` that wraps the `kid_to_tenant_key` lookup +
    first-encrypt INSERT-or-SELECT pattern.
 9. V61 amendment: add `UNIQUE (tenant_id, generation)` index.
-10. Integration tests:
+10. Integration tests (E3 — expanded from 4 to 8 cases):
     - encrypt-then-decrypt round-trip per tenant
-    - cross-tenant decrypt rejection + audit event
+    - cross-tenant decrypt rejection
     - decrypt of pre-existing v0 ciphertext via legacy path
-    - first-encrypt-race lazy-registration via concurrent threads
+    - first-encrypt-race lazy-registration via 10 concurrent threads
+      → assert exactly one row in `kid_to_tenant_key` per
+      `(tenant, generation)`
+    - **E3a:** synthetic v0 ciphertext that happens to start with
+      `FABT\x01` bytes → assert v1 path fails clean (no silent corruption)
+    - **E3b:** `GlobalExceptionHandler` maps `CrossTenantCiphertextException`
+      to 403 with D3 `{"error":"cross_tenant","status":403,...}` envelope
+    - **E3c:** audit_events row contract — assert action name
+      `CROSS_TENANT_CIPHERTEXT_REJECTED` AND JSONB shape
+      `{kid, expectedTenantId, actualTenantId, actorUserId, sourceIp}`
+    - **E3d:** ArchUnit Family A test — `MasterKekProvider.getMasterKekBytes()`
+      cannot be called from outside `org.fabt.shared.security`
+11. **E4 (warroom)** — perf SLO test: first 100 encrypts on a cold-cache
+    tenant ≤ 100ms each. Implementable as either (a) JMH micro-bench or
+    (b) Gatling `EncryptionWarmupSimulation`. Lean: JMH — runs in CI
+    without Postgres + without `BaseIntegrationTest` overhead.
 
 ## Approval gate
 
