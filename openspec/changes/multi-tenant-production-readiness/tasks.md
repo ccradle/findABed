@@ -16,10 +16,10 @@
 - [x] 2.1 Flyway V60 — `tenant` table additions: `state TenantState NOT NULL DEFAULT 'ACTIVE'`, `jwt_key_generation INT NOT NULL DEFAULT 1`, `data_residency_region VARCHAR(50) NOT NULL DEFAULT 'us-any'`, `oncall_email VARCHAR(255)`
 - [x] 2.2 Create `tenant_key_material(tenant_id, generation, created_at, rotated_at, active)` table (Flyway addition) — bundled into V61
 - [x] 2.3 Create `kid_to_tenant_key(kid UUID PRIMARY KEY, tenant_id UUID NOT NULL REFERENCES tenant(id), generation INT NOT NULL, created_at TIMESTAMPTZ NOT NULL)` table — bundled into V61
-- [ ] 2.4 Create `jwt_revocations(kid UUID PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)` table + daily pruning scheduled task — table done (V61); daily pruning task ships with KeyDerivationService in Checkpoint A2
-- [ ] 2.5 Implement `KeyDerivationService` — HKDF-SHA256 with context `"fabt:v1:<tenant-uuid>:<purpose>"` (per D2)
-- [ ] 2.6 Refactor `SecretEncryptionService` to delegate to per-tenant DEK via `KeyDerivationService.forTenant(tenantId).derive("totp" | "webhook-secret" | "oauth2-client-secret" | "hmis-api-key")`
-- [ ] 2.7 Add `kid` prefix to ciphertext format: `base64(kid) || base64(iv || ciphertext || tag)`; update encrypt/decrypt; add backward-compat path for pre-migration ciphertexts (no prefix → single platform key fallback)
+- [x] 2.4 Create `jwt_revocations(kid UUID PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL)` table + daily pruning scheduled task
+- [x] 2.5 Implement `KeyDerivationService` — HKDF-SHA256 with context `"fabt:v1:<tenant-uuid>:<purpose>"` (per D2)
+- [x] 2.6 Refactor `SecretEncryptionService` to delegate to per-tenant DEK via `KeyDerivationService.forTenant(tenantId).derive("totp" | "webhook-secret" | "oauth2-client-secret" | "hmis-api-key")` — typed `encryptForTenant(tenantId, KeyPurpose, plaintext)` + `decryptForTenant(tenantId, KeyPurpose, stored)` per A3 D17/D19
+- [x] 2.7 Add `kid` prefix to ciphertext format: v1 envelope `[FABT magic + version + kid + iv + ct+tag]`; backward-compat decrypt detects v0 by magic-bytes-absence per A3 D18/D21
 - [ ] 2.8 Refactor `JwtService.sign` to use per-tenant signing key (derived via `KeyDerivationService.forTenant(tenantId).derive("jwt-sign")`); emit `kid=<random-uuid>` in JWT header (D1); insert row into `kid_to_tenant_key`
 - [ ] 2.9 Refactor `JwtService.validate` to resolve `kid` via `kid_to_tenant_key` cache → tenant + generation → derive signing key → verify (D1)
 - [ ] 2.10 Add `JwtService.validate` assertion: `claim.tenantId` MUST equal `kid`-resolved tenant (A7); reject if mismatch with dedicated audit event
@@ -40,7 +40,7 @@
 - [ ] 3.1 Verify prod Postgres image version ≥ 16.5; if below, upgrade via independent pre-cutover deploy step (B1, CVE-2024-10976)
 - [ ] 3.2 Add CI check in `.github/workflows/ci.yml` that rejects PRs against Postgres < 16.5 via Testcontainers config
 - [ ] 3.3 Flyway V68 — create `fabt_current_tenant_id()` LEAKPROOF SQL function wrapping `current_setting('app.tenant_id', true)`
-- [ ] 3.4 Flyway V67 — D14 tenant-RLS policies on `audit_events` (already has tenant_id per v0.40 V57), `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox` — using `fabt_current_tenant_id()` helper
+- [ ] 3.4 Flyway V67 — D14 tenant-RLS policies on `audit_events` (already has tenant_id per v0.40 V57), `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox`, `tenant_key_material`, `kid_to_tenant_key` (Phase A V61 deferred — RLS needs RESTRICTIVE WRITE policy + permissive SELECT policy because JWT validate looks up kid before TenantContext is bound) — using `fabt_current_tenant_id()` helper
 - [ ] 3.5 Flyway V69 — `ALTER TABLE ... FORCE ROW LEVEL SECURITY` on every table with D14 policies (B3)
 - [ ] 3.6 Flyway V70 — indexes on `(tenant_id, ...)` for every D14-protected table (B4) — verify via `EXPLAIN` regression test
 - [ ] 3.7 Flyway V71 — list-partition `audit_events` by `tenant_id` (B8); partition-creation hook in `TenantLifecycleService.create` (F3); partition-drop hook in hard-delete (F6)
