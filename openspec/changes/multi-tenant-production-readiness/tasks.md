@@ -69,7 +69,7 @@
 - [ ] 3.14 Add migration-lint rule (ArchUnit-for-SQL): Flyway migrations introducing `SECURITY DEFINER` functions require `@security-definer-exception: <justification>` comment header (B6)
 - [ ] 3.15 Add `SET LOCAL statement_timeout` wrapper in `TenantContext.runWithContext` — value sourced from `TenantRateLimitConfig.statementTimeoutMs` (B9; depends on E2)
 - [ ] 3.16 Add `SET LOCAL work_mem` wrapper in `TenantContext.runWithContext` — value sourced from `TenantRateLimitConfig.workMem`
-- [ ] 3.17 ArchUnit rule: `@Transactional` methods must not call `TenantContext.runWithContext()` inside the transaction (B11 per `feedback_transactional_rls_scoped_value_ordering.md`)
+- [x] 3.17 ArchUnit rule: `@Transactional` methods must not call `TenantContext.runWithContext()` inside the transaction (B11 per `feedback_transactional_rls_scoped_value_ordering.md`) — `TenantContextTransactionalRuleTest` with 2-entry allowlist (HmisPushService.processOutbox, ReservationService.expireReservation) carrying documented carve-out justifications
 - [ ] 3.18 Extend `TenantIdPoolBleedTest` with B12 scenario: inject `SET ROLE fabt_app` failure mid-setup; assert connection removed from pool
 - [ ] 3.19 Integration test (B13): assert `SELECT current_user = 'fabt_app'` post-connection-borrow; CI fails if owner/superuser
 - [ ] 3.20 Document `docs/security/logical-replication-posture.md` — v1 stance: no logical replication; per-tenant `pg_dump --where` + policy-strip procedure (B10)
