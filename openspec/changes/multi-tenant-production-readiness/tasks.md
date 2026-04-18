@@ -258,39 +258,44 @@
 
 ## 14. Phase M — Demo-site multi-tenant validation (1 week; change-closure gate)
 
-- [ ] 14.1 Casey pre-merge review — confirm `Asheville CoC (demo)` branding in all surfaces, no real-PII patterns, no partnership implication (M2, M8)
-- [ ] 14.2 Marcus pre-merge review — confirm seed data contains no real credentials, no real addresses, no real names (M8)
-- [ ] 14.3 Maria pre-merge review — confirm procurement-audience-appropriate language in walkthrough (M8)
-- [ ] 14.4 Flyway V76 — `asheville-coc` tenant seed with UUID `a0000000-0000-0000-0000-000000000002` (M1)
-- [ ] 14.5 V76 — 6 Asheville users: `admin@asheville.fabt.org`, `cocadmin@asheville.fabt.org`, `coordinator@asheville.fabt.org`, `outreach@asheville.fabt.org`, `dv-coordinator@asheville.fabt.org`, `dv-outreach@asheville.fabt.org` (all password `admin123`)
-- [ ] 14.6 V76 — 3-5 Asheville shelters including at least one DV shelter, fictional names (e.g., "Example House North", "Example Family Center", "Asheville Emergency Shelter (demo)", "Safe Haven Demo DV")
-- [ ] 14.7 V76 — sample bed availability for Asheville shelters + 1 sample pending DV referral
+- [ ] 14.1 Casey pre-merge review — confirm `Asheville CoC (demo)` + `Beaufort County CoC (demo)` branding in all surfaces, no real-PII patterns, no partnership implication for either tenant (M2, M8)
+- [ ] 14.2 Marcus pre-merge review — confirm both new-tenant seeds contain no real credentials, no real addresses, no real names (M8)
+- [ ] 14.3 Maria pre-merge review — confirm procurement-audience-appropriate language in walkthrough covering all three tenants (M8)
+- [ ] 14.4 Flyway V76 — `dev-coc-west` tenant seed (Asheville) with UUID `a0000000-0000-0000-0000-000000000002` (M1)
+- [ ] 14.5 V76 — 6 `dev-coc-west` users: `admin@asheville.fabt.org`, `cocadmin@asheville.fabt.org`, `coordinator@asheville.fabt.org`, `outreach@asheville.fabt.org`, `dv-coordinator@asheville.fabt.org`, `dv-outreach@asheville.fabt.org` (all password `admin123`)
+- [ ] 14.6 V76 — 3-5 `dev-coc-west` (Asheville-themed) shelters including at least one DV shelter, fictional names (e.g., "Example House North", "Example Family Center", "Western NC Example Shelter (demo)", "Safe Haven Demo DV")
+- [ ] 14.7 V76 — sample bed availability for `dev-coc-west` shelters + 1 sample pending DV referral
 - [ ] 14.8 V76 idempotency — `INSERT ... ON CONFLICT DO UPDATE` pattern on every row
-- [ ] 14.9 Frontend — update `Layout.tsx` header: visible tenant indicator with accent color + tenant name (M3)
+- [ ] 14.4b Flyway V77 — `dev-coc-east` tenant seed (Beaufort County) with UUID `a0000000-0000-0000-0000-000000000003` (M1)
+- [ ] 14.5b V77 — 6 `dev-coc-east` users: `admin@beaufort.fabt.org`, `cocadmin@beaufort.fabt.org`, `coordinator@beaufort.fabt.org`, `outreach@beaufort.fabt.org`, `dv-coordinator@beaufort.fabt.org`, `dv-outreach@beaufort.fabt.org` (all password `admin123`)
+- [ ] 14.6b V77 — 3-5 `dev-coc-east` (Beaufort County-themed) shelters including at least one DV shelter, fictional names (e.g., "Example Washington House", "Eastern NC Example Shelter (demo)", "Pamlico Example Family Center", "Safe Haven Demo DV East")
+- [ ] 14.7b V77 — sample bed availability for `dev-coc-east` shelters + 1 sample pending DV referral
+- [ ] 14.8b V77 idempotency — `INSERT ... ON CONFLICT DO UPDATE` pattern on every row
+- [ ] 14.9 Frontend — update `Layout.tsx` header: visible tenant indicator with three distinct accent colors + tenant name (M3, three-tenant-aware)
 - [ ] 14.10 Frontend — update `<title>` element to include tenant name per page
-- [ ] 14.11 Frontend — login UI tenantSlug dropdown auto-populates based on visible "(demo)" suffix
-- [ ] 14.12 Backend — update `GlobalExceptionHandler` cross-tenant 404 envelope to include educational message when request pattern indicates cross-tenant attempt (M4); feature-flag-gated
-- [ ] 14.13 Extend `e2e/playwright/deploy/post-deploy-smoke.spec.ts` to cover BOTH tenants (M5) — login each, attempt cross-tenant URL, assert educational 404
-- [ ] 14.14 Extend `e2e/karate/src/.../cross-tenant-isolation.feature` (post-deploy version) to iterate both tenants
-- [ ] 14.15 Author `docs/training/multi-tenant-demo-walkthrough.md` (M6) — 3-minute scripted walkthrough
-- [ ] 14.16 Capture screenshot bundle for walkthrough — folded into #120 pilot-readiness bundle
+- [ ] 14.11 Frontend — login UI tenantSlug dropdown shows all three tenants with "(demo)" suffix on west + east
+- [ ] 14.12 Backend — update `GlobalExceptionHandler` cross-tenant 404 envelope to include educational message when request pattern indicates cross-tenant attempt (M4); feature-flag-gated; symmetric across all three tenants
+- [ ] 14.13 Extend `e2e/playwright/deploy/post-deploy-smoke.spec.ts` to cover ALL THREE tenants (M5) — login each, attempt cross-tenant URL against at least one other, assert educational 404; minimum 3-probe rotation (dev-coc → dev-coc-west, dev-coc-west → dev-coc-east, dev-coc-east → dev-coc)
+- [ ] 14.14 Extend `e2e/karate/src/.../cross-tenant-isolation.feature` (post-deploy version) to iterate all three tenants
+- [ ] 14.15 Author `docs/training/multi-tenant-demo-walkthrough.md` (M6) — 3-minute scripted walkthrough covering all three tenants
+- [ ] 14.16 Capture screenshot bundle for walkthrough across all three tenants — folded into #120 pilot-readiness bundle
 - [ ] 14.17 Link walkthrough from `findabed.org` landing page + FOR-COORDINATORS + FOR-COC-ADMINS audience docs
 - [ ] 14.18 Grafana `fabt-cross-tenant-security` dashboard — add "Tenant-pair last validation timestamp" panel (M7) with green/yellow/red indicator
-- [ ] 14.19 Implement NoisyNeighborSimulation "against-live-demo" variant (M9, extends 11.18)
-- [ ] 14.20 Quarterly tenant-quarantine live drill (M10) — quarantine `asheville-coc`, show login fails, unsuspend; add to operational calendar
-- [ ] 14.21 Quarterly offboard live drill (M11) — export Asheville data, hard-delete, re-seed via V76; verify crypto-shred and reseed succeed
-- [ ] 14.22 **CHANGE-CLOSURE GATE**: Deploy to prod. Run post-deploy smoke both-tenant. Open public browser against findabed.org, attempt cross-tenant URL, verify educational 404. Screenshot evidence.
-- [ ] 14.23 Commit Phase M + open PR — FINAL PR OF THE CHANGE
+- [ ] 14.19 Implement NoisyNeighborSimulation "against-live-demo" variant (M9, extends 11.18) — operator selects `dev-coc-west` OR `dev-coc-east` as load target, monitors `dev-coc` + non-targeted new tenant p99
+- [ ] 14.20 Quarterly tenant-quarantine live drill (M10) — quarantine `dev-coc-west` OR `dev-coc-east` (rotate per quarter), show targeted-tenant login fails + other two remain reachable, unsuspend; add to operational calendar
+- [ ] 14.21 Quarterly offboard live drill (M11) — export data for targeted new tenant (west or east), hard-delete, re-seed via V76 or V77 respectively; verify crypto-shred and reseed succeed
+- [ ] 14.22 **CHANGE-CLOSURE GATE**: Deploy to prod. Run post-deploy smoke all-tenant. Open public browser against findabed.org, attempt cross-tenant URLs in all three directions, verify educational 404. Screenshot evidence for each direction.
+- [ ] 14.23 Commit Phase M + open PR — FINAL PR OF THE CHANGE (V76 + V77 may be separate PRs per M8, or a single combined PR; warroom decision at implementation time)
 
 ## 15. Verification + archive
 
 - [ ] 15.1 `openspec validate multi-tenant-production-readiness --strict` green
 - [ ] 15.2 Full backend test suite green (Karate + Playwright + Gatling)
 - [ ] 15.3 All A–M themes have PR merged to main
-- [ ] 15.4 Prod deploy complete; both tenants live on findabed.org
-- [ ] 15.5 Change-closure gate (14.22) validated — public-browser evidence captured
+- [ ] 15.4 Prod deploy complete; all three tenants live on findabed.org (`dev-coc`, `dev-coc-west`, `dev-coc-east`)
+- [ ] 15.5 Change-closure gate (14.22) validated — public-browser evidence captured for all three tenants
 - [ ] 15.6 `/opsx:verify multi-tenant-production-readiness` passes
 - [ ] 15.7 `/opsx:sync multi-tenant-production-readiness` merges delta specs into main specs
 - [ ] 15.8 `/opsx:archive multi-tenant-production-readiness`
-- [ ] 15.9 Update memory `project_live_deployment_status.md` — multi-tenant mode active, Asheville tenant present
+- [ ] 15.9 Update memory `project_live_deployment_status.md` — multi-tenant mode active; `dev-coc-west` (Asheville) + `dev-coc-east` (Beaufort County) present alongside `dev-coc`
 - [ ] 15.10 Publish GitHub release + announcement

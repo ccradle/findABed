@@ -1,54 +1,84 @@
 ## ADDED Requirements
 
-### Requirement: asheville-coc-demo-seed
-The system SHALL add a permanent second tenant "Asheville CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V75. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000002`; slug SHALL be `asheville-coc`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral.
+### Requirement: dev-coc-west-demo-seed
+The system SHALL add a permanent second tenant "Asheville CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V76. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000002`; slug SHALL be `dev-coc-west`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral.
 
 #### Scenario: Seed creates tenant with pinned UUID
-- **WHEN** V75 runs on a fresh DB
-- **THEN** a tenant row with UUID `a0000000-0000-0000-0000-000000000002` and slug `asheville-coc` exists
+- **WHEN** V76 runs on a fresh DB
+- **THEN** a tenant row with UUID `a0000000-0000-0000-0000-000000000002` and slug `dev-coc-west` exists
 - **AND** the display name is `Asheville CoC (demo)` per D12
 
 #### Scenario: Seed is idempotent
-- **GIVEN** V75 has already run and the Asheville tenant exists
-- **WHEN** V75 (or an equivalent re-seed script) runs again
+- **GIVEN** V76 has already run and the Asheville tenant exists
+- **WHEN** V76 (or an equivalent re-seed script) runs again
 - **THEN** the INSERT ... ON CONFLICT DO UPDATE pattern preserves the tenant UUID and updates changed columns
 - **AND** no duplicate tenant rows, users, or shelters are created
 
 #### Scenario: Seed includes DV shelter for isolation exercise
 - **WHEN** the seed completes
-- **THEN** at least one shelter in `asheville-coc` is flagged `dv_shelter=true`
+- **THEN** at least one shelter in `dev-coc-west` is flagged `dv_shelter=true`
 - **AND** the DV-access isolation boundary is exercisable from cross-tenant tests and live probes
 
 #### Scenario: Seed users include full role matrix
 - **WHEN** the seed completes
-- **THEN** `asheville-coc` has users for PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH roles
+- **THEN** `dev-coc-west` has users for PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH roles
 - **AND** the demo credential `admin@asheville.fabt.org / admin123` works for login
 
-### Requirement: branding-demo-suffix
-The system SHALL display the Asheville tenant name as `Asheville CoC (demo)` (per M2, D12) in login UI, landing page, admin panel header, page title, and training materials. Seed data SHALL use demonstrably-fictional shelter names (e.g., "Example House North"), non-geocodable addresses, and persona-derived fake contact names. Real-PII patterns SHALL NOT appear.
+### Requirement: dev-coc-east-demo-seed
+The system SHALL add a permanent third tenant "Beaufort County CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V77. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000003`; slug SHALL be `dev-coc-east`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral. Credential convention: `admin@beaufort.fabt.org` / `admin123` (mirrors west and core tenant passwords for demo-visitor convenience).
 
-#### Scenario: Login UI surfaces "Asheville CoC (demo)"
-- **WHEN** a demo visitor loads the login page and selects the Asheville tenant
+#### Scenario: Seed creates tenant with pinned UUID
+- **WHEN** V77 runs on a fresh DB
+- **THEN** a tenant row with UUID `a0000000-0000-0000-0000-000000000003` and slug `dev-coc-east` exists
+- **AND** the display name is `Beaufort County CoC (demo)` per D12
+
+#### Scenario: Seed is idempotent
+- **GIVEN** V77 has already run and the Beaufort County tenant exists
+- **WHEN** V77 (or an equivalent re-seed script) runs again
+- **THEN** the INSERT ... ON CONFLICT DO UPDATE pattern preserves the tenant UUID and updates changed columns
+- **AND** no duplicate tenant rows, users, or shelters are created
+
+#### Scenario: Seed includes DV shelter for isolation exercise
+- **WHEN** the seed completes
+- **THEN** at least one shelter in `dev-coc-east` is flagged `dv_shelter=true`
+- **AND** the DV-access isolation boundary is exercisable from cross-tenant tests and live probes involving dev-coc-east as either source or target
+
+#### Scenario: Seed users include full role matrix
+- **WHEN** the seed completes
+- **THEN** `dev-coc-east` has users for PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH roles
+- **AND** the demo credential `admin@beaufort.fabt.org / admin123` works for login
+
+### Requirement: branding-demo-suffix
+The system SHALL display the west tenant name as `Asheville CoC (demo)` and the east tenant name as `Beaufort County CoC (demo)` (per M2, D12) in login UI, landing page, admin panel header, page title, and training materials. Seed data SHALL use demonstrably-fictional shelter names (e.g., "Example House North"), non-geocodable addresses, and persona-derived fake contact names. Real-PII patterns SHALL NOT appear in either tenant.
+
+#### Scenario: Login UI surfaces west tenant as "Asheville CoC (demo)"
+- **WHEN** a demo visitor loads the login page and selects the west tenant (`dev-coc-west`)
 - **THEN** the tenant label reads "Asheville CoC (demo)" (not "Asheville CoC")
 - **AND** the `(demo)` suffix is visible in the tenant-selector dropdown and page title
 
-#### Scenario: Shelter names are fictional
-- **WHEN** the seed completes
-- **THEN** every shelter name in `asheville-coc` matches documented fictional patterns (e.g., starts with "Example")
-- **AND** no real Asheville shelter names appear
+#### Scenario: Login UI surfaces east tenant as "Beaufort County CoC (demo)"
+- **WHEN** a demo visitor loads the login page and selects the east tenant (`dev-coc-east`)
+- **THEN** the tenant label reads "Beaufort County CoC (demo)" (not "Beaufort County CoC")
+- **AND** the `(demo)` suffix is visible in the tenant-selector dropdown and page title
 
-#### Scenario: Addresses are non-geocodable
-- **WHEN** a demo visitor attempts to geocode any seeded address
+#### Scenario: Shelter names are fictional in both new tenants
+- **WHEN** the seed completes
+- **THEN** every shelter name in `dev-coc-west` AND `dev-coc-east` matches documented fictional patterns (e.g., starts with "Example")
+- **AND** no real Asheville OR Beaufort County shelter names appear
+
+#### Scenario: Addresses are non-geocodable in both new tenants
+- **WHEN** a demo visitor attempts to geocode any seeded address across `dev-coc-west` or `dev-coc-east`
 - **THEN** the geocode returns no match (addresses follow documented non-geocodable pattern)
-- **AND** no real Asheville street addresses appear in seed data
+- **AND** no real Asheville OR Beaufort County street addresses appear in seed data
 
 ### Requirement: visible-tenant-indicator-in-ui
-The system SHALL display a visible tenant indicator (per M3) in the Layout component (header or footer) showing the current tenant name + a subtle accent color differentiator. The `<title>` element SHALL carry the tenant name. Tenant switches between dev-coc and asheville-coc SHALL produce obviously-different UI state. Tenant name SHALL be announced on page load per WCAG 2.4.2.
+The system SHALL display a visible tenant indicator (per M3) in the Layout component (header or footer) showing the current tenant name + a subtle accent color differentiator. The `<title>` element SHALL carry the tenant name. Tenant switches between any pair of `dev-coc`, `dev-coc-west`, and `dev-coc-east` SHALL produce obviously-different UI state. Tenant name SHALL be announced on page load per WCAG 2.4.2. Each of the three tenants SHALL have a distinct accent color so screenshot evidence of isolation is visually unambiguous.
 
-#### Scenario: Header shows active tenant
+#### Scenario: Header shows active tenant for all three tenants
 - **WHEN** a user is logged into `dev-coc`
 - **THEN** the header displays "Dev CoC" with its accent color
-- **AND** when the same user re-logs as asheville-coc, the header displays "Asheville CoC (demo)" with a distinct accent color
+- **AND** when the same user re-logs as `dev-coc-west`, the header displays "Asheville CoC (demo)" with a distinct accent color
+- **AND** when the same user re-logs as `dev-coc-east`, the header displays "Beaufort County CoC (demo)" with a third distinct accent color
 
 #### Scenario: Page title carries tenant
 - **WHEN** a user navigates to the admin panel
@@ -64,7 +94,7 @@ The system SHALL display a visible tenant indicator (per M3) in the Layout compo
 The system SHALL return a cross-tenant 404 response (per M4) with an educational body message: "This resource belongs to a different tenant. FABT's multi-tenant isolation prevents cross-tenant data access — this is the system working as designed." The message SHALL be gated by a feature flag so it can be toggled off if information-disclosure concerns ever arise. D3 existence-leak prevention SHALL remain intact — the message does not reveal the other tenant's state.
 
 #### Scenario: Cross-tenant URL manipulation returns educational 404
-- **GIVEN** a demo visitor is logged into `dev-coc` and pastes a URL containing an `asheville-coc` shelter UUID
+- **GIVEN** a demo visitor is logged into `dev-coc` and pastes a URL containing an `dev-coc-west` shelter UUID
 - **WHEN** the request reaches the backend
 - **THEN** the response is 404 Not Found
 - **AND** the response body contains the educational message from M4
@@ -81,19 +111,20 @@ The system SHALL return a cross-tenant 404 response (per M4) with an educational
 - **THEN** the response is also 404 with the educational message
 - **AND** the response shape is indistinguishable from cross-tenant 404 (no existence leak)
 
-### Requirement: post-deploy-smoke-both-tenants
-The system SHALL include post-deploy smoke specs (per M5) that exercise both tenants: login to each, attempt cross-tenant URL access, and expect 404 with the educational envelope. Playwright + Karate layers SHALL both cover this flow.
+### Requirement: post-deploy-smoke-all-tenants
+The system SHALL include post-deploy smoke specs (per M5) that exercise all three tenants (`dev-coc`, `dev-coc-west`, `dev-coc-east`): login to each, attempt cross-tenant URL access from each to at least one other, and expect 404 with the educational envelope. Playwright + Karate layers SHALL both cover this flow. Suite SHALL include at least one probe per ordered pair so an east→west leak and a west→east leak are both regression-guarded (the full 6-pair matrix is encouraged but a 3-probe rotation is the minimum gate).
 
-#### Scenario: Playwright smoke covers both tenants
+#### Scenario: Playwright smoke covers all three tenants
 - **WHEN** the post-deploy Playwright smoke runs against a live deploy
-- **THEN** it logs in to `dev-coc`, attempts cross-tenant URL, asserts 404 with educational envelope
-- **AND** it repeats the flow from `asheville-coc` → `dev-coc`
-- **AND** both directions assert 404
+- **THEN** it logs in to `dev-coc`, attempts a cross-tenant URL pointing at a `dev-coc-west` resource, asserts 404 with educational envelope
+- **AND** it logs in to `dev-coc-west`, attempts a cross-tenant URL pointing at a `dev-coc-east` resource, asserts 404 with educational envelope
+- **AND** it logs in to `dev-coc-east`, attempts a cross-tenant URL pointing at a `dev-coc` resource, asserts 404 with educational envelope
+- **AND** all three directions assert 404 with the educational envelope
 
-#### Scenario: Karate smoke covers both tenants at the API layer
+#### Scenario: Karate smoke covers all three tenants at the API layer
 - **WHEN** the post-deploy Karate smoke runs
-- **THEN** it authenticates as admin in each tenant and attempts cross-tenant API calls
-- **AND** both tenants return 404 with the educational envelope
+- **THEN** it authenticates as admin in each of the three tenants and attempts cross-tenant API calls against at least one other tenant
+- **AND** every cross-tenant call returns 404 with the educational envelope
 
 #### Scenario: Smoke failure blocks deploy completion
 - **GIVEN** a failure in either Playwright or Karate smoke
@@ -108,7 +139,7 @@ The project SHALL publish `docs/training/multi-tenant-demo-walkthrough.md` (per 
 - **GIVEN** `docs/training/multi-tenant-demo-walkthrough.md` is published
 - **WHEN** a demo visitor opens the doc
 - **THEN** the walkthrough steps are readable in under 3 minutes
-- **AND** it covers log in dev-coc → observe shelters → log out → log in asheville-coc → attempt cross-tenant URL → observe educational 404
+- **AND** it covers log in `dev-coc` → observe shelters → log out → log in `dev-coc-west` (Asheville) → observe different shelters + different DV posture → attempt cross-tenant URL → observe educational 404 → log out → log in `dev-coc-east` (Beaufort County) → same isolation probe → observe educational 404
 
 #### Scenario: Landing page links the walkthrough
 - **WHEN** a visitor loads findabed.org
@@ -137,27 +168,29 @@ The system SHALL add a Grafana panel (per M7) titled "Tenant-pair last validatio
 - **AND** after 7 days with no validation the panel turns red
 
 ### Requirement: seed-migration-safety-gate
-The project SHALL require pre-merge review (per M8) on the Flyway migration that creates the Asheville tenant: Casey confirms branding consistency, Marcus confirms no real-PII patterns, Maria confirms procurement-audience language. Deploy SHALL only proceed after M5 post-deploy smoke passes.
+The project SHALL require pre-merge review (per M8) on BOTH Flyway migrations that create new demo tenants (V76 for `dev-coc-west` / Asheville; V77 for `dev-coc-east` / Beaufort County): Casey confirms branding consistency + real-city-name disclaimer on both, Marcus confirms no real-PII patterns in either seed, Maria confirms procurement-audience language. Deploy SHALL only proceed after the all-tenant post-deploy smoke (M5) passes.
 
-#### Scenario: Three-reviewer sign-off required
-- **GIVEN** the V75 Asheville seed PR is open
+#### Scenario: Three-reviewer sign-off required on each migration
+- **GIVEN** the V76 (`dev-coc-west`) OR V77 (`dev-coc-east`) seed PR is open
 - **WHEN** review is requested
-- **THEN** Casey, Marcus, and Maria each provide an explicit approval (or persona-proxy approval per project_personas.md)
+- **THEN** Casey, Marcus, and Maria each provide an explicit approval (or persona-proxy approval per project_personas.md) on that PR
 - **AND** the PR cannot merge without all three approvals
+- **AND** the same review gate applies independently to each of the two new-tenant migrations (V76 + V77)
 
 #### Scenario: Deploy gated on smoke pass
-- **GIVEN** the V75 migration lands in prod
-- **WHEN** M5 post-deploy smoke runs
+- **GIVEN** the V76 AND/OR V77 migrations land in prod
+- **WHEN** M5 post-deploy smoke runs (all-tenant variant)
 - **THEN** opsx:archive is blocked until the smoke passes
 - **AND** a failing smoke reverts deploy closure
 
 ### Requirement: noisy-neighbor-live-validation
-The system SHALL support a "against-live-demo" variant of `NoisyNeighborSimulation` (per M9) that an operator can trigger: hostile-load `asheville-coc` while monitoring `dev-coc` p99. This validates per-tenant performance isolation on the production code path.
+The system SHALL support a "against-live-demo" variant of `NoisyNeighborSimulation` (per M9) that an operator can trigger: hostile-load one of the non-primary demo tenants (`dev-coc-west` or `dev-coc-east`, operator's choice per drill) while monitoring `dev-coc` p99. This validates per-tenant performance isolation on the production code path.
 
 #### Scenario: Operator triggers noisy-neighbor drill
-- **WHEN** an operator runs the noisy-neighbor drill against the live demo
-- **THEN** asheville-coc receives 3x normal load
-- **AND** dev-coc p99 latency degradation is ≤ 20% per the documented SLO
+- **WHEN** an operator runs the noisy-neighbor drill against the live demo targeting `dev-coc-west` OR `dev-coc-east`
+- **THEN** the targeted tenant receives 3x normal load
+- **AND** `dev-coc` p99 latency degradation is ≤ 20% per the documented SLO
+- **AND** the non-targeted third tenant also shows ≤ 20% p99 degradation (verifies isolation holds in both directions — not just west→core)
 
 #### Scenario: Drill metrics captured for review
 - **WHEN** the drill completes
@@ -165,12 +198,13 @@ The system SHALL support a "against-live-demo" variant of `NoisyNeighborSimulati
 - **AND** the results are archived with the drill timestamp
 
 ### Requirement: tenant-quarantine-live-drill
-The system SHALL support a live tenant-quarantine drill on `asheville-coc` (per M10): operator quarantines the tenant, shows logins fail with 503, un-quarantines, shows login restored. Drill SHALL be quarterly.
+The system SHALL support a live tenant-quarantine drill (per M10) on either `dev-coc-west` or `dev-coc-east` (operator's choice per drill; rotate tenants across quarters to exercise both): operator quarantines the tenant, shows logins fail with 503, un-quarantines, shows login restored. Drill SHALL be quarterly. `dev-coc` (the core demo tenant) SHALL NOT be used as a quarantine target — its availability is the public-demo baseline.
 
 #### Scenario: Quarterly quarantine drill runs end-to-end
 - **GIVEN** the quarterly drill is scheduled
-- **WHEN** an operator runs the drill
-- **THEN** asheville-coc login returns 503 during the quarantine window
+- **WHEN** an operator runs the drill targeting `dev-coc-west` OR `dev-coc-east`
+- **THEN** the targeted tenant's login returns 503 during the quarantine window
+- **AND** the other two tenants remain reachable (`dev-coc` + the non-targeted new tenant)
 - **AND** after un-quarantine, login succeeds and normal traffic resumes
 
 #### Scenario: Drill is audit-logged
@@ -179,21 +213,21 @@ The system SHALL support a live tenant-quarantine drill on `asheville-coc` (per 
 - **AND** the justification string identifies the event as a drill
 
 ### Requirement: offboard-live-drill
-The system SHALL support a live offboard drill on `asheville-coc` (per M11): operator exports data, destroys the per-tenant DEK (crypto-shred), re-seeds fresh. Drill SHALL be quarterly and proves end-to-end tenant lifecycle on production.
+The system SHALL support a live offboard drill on either `dev-coc-west` or `dev-coc-east` (per M11; operator's choice per drill, rotate across quarters): operator exports data, destroys the per-tenant DEK (crypto-shred), re-seeds fresh. Drill SHALL be quarterly and proves end-to-end tenant lifecycle on production.
 
 #### Scenario: Offboard produces export and shreds DEK
-- **WHEN** an operator runs the offboard drill on asheville-coc
+- **WHEN** an operator runs the offboard drill targeting `dev-coc-west` OR `dev-coc-east`
 - **THEN** a JSON export is produced per F5
-- **AND** the per-tenant DEK is destroyed per F6 crypto-shred
+- **AND** the per-tenant DEK for the targeted tenant is destroyed per F6 crypto-shred
 
 #### Scenario: Re-seed restores demo tenant
-- **GIVEN** asheville-coc was offboarded as part of the drill
-- **WHEN** the re-seed script runs (V75 idempotent seed)
-- **THEN** a fresh asheville-coc tenant is created with a new UUID (not the old one, since the old one is shredded)
-- **AND** the live demo is back to a 2-tenant state
+- **GIVEN** the targeted tenant (`dev-coc-west` or `dev-coc-east`) was offboarded as part of the drill
+- **WHEN** the appropriate re-seed migration runs (V76 for west, V77 for east — both idempotent)
+- **THEN** a fresh tenant row is created with a new UUID (not the old one, since the old one is shredded)
+- **AND** the live demo is back to a 3-tenant state (`dev-coc` + both new tenants)
 
 #### Scenario: Drill validates irreversibility of crypto-shred
-- **GIVEN** the old asheville-coc DEK was destroyed
+- **GIVEN** the targeted tenant's old DEK was destroyed
 - **WHEN** an operator attempts to decrypt a retained export ciphertext with the old DEK context
 - **THEN** decrypt fails (key material unrecoverable)
 - **AND** the drill log captures this expected failure as a validation checkpoint

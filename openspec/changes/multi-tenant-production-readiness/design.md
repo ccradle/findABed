@@ -120,11 +120,18 @@ Step-by-step:
 
 Documented boundary: audit_events rows with `tenant_id = <shredded_uuid>` may remain in PITR backups within the retention window. Operator runbook states this explicitly; satisfies "proportionate" per EDPB framework.
 
-### D12 — Asheville tenant branding: `Asheville CoC (demo)` per Casey
+### D12 — Two-new-tenant branding: `Asheville CoC (demo)` + `Beaufort County CoC (demo)` per Casey
 
-M2 decision: use Asheville per user proposal, but with mandatory `(demo)` suffix in every display surface (login UI, landing page, admin panel header, page title). Seed uses demonstrably-fictional shelter names ("Example House North"), non-geocodable addresses, persona-derived fake contacts. Pre-merge review gate (M8) by Casey confirms branding consistency; Marcus confirms no real-PII patterns; Maria confirms procurement-audience language.
+M2 decision (revised 2026-04-18 to cover two new tenants): use two real NC jurisdictions with geographic spread (Western NC + Eastern NC), each with a mandatory `(demo)` suffix in every display surface (login UI, landing page, admin panel header, page title):
 
-Alternative considered: fictional city name (e.g., "Riverbend CoC"). Rejected because Asheville has project-relevant context (City of Asheville contact Sarah Dickerson) — using a real named peer tenant with clear `(demo)` labeling is more demonstrably "real-tenant-shaped" than a fictional city.
+- **`dev-coc-west` — "Asheville CoC (demo)"** — Western NC, City of Asheville area. Project-relevant context (Sarah Dickerson / City of Asheville contact) makes Asheville the obvious peer-tenant choice for WNC.
+- **`dev-coc-east` — "Beaufort County CoC (demo)"** — Eastern NC, Washington NC county seat. Chosen to demonstrate geographic spread within NC without implying state-capital or Triangle-area partnership context.
+
+Seed uses demonstrably-fictional shelter names ("Example House North"), non-geocodable addresses, persona-derived fake contacts in BOTH tenants. Pre-merge review gate (M8) by Casey confirms branding consistency on each migration (V76 for west, V77 for east); Marcus confirms no real-PII patterns in either; Maria confirms procurement-audience language.
+
+Alternative considered: two fictional city names (e.g., "Riverbend CoC" + "Pine Ridge CoC"). Rejected because real named peer tenants with clear `(demo)` labeling are more demonstrably "real-tenant-shaped" than fictional cities, and using NC jurisdictions keeps the walkthrough grounded in project context.
+
+Alternative considered (2026-04-18 scope expansion): single Asheville tenant. Rejected because two geographically-distinct peer tenants exercise a broader cross-tenant-probe matrix (east↔west, east→core, west→core) as regression guards — and east-west geographic pairing is more legible to procurement than core-vs-peer pairing alone.
 
 ### D13 — Partition audit_events + hmis_audit_log by tenant_id (list partitioning)
 
@@ -154,9 +161,9 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 - **Audit hash chain becomes un-verifiable after crypto-shred** (D9/D11) — once a tenant is hard-deleted, the weekly external anchor for that tenant's chain is a historical artifact; future recomputation fails. → **Mitigation:** document explicitly; the last anchor before shred is the final integrity proof.
 
-- **Asheville branding confusion risk** (M2) — even with `(demo)` suffix, a demo visitor may momentarily think "wait, is FABT actually deployed in Asheville?" → **Mitigation:** Casey's pre-merge review of every copy-written surface; FAQ entry on landing page; explicit disclaimer in login UI.
+- **Real-jurisdiction branding confusion risk** (M2) — even with `(demo)` suffix, a demo visitor may momentarily think "wait, is FABT actually deployed in Asheville / Beaufort County?" → **Mitigation:** Casey's pre-merge review of every copy-written surface in BOTH new tenants; FAQ entry on landing page explicitly disclaiming both; explicit disclaimer in login UI. Risk multiplied by two tenants but mitigation is symmetric.
 
-- **Demo-site cross-tenant drill frequency (M10/M11)** — quarterly operator drills on asheville-coc require someone to run them. For a 1-engineer team, this is meaningful ops overhead. → **Mitigation:** automate drills into a nightly or weekly cron once validated manually; Grafana panel (M7) exposes freshness.
+- **Demo-site cross-tenant drill frequency (M10/M11)** — quarterly operator drills on `dev-coc-west` OR `dev-coc-east` (rotating per quarter) require someone to run them. For a 1-engineer team, this is meaningful ops overhead — and doubling the tenant count does NOT double the drill count because the two new tenants share the drill rotation. → **Mitigation:** automate drills into a nightly or weekly cron once validated manually; Grafana panel (M7) exposes freshness; rotate target tenant so both exercise their lifecycle across a year.
 
 - **Effort estimate optimistic under distraction** — 13–19 weeks assumes focused 1-2 engineer capacity. Interleaving with other roadmap items (Darius native app, MCP integration, Teresa procurement conversations) could extend to 26+ weeks calendar. → **Mitigation:** sequence A–F as the critical path (cryptographic + DB + lifecycle); G–L + M run in parallel where possible; defer nothing but re-negotiate calendar if other priorities surface.
 
@@ -192,14 +199,14 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 13. **L1–L10 — Developer guardrails** (~1–2 weeks). `TenantScoped<T>` SPI rolled out progressively across phases 2–8; module boundary ArchUnit, typed config, typed feature flags, stage environment, DR drill, cost allocation, rotation runbooks consolidated at end.
 
-14. **M1–M11 — Demo-site multi-tenant validation** (~1 week, AFTER F ships). V75 Asheville seed, UI tenant indicator, educational 404 envelope, post-deploy smoke both-tenant coverage, walkthrough doc, tenant-pair validation Grafana panel. **Change-closure gate: `opsx:archive` blocked until M validated on live `findabed.org`.**
+14. **M1–M11 — Demo-site multi-tenant validation** (~1 week, AFTER F ships). V76 `dev-coc-west` / Asheville seed, V77 `dev-coc-east` / Beaufort County seed, three-tenant UI indicator with distinct accent colors, educational 404 envelope, post-deploy smoke all-tenant coverage (minimum 3-probe rotation across the 6-pair matrix), walkthrough doc covering all three tenants, tenant-pair validation Grafana panel. **Change-closure gate: `opsx:archive` blocked until M validated on live `findabed.org` for all three tenants.**
 
 ### Rollback strategy
 
 - **Per-phase rollback** — each phase ships as an independently-deployable set of commits + migrations + integration tests. A failed phase can be reverted without affecting prior-phase gains.
-- **Migration rollbacks** — destructive migrations (V71 REVOKE, V73 re-encrypt, V75 Asheville seed) have pre-deploy dry-runs on throwaway DB. Destructive operations (F6 hard-delete) have 30-day archival pause.
+- **Migration rollbacks** — destructive migrations (V70/V72 REVOKE, V74 re-encrypt, V76 `dev-coc-west` seed, V77 `dev-coc-east` seed) have pre-deploy dry-runs on throwaway DB. Destructive operations (F6 hard-delete) have 30-day archival pause.
 - **Key-rotation rollback** — if per-tenant JWT rotation destabilizes, fallback to dual-sign mode (old + new keys) until issue resolved.
-- **Demo-site rollback** — if Asheville seed breaks the live demo, migration is idempotent + reversible (DELETE Asheville data + re-deploy dev-coc-only seed).
+- **Demo-site rollback** — if either new-tenant seed breaks the live demo, migrations are idempotent + reversible (DELETE rows for the affected tenant + redeploy without that tenant's V76/V77). V76 and V77 are independent: one can land + bake before the other.
 
 ### Coordination
 
@@ -212,7 +219,7 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 1. **Q: `FABT_ENCRYPTION_KEY` env var (the Phase 0 master KEK) for standard tier — acceptable under HIPAA BAA for a regulated pilot that doesn't need full Vault?** — Casey to advise. If `No`, regulated tier deploy MUST use Vault Transit (D3).
 
-2. **Q: Asheville tenant — keep name as "Asheville CoC (demo)" or rename to fictional city pre-merge?** — User (Corey) final call per M2 review with Casey. Proposal assumes Asheville-with-disclaimer; pre-merge review can change.
+2. **Q: Asheville tenant — keep name as "Asheville CoC (demo)" or rename to fictional city pre-merge?** — **RESOLVED 2026-04-18 (Corey):** keep Asheville, and add a second real-NC-jurisdiction tenant "Beaufort County CoC (demo)" with slug `dev-coc-east`. Asheville tenant slug becomes `dev-coc-west` (geographic positioning explicit in slug). Both tenants carry mandatory `(demo)` suffix per D12.
 
 3. **Q: Crypto-shred verification test — can we assert ciphertext is unrecoverable without exposing the KEK in test?** — D11 test design; resolve in F6 implementation PR.
 
@@ -224,7 +231,7 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 7. **Q: Observability per-tenant read access (G9) scope for regulated tier** — deferred to regulated tier in the proposal. If first pilot is regulated, accelerate into this change; if standard first, keep deferred.
 
-8. **Q: Breach simulation tests (J7) — 15+ attack vectors require a synthetic "attacker tenant"** — use asheville-coc as the attacker tenant in simulations, or spin up a third synthetic tenant for test isolation? Decide in J7 implementation.
+8. **Q: Breach simulation tests (J7) — 15+ attack vectors require a synthetic "attacker tenant"** — use `dev-coc-west` OR `dev-coc-east` as the attacker tenant (operator-selectable per simulation), or spin up a fourth synthetic test-only tenant for isolation? Decide in J7 implementation. The two new demo tenants now provide symmetric east-west pairing which J7 can exploit.
 
 9. **Q: Can K1 tenant-quarantine break-glass trigger ALL 5 atomic actions in a single transaction?** — `jwt_key_generation++`, API key disable, worker-stop, state-change, audit — some are cross-service. Design K1 as a saga or a coordinated-script? Resolve in K1 PR.
 
