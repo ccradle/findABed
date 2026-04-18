@@ -53,31 +53,31 @@
 
 ## 3. Phase B — Database-layer hardening (2 weeks)
 
-- [ ] 3.1 Verify prod Postgres image version ≥ 16.5; if below, upgrade via independent pre-cutover deploy step (B1, CVE-2024-10976)
-- [ ] 3.2 Add CI check in `.github/workflows/ci.yml` that rejects PRs against Postgres < 16.5 via Testcontainers config
-- [ ] 3.3 Flyway V68 — create `fabt_current_tenant_id()` LEAKPROOF SQL function wrapping `current_setting('app.tenant_id', true)`
-- [ ] 3.4 Flyway V67 — D14 tenant-RLS policies on `audit_events` (already has tenant_id per v0.40 V57), `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `totp_recovery`, `hmis_outbox`, `tenant_key_material`, `kid_to_tenant_key` (Phase A V61 deferred — RLS needs RESTRICTIVE WRITE policy + permissive SELECT policy because JWT validate looks up kid before TenantContext is bound) — using `fabt_current_tenant_id()` helper
-- [ ] 3.5 Flyway V69 — `ALTER TABLE ... FORCE ROW LEVEL SECURITY` on every table with D14 policies (B3)
-- [ ] 3.6 Flyway V70 — indexes on `(tenant_id, ...)` for every D14-protected table (B4) — verify via `EXPLAIN` regression test
-- [ ] 3.7 Flyway V71 — list-partition `audit_events` by `tenant_id` (B8); partition-creation hook in `TenantLifecycleService.create` (F3); partition-drop hook in hard-delete (F6)
-- [ ] 3.8 Flyway V71 (continued) — list-partition `hmis_audit_log` by `tenant_id`
-- [ ] 3.9 Flyway V72 — `REVOKE UPDATE, DELETE ON audit_events, hmis_audit_log, platform_admin_access_log FROM fabt_app` (G2)
-- [ ] 3.10 Flyway V73 — enable `pgaudit` extension if supported in environment; if not, document manual enable step in runbook (B7)
-- [ ] 3.11 Configure `pgaudit.log = 'write,ddl'` + `pgaudit.log_level = 'log'` + include `app.tenant_id` in log format
-- [ ] 3.12 Create `docs/security/pg-policies-snapshot.md` as git-tracked artifact (B5); content = output of `SELECT * FROM pg_policies ORDER BY schemaname, tablename, policyname`
-- [ ] 3.13 Add CI check that diffs live-DB `pg_policies` against the snapshot file; fails on drift
-- [ ] 3.14 Add migration-lint rule (ArchUnit-for-SQL): Flyway migrations introducing `SECURITY DEFINER` functions require `@security-definer-exception: <justification>` comment header (B6)
-- [ ] 3.15 Add `SET LOCAL statement_timeout` wrapper in `TenantContext.runWithContext` — value sourced from `TenantRateLimitConfig.statementTimeoutMs` (B9; depends on E2)
-- [ ] 3.16 Add `SET LOCAL work_mem` wrapper in `TenantContext.runWithContext` — value sourced from `TenantRateLimitConfig.workMem`
+- [x] 3.1 Verify prod Postgres image version ≥ 16.5; if below, upgrade via independent pre-cutover deploy step (B1, CVE-2024-10976) — **live prod PG 16.13 as of v0.44.1 (2026-04-18)**
+- [ ] 3.2 Add CI check in `.github/workflows/ci.yml` that rejects PRs against Postgres < 16.5 via Testcontainers config — **PARTIAL: soft-satisfied by `BaseIntegrationTest` using `postgres:16-alpine` (rolling latest 16.x; currently 16.13); strict hard-gate deferred to Phase C as a dedicated version-assertion test**
+- [x] 3.3 Flyway V68 → **shipped as V67** — `fabt_current_tenant_id()` LEAKPROOF SQL function wrapping `current_setting('app.tenant_id', true)` *(version number drifted because v0.42 Phase A5 took V74; Phase B used V67-V72)*
+- [x] 3.4 Flyway V67 → **shipped as V68** — D14 tenant-RLS policies on 7 regulated tables (`audit_events`, `hmis_audit_log`, `password_reset_token`, `one_time_access_code`, `hmis_outbox`, `tenant_key_material`, `kid_to_tenant_key`). `totp_recovery` is not in the set (table doesn't exist as of Phase A; TOTP uses `app_user.totp_secret_encrypted` directly which is tenant-scoped via user row). Pre-auth tables use PERMISSIVE-SELECT + RESTRICTIVE-WRITE split per D45.
+- [x] 3.5 Flyway V69 — FORCE ROW LEVEL SECURITY on all 7 regulated tables. `fabt_rls_force_rls_enabled{table}=1.0` live on prod.
+- [x] 3.6 Flyway V70 → **shipped as V71** — supporting indexes on `(tenant_id, expires_at)` for `password_reset_token` + `one_time_access_code`. Audit-table pre-existing btree on `(tenant_id, target_user_id, timestamp DESC)` covers EXPLAIN regression.
+- [ ] 3.7 Flyway V71 — list-partition `audit_events` by `tenant_id` (B8); partition-creation hook in `TenantLifecycleService.create` (F3); partition-drop hook in hard-delete (F6) — **scope-deferred by warroom; audit_events <100k rows doesn't justify partitioning cost yet**
+- [ ] 3.8 Flyway V71 (continued) — list-partition `hmis_audit_log` by `tenant_id` — **scope-deferred with 3.7**
+- [x] 3.9 Flyway V72 → **shipped as V70 + V72** — V70 REVOKE UPDATE, DELETE on audit tables; V72 REVOKE TRUNCATE, REFERENCES (checkpoint-2 warroom added V72 on top of V70). `platform_admin_access_log` table doesn't exist in v1 (G2 deferred to regulated-tier roadmap).
+- [x] 3.10 Flyway V73 — pgaudit config via `ALTER DATABASE ... SET pgaudit.*` (live as of v0.44.1 2026-04-18). Debian+PGDG image swap in deploy/pgaudit.Dockerfile + manual `CREATE EXTENSION pgaudit` step documented in oracle-update-notes-v0.44.0.md + amendments.
+- [ ] 3.11 Configure `pgaudit.log = 'write,ddl'` + `pgaudit.log_level = 'log'` **DONE**; include `app.tenant_id` in log format **PARTIAL/DEFERRED** — pgaudit's native log format doesn't carry custom GUCs. Options (log_line_prefix with application_name tagging / pgaudit.log_parameter=on for SET-statement capture) documented in Phase B close-out commit; forensic correlation available via `audit_events.tenant_id` + logback MDC `tenant_id` in backend logs. Filed as Phase C followup.
+- [x] 3.12 `docs/security/pg-policies-snapshot.md` shipped at Phase B merge. Companion `scripts/phase-b-rls-snapshot.sh` regenerates. SHA-256 pin against tag commit is W-CHANGELOG-1 follow-up (Phase C).
+- [ ] 3.13 CI check diffing live-DB `pg_policies` against snapshot — **grep-guard `phase-b-rls-test-discipline` exists in ci.yml but is not a live-DB diff**; deferred to Phase C (task #165 bundle)
+- [ ] 3.14 Migration-lint ArchUnit-for-SQL SECURITY DEFINER rule — **deferred to Phase C (task #165)**
+- [ ] 3.15 `SET LOCAL statement_timeout` wrapper — **depends on Phase E rate-limit config (TenantRateLimitConfig)**
+- [ ] 3.16 `SET LOCAL work_mem` wrapper — **depends on Phase E**
 - [x] 3.17 ArchUnit rule: `@Transactional` methods must not call `TenantContext.runWithContext()` inside the transaction (B11 per `feedback_transactional_rls_scoped_value_ordering.md`) — `TenantContextTransactionalRuleTest` with 2-entry allowlist (HmisPushService.processOutbox, ReservationService.expireReservation) carrying documented carve-out justifications
-- [ ] 3.18 Extend `TenantIdPoolBleedTest` with B12 scenario: inject `SET ROLE fabt_app` failure mid-setup; assert connection removed from pool
-- [ ] 3.19 Integration test (B13): assert `SELECT current_user = 'fabt_app'` post-connection-borrow; CI fails if owner/superuser
-- [ ] 3.20 Document `docs/security/logical-replication-posture.md` — v1 stance: no logical replication; per-tenant `pg_dump --where` + policy-strip procedure (B10)
-- [ ] 3.21 Integration test — D14 tenant-RLS enforcement: insert 2 tenants' rows into `audit_events`; query as each; assert zero cross-tenant visibility
-- [ ] 3.22 Integration test — owner-bypass prevention: attempt admin session to UPDATE an audit_events row from another tenant; assert FORCE RLS blocks
-- [ ] 3.23 Integration test — pg_policies snapshot drift: mutate a policy; CI diff fails
-- [ ] 3.24 Integration test — pgaudit log entries present for every tenant-scoped write
-- [ ] 3.25 Commit Phase B + open PR
+- [ ] 3.18 Extend `TenantIdPoolBleedTest` with B12 scenario — **deferred to Phase C (task #165)**
+- [ ] 3.19 Integration test `current_user = 'fabt_app'` post-connection-borrow — **deferred to Phase C (task #165)**
+- [x] 3.20 `docs/security/logical-replication-posture.md` — v1 stance doc shipped at Phase B close-out (2026-04-18)
+- [ ] 3.21 Cross-tenant RLS enforcement IT — **deferred to Phase C (task #165)**
+- [ ] 3.22 Owner-bypass prevention IT — **deferred to Phase C (task #165)**
+- [ ] 3.23 pg_policies snapshot drift IT — **deferred to Phase C (task #165)**
+- [ ] 3.24 pgaudit log-entry IT per tenant-scoped write — **deferred to Phase C (task #165); unblocked now that V73 is live**
+- [x] 3.25 Commit Phase B + open PR — **merged as PR #131 (commit `9a83562`) 2026-04-18; shipped to demo as v0.43.1 + v0.44.1**
 
 ## 4. Phase C — Cache isolation (1 week)
 
