@@ -66,17 +66,17 @@
 - [x] 3.11 Configure `pgaudit.log = 'write,ddl'` + `pgaudit.log_level = 'log'` **DONE**; include `app.tenant_id` in log format — **DONE v0.45.0**: `RlsDataSourceConfig.applyRlsContext` now sets `application_name = 'fabt:tenant:<uuid>'` co-located with `app.tenant_id` in the same prepared statement (drift-safety: a divergence means pgaudit would log the wrong tenant for a query). `deploy/pgaudit.conf` adds `%a` to `log_line_prefix` so pgaudit log lines actually carry the tag. Covered by `PgauditApplicationNameDriftTest` (sequential alternating + null-tenant + concurrent virtual-thread invariant).
 - [x] 3.12 `docs/security/pg-policies-snapshot.md` shipped at Phase B merge. Companion `scripts/phase-b-rls-snapshot.sh` regenerates. SHA-256 pin against tag commit is W-CHANGELOG-1 follow-up (Phase C).
 - [ ] 3.13 CI check diffing live-DB `pg_policies` against snapshot — **grep-guard `phase-b-rls-test-discipline` exists in ci.yml but is not a live-DB diff**; deferred to Phase C (task #165 bundle)
-- [ ] 3.14 Migration-lint ArchUnit-for-SQL SECURITY DEFINER rule — **deferred to Phase C (task #165)**
+- [x] 3.14 Migration-lint ArchUnit-for-SQL SECURITY DEFINER rule — **DONE v0.45.0**: `MigrationLintTest` (`org.fabt.architecture`) scans every `V*.sql` + `V*.java` Flyway migration for `SECURITY DEFINER`; allowlist is empty + entries require warroom/design citation. Rationale: `SECURITY DEFINER` runs with the function-owner's privileges (fabt has BYPASSRLS) — would reintroduce owner-bypass Phase B V69 is built to block.
 - [ ] 3.15 `SET LOCAL statement_timeout` wrapper — **depends on Phase E rate-limit config (TenantRateLimitConfig)**
 - [ ] 3.16 `SET LOCAL work_mem` wrapper — **depends on Phase E**
 - [x] 3.17 ArchUnit rule: `@Transactional` methods must not call `TenantContext.runWithContext()` inside the transaction (B11 per `feedback_transactional_rls_scoped_value_ordering.md`) — `TenantContextTransactionalRuleTest` with 2-entry allowlist (HmisPushService.processOutbox, ReservationService.expireReservation) carrying documented carve-out justifications
-- [ ] 3.18 Extend `TenantIdPoolBleedTest` with B12 scenario — **deferred to Phase C (task #165)**
-- [ ] 3.19 Integration test `current_user = 'fabt_app'` post-connection-borrow — **deferred to Phase C (task #165)**
+- [x] 3.18 Extend `TenantIdPoolBleedTest` with B12 scenario — **DONE v0.45.0**: `RlsAwareDataSourceFailureTest` (unit, 3 @Tests) covers the B12 invariant — if `applyRlsContext` fails mid-setup the borrowed connection MUST be closed before `SQLException` escapes, preventing a half-configured connection from returning to the pool with stale `app.tenant_id`. Unit-test approach chosen over IT because manufacturing a `SET ROLE` failure needs DB-level GRANT manipulation; the decorator's error path is 5 lines and unit-testable with mocked JDBC types.
+- [x] 3.19 Integration test `current_user = 'fabt_app'` post-connection-borrow — **DONE v0.45.0**: covered by `PhaseBRlsEnforcementTest.connectionBorrow_runsAsFabtAppRole`. Asserts `SELECT current_user` returns `fabt_app` after every borrow, both under TenantContext and under null context (scheduled-job case).
 - [x] 3.20 `docs/security/logical-replication-posture.md` — v1 stance doc shipped at Phase B close-out (2026-04-18)
-- [ ] 3.21 Cross-tenant RLS enforcement IT — **deferred to Phase C (task #165)**
-- [ ] 3.22 Owner-bypass prevention IT — **deferred to Phase C (task #165)**
-- [ ] 3.23 pg_policies snapshot drift IT — **deferred to Phase C (task #165)**
-- [ ] 3.24 pgaudit log-entry IT per tenant-scoped write — **deferred to Phase C (task #165); unblocked now that V73 is live**
+- [x] 3.21 Cross-tenant RLS enforcement IT — **DONE v0.45.0**: `PhaseBRlsEnforcementTest.crossTenantSelectOnAuditEvents_rlsHidesOtherTenantRows` — inserts an `audit_events` row under tenant A, asserts tenant A still sees it (sanity), asserts tenant B sees zero rows. Load-bearing invariant of V68+V69.
+- [x] 3.22 Owner-bypass prevention IT — **DONE v0.45.0**: `PhaseBRlsEnforcementTest` covers two flavors — (a) `auditEvents_updateAndDeleteRevoked_defenseInDepth` asserts V70's REVOKE of UPDATE+DELETE is active (fabt_app gets "permission denied" for UPDATE/DELETE on audit_events), (b) `crossTenantInsertWithForeignTenantId_blockedByWithCheck` asserts WITH CHECK clause rejects an INSERT claiming a different tenant_id.
+- [ ] 3.23 pg_policies snapshot drift IT — **still deferred** (requires snapshot-diff CI job; see Phase C bundle).
+- [x] 3.24 pgaudit log-entry IT per tenant-scoped write — **DONE (pre-v0.45)**: `PgauditLogEntryTest` (`@Tag("pgaudit")`, runs in `pgaudit-tests` Maven profile with pre-built `fabt-pgaudit:ci` image) asserts pgaudit emits AUDIT lines for regulated writes + `ALTER TABLE ... NO FORCE ROW LEVEL SECURITY` DDL.
 - [x] 3.25 Commit Phase B + open PR — **merged as PR #131 (commit `9a83562`) 2026-04-18; shipped to demo as v0.43.1 + v0.44.1**
 
 ## 4. Phase C — Cache isolation (1 week)
