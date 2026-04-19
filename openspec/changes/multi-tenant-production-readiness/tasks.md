@@ -81,15 +81,21 @@
 
 ## 4. Phase C — Cache isolation (1 week)
 
-- [ ] 4.1 Create `TenantScopedCacheService` in `org.fabt.shared.cache` — wraps `TieredCacheService`; prepends `TenantContext.getTenantId()` to every key; throws `IllegalStateException` if no tenant context
-- [ ] 4.2 ArchUnit Family C rule: direct `TieredCacheService.get/put` requires `@TenantUnscopedCache("justification")` annotation
-- [ ] 4.3 Extend Family C to cover all `Caffeine.newBuilder()` call sites in `*.service` (C2); add rule to scan for new `Caffeine.newBuilder` and require same annotation or `TenantScopedCacheService` wrapper
-- [ ] 4.4 [LATENT C3] Refactor `EscalationPolicyService.policyById` cache key from UUID-only to `CacheKey(tenantId, policyId)` composite
-- [ ] 4.5 Create `docs/architecture/redis-pooling-adr.md` (C4) — documents single-tenant Redis default + ACL-per-tenant option for regulated tier
-- [ ] 4.6 Implement `ReflectionDrivenCacheBleedTest` — discovers every `@Cacheable` method + every `TieredCacheService.get` call site via reflection; for each: `tenantA.write(k); tenantB.read(k)` → assert miss
-- [ ] 4.7 Audit negative-cache paths (404 caches) — ensure tenant-scoped; add tests (C6)
-- [ ] 4.8 Unit test: `TenantScopedCacheService` throws without tenant context
-- [ ] 4.9 Unit test: key prefixing applied; different tenants get separate entries
+Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (pure-doc, informs design), wrapper + unit tests second (narrow contract with fast feedback), EscalationPolicy split before Family C rule extension (avoids rule-goes-red-on-first-run), Family C scope extended to `*.api` + `*.security` + `*.auth.*` alongside `*.service` per inventory findings (10 Caffeine fields vs. 3 originally named).
+
+- [ ] 4.0 `docs/architecture/redis-pooling-adr.md` (C4) — documents single-tenant Redis default + ACL-per-tenant option for regulated tier. States that `TenantScopedCacheService` prefix is sufficient for standard-tier Redis L2 when wired; regulated tier silos Redis. References `project_standard_tier_untested.md` as the prior stance being codified. **Pure doc; lands before code.**
+- [ ] 4.1 Create `TenantScopedCacheService` in `org.fabt.shared.cache` (new Spring bean, NOT `@Primary`) wrapping the existing `CacheService` bean. Prepends `TenantContext.getTenantId()` to every key; throws `IllegalStateException` with a context-identifying message if no tenant context. Expose `invalidateTenant(UUID)` that evicts every entry whose key begins with the given tenant prefix across all registered cache names; emit an `audit_events` row with action `TENANT_CACHE_INVALIDATED`.
+- [ ] 4.8 Unit test: `TenantScopedCacheService` throws `IllegalStateException` with tenant-context-missing message when no `TenantContext` is bound
+- [ ] 4.9 Unit test: key prefixing applied; different tenants get separate entries; same tenant reads the written value
+- [ ] 4.9b Unit test: `invalidateTenant(tenantA)` evicts tenantA entries across all cache names; tenantB entries in the same caches survive
+- [ ] 4.4 [LATENT C3] Split `EscalationPolicyService` cache surface into two fields — `policyById` (UUID key, `@TenantUnscopedCache("batch job cross-tenant snapshot resolution")`, only called from `findByIdForBatch` reserved for `@Scheduled`) and new `policyByTenantAndId` (composite `CacheKey(tenantId, policyId)`, request-path only). Add ArchUnit rule that `findByIdForBatch` may only be called from `@Scheduled` methods.
+- [ ] 4.2 ArchUnit Family C rule: direct `CacheService.get/put` and `TieredCacheService.get/put` require `@TenantUnscopedCache("justification")` annotation; annotation justification MUST be non-empty. Also block Spring `@Cacheable` / `@CacheEvict` / `@CachePut` outright (FABT uses zero today; block to prevent parallel caching pattern).
+- [ ] 4.3 Extend Family C to cover all `Caffeine.newBuilder()` call sites in `*.service`, `*.api`, `*.security`, `*.auth.*` (C2). Landing inventory at Phase C kickoff: 10 application-layer Caffeine fields (see `specs/tenant-scoped-cache/spec.md` table). Every field must either route through `TenantScopedCacheService` OR carry `@TenantUnscopedCache` with a non-empty justification.
+- [ ] 4.5 PR-template + CODEOWNERS gate: new `@TenantUnscopedCache` introductions SHALL trigger `@ccradle` review via CODEOWNERS. Document the PR-template checkbox ("I confirm the justification explains why tenant scoping would be incorrect for this cache").
+- [ ] 4.6 Implement `ReflectionDrivenCacheBleedTest` — discovers every `@Cacheable` method (expected: zero today; guardrail against future introductions) + every `CacheService.get/put` call site via reflection; for each: `tenantA.write(k)`, assert `tenantA.read(k)` is HIT (precondition), assert `tenantB.read(k)` is MISS (isolation). Assert `discoveredSites.size() >= EXPECTED_MIN_SITES` (pin concrete value at kickoff); fail if reflection returns empty (silent-empty guard per `feedback_never_skip_silently.md`).
+- [ ] 4.7 Negative-cache guardrail (C6) — ArchUnit rule rejects `cacheService.put(…, null, …)` and `cacheService.put(…, Optional.empty(), …)` call sites. Provide unused `TenantScopedCacheService.putNegative(String key)` helper for future tenant-scoped 404 caching. No existing 404 caches in FABT (verified); this is a forward-guard, not a migration.
+- [ ] 4.a Observability — every `TenantScopedCacheService.get/put` emits `fabt.cache.get{cache=<name>,tenant=<uuid>,result=hit|miss}` + `fabt.cache.put{cache=<name>,tenant=<uuid>}` Micrometer counters. Tag name `tenant` (not `tenant_id`) to match G4 OTel baggage key. Cardinality budget: ~2000 series at 100 tenants × 10 cache names × 2 results — within Prometheus budget.
+- [ ] 4.b Migration acceptance criteria for each converted call site: every caller migrated from `CacheService` to `TenantScopedCacheService` MUST strip any caller-side tenant prefix from the key it passes (otherwise the wrapper re-prefixes → stale `<tenant>:<tenant>:key` entries). Document in PR template; verify in code review.
 - [ ] 4.10 Commit Phase C + open PR
 
 ## 5. Phase D — Control-plane hardening (1 week)
