@@ -59,12 +59,21 @@ Organized into 12 workstream themes (A–L). No deferrals; every item ships in t
 
 ### C. Cache isolation
 
-- **C1. `TenantScopedCacheService` wrapper** — prepends `TenantContext.getTenantId()` to every key; throws `IllegalStateException` if no tenant context (fail-fast). ArchUnit **Family C** rule: direct `TieredCacheService.get/put` requires `@TenantUnscopedCache("justification")`.
-- **C2. Extend ArchUnit Family C to every `Caffeine.newBuilder()`** in `*.service` — covers `JwtService.claimsCache`, `EscalationPolicyService.policyById`, `ApiKeyAuthenticationFilter.rateLimitBuckets`, and any future Caffeine instance. All pass Family C or carry the annotation with justification.
-- **C3. [LATENT] Fix `EscalationPolicyService.policyById` cache key** — currently keyed by UUID only (cross-tenant leak risk if policies are ever shared); change to composite `CacheKey(tenantId, policyId)`.
-- **C4. Redis pooling ADR** — explicit decision document: Redis ACL-per-tenant pattern OR separate logical DB per tenant OR "single-tenant Redis; multi-tenant pooling not safe with shared Redis." Current `project_standard_tier_untested.md` stance becomes formal.
-- **C5. Reflection-driven cache-bleed test fixture** — discovers every `@Cacheable` and `TieredCacheService.get` call site via reflection; for each, generates a test: `tenantA.write(k); tenantB.read(k)` → expect cache miss.
-- **C6. Negative-cache tenant scoping** — every 404 / null cache entry is tenant-scoped. Prevents Tenant A's 404 masking Tenant B's later create.
+**Status as of 2026-04-19 PM:** 4.0 + 4.0b + 4.1 + 4.4 + 4.2 + 4.3 + 4.5 +
+4.7 + 4.a shipped (8 of 10 tasks); 4.b (migrate 9 `PENDING_MIGRATION_SITES`
+callers) + 4.6 (reflection bleed test) remain; release-group target v0.47.0
+= "Phase C completes: cache isolation active across all application call
+sites." Full decision trail in `design-c-cache-isolation.md` (D-C-1..13 +
+D-4.b-1..7).
+
+- **C1. `TenantScopedCacheService` wrapper** — prepends `TenantContext.getTenantId()` to every key (`|` separator per D-C-10); throws `IllegalStateException` tagged `TENANT_CONTEXT_UNBOUND` if no tenant context. ArchUnit **Family C** Rule C1 enforces `@TenantUnscopedCache("justification")` or `@TenantScopedByConstruction("justification")` on every raw `CacheService` / `TieredCacheService` call site. Wrapper additionally stamps-and-verifies values via `TenantScopedValue<T>(UUID tenantId, T value)` envelope (D-C-13: write-side defence — key-prefix defends read side, envelope defends write side; both must fail in the same direction for a leak).
+- **C2. Extend ArchUnit Family C across `*.service` + `*.api` + `*.security` + `*.auth.*`** (D-C-3) — 11-field inventory at Phase C kickoff; all annotated (`@TenantUnscopedCache` × 10 + `@TenantScopedByConstruction` × 1). Rule C2 additionally blocks Spring `@Cacheable` / `@CacheEvict` / `@CachePut` outright (D-C-4: zero usage today; forbid to prevent parallel caching pattern).
+- **C3. [LATENT] `EscalationPolicyService` cache split** — per D-C-2 two caches (not one composite rekey). `policyById` UUID-keyed `@TenantUnscopedCache` reserved for `@Scheduled` batch path; new `policyByTenantAndId` composite-keyed `@TenantScopedByConstruction` for request path. `EscalationPolicyBatchOnlyArchitectureTest` enforces the batch-only boundary on `findByIdForBatch` (package-restriction approximates `@Scheduled`-caller intent because ArchUnit can't walk the Spring Batch Job → Step → @Scheduled chain).
+- **C4. Redis pooling ADR** — `docs/architecture/redis-pooling-adr.md` shipped (tasks 4.0 + 4.0b amendments): three-shape taxonomy (pooled+L1-only today, pooled+L2-single-tenant authorised, silo+L2-silo regulated); shared Redis without ACL-per-tenant rejected as default; HIPAA/VAWA encryption scope + shape-2 compensating controls + cached-value tenant verification documented.
+- **C5. Reflection-driven cache-bleed test fixture** — lands at task 4.6 AFTER 4.b drains `PENDING_MIGRATION_SITES` (site-discovery count is load-bearing and changes during migration). Asserts `discoveredSites.size() >= EXPECTED_MIN_SITES` per D-C-7 (silent-empty guard per `feedback_never_skip_silently.md`).
+- **C6. Negative-cache guardrail** — per D-C-5 shipped as source-scan `NegativeCacheGuardrailTest` (ArchUnit cannot inspect runtime argument values for literal-`null` / `Optional.empty()` detection); `putNegative(cacheName, key, ttl)` helper shipped for future 404-cache callers (zero today). Tenant-scoped by construction: `<tenantId>|:404:<key>` under the wrapper.
+- **C7. `CacheService.evictAllByPrefix` API extension** — per D-C-12 new interface method used by `TenantScopedCacheService.invalidateTenant(UUID)`; Caffeine impl filters `keySet()`, Redis L2 path uses `SCAN MATCH <prefix>* COUNT 1000` + `UNLINK` per batch (documented; Redis L2 wiring deferred).
+- **C8. PENDING_MIGRATION_SITES drain** (task 4.b) — 9 callers migrated from raw `CacheService` to `TenantScopedCacheService` in a single PR per D-4.b-1 (Alex coupling finding: `BedSearchService` + `AvailabilityService` share `CacheNames.SHELTER_AVAILABILITY`; staged migration would leave reader + writer on divergent envelope formats). Ship-list carries BedSearch pg_stat A/B/C baseline (D-4.b-4), parametrized cross-tenant attack IT × 8 caches + hit-rate sanity IT × 10 sites (D-4.b-5), and 3 Prometheus alert rules (D-4.b-6) co-located with v0.39.0 cross-tenant-isolation alerts.
 
 ### D. Control-plane hardening
 

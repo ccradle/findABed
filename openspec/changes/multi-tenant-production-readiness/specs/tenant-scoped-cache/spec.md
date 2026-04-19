@@ -259,3 +259,96 @@ FABT uses zero 404/negative cache entries today (verified at Phase C kickoff). T
 - **GIVEN** tenant A has a negative cache entry for resource `r1`
 - **WHEN** tenant A creates `r1` in its own tenant
 - **THEN** the negative entry is evicted and subsequent read returns the created resource
+
+### Requirement: pending-migration-sites-drained
+Phase C task 4.2+4.3 shipped the Family C ArchUnit Rule C1 behind a
+`PENDING_MIGRATION_SITES` allowlist containing 9 caller methods (6 in
+`AnalyticsService`, 1 each in `BedSearchService`, `AvailabilityService`,
+`ShelterService`). The allowlist SHALL be drained to `Set.of()` in Phase C
+task 4.b as the release gate for v0.47.0. No new entries SHALL be added to
+`PENDING_MIGRATION_SITES` without design-doc sign-off.
+
+Each migrated caller SHALL:
+
+1. Route cache access through `TenantScopedCacheService` (injected bean
+   `tenantScopedCacheService`), NOT raw `CacheService`.
+2. Strip any caller-side tenant prefix from the logical key passed to the
+   wrapper — the wrapper re-prefixes on every `put` / `get`. Double-
+   prefix produces `<tenant>|<tenant>|key` entries that silently populate
+   a stale key set and never hit.
+3. Use the literal constant `"latest"` as the logical key for migrations
+   that produce an empty post-strip key. Five sites qualify:
+   `AvailabilityService.createSnapshot` and `ShelterService.evictTenantShelterCaches`
+   (original key was `""`), plus `AnalyticsService.getDvSummary`,
+   `AnalyticsService.getGeographic`, `AnalyticsService.getHmisHealth`
+   (original key was `tenantId.toString()` — whole key was the tenant
+   discriminator; strips to empty). An empty string would truncate in
+   Grafana cache-key panels and in pg_stat_statements-adjacent
+   observability; `"latest"` is unambiguous. See design-c-cache-isolation.md
+   D-4.b-2 for the full 5-site enumeration and post-implementation
+   ratification note.
+
+Sites that use `evictAllByPrefix` for targeted invalidation (`ShelterService.evictTenantShelterCaches`)
+SHALL keep explicit per-cache `evictAllByPrefix` calls — NOT refactor to
+`TenantScopedCacheService.invalidateTenant(UUID)`. `invalidateTenant` is
+reserved for tenant-lifecycle FSM paths (Phase F F4 suspend / hard-delete)
+because it iterates every registered cache name (evict amplification +
+audit-surface semantic pollution documented in design-c-cache-isolation.md
+D-4.b-3).
+
+#### Scenario: Analytics caller migrated strips caller-side prefix
+- **GIVEN** `AnalyticsService.getUtilization` previously called `cacheService.get("analytics_utilization", tenantId + ":" + from + ":" + to)`
+- **WHEN** the method is migrated to `tenantScopedCacheService.get(cacheName, from + ":" + to)` — caller no longer embeds `tenantId` in the key
+- **THEN** the effective cache key under the wrapper is `<tenantId>|<from>:<to>` (single tenant prefix via `|` separator)
+- **AND** a lookup by the same (tenantId, from, to) after the migration hits the same entry — no double-prefix stale-key drift
+
+#### Scenario: Empty-key site migrates to "latest" constant
+- **GIVEN** `AvailabilityService.createSnapshot` previously called `cacheService.put("shelter_availability", "", snapshotValue, ttl)` where empty-string-key meant "the current per-tenant snapshot pointer"
+- **WHEN** the method is migrated to `tenantScopedCacheService.put("shelter_availability", "latest", snapshotValue, ttl)`
+- **THEN** the wrapper writes effective key `<tenantId>|latest` with envelope `TenantScopedValue(tenantId, snapshotValue)`
+- **AND** dashboards reading the cache key don't see truncated `<tenantId>|` orphans — the `latest` suffix is visible + grep-able
+
+#### Scenario: Post-migration cross-tenant attack rejected on every migrated cache
+- **GIVEN** a writer under `TenantContext=A` populates one of the 8 cache names written by migrated call sites (`SHELTER_PROFILE`, `SHELTER_AVAILABILITY`, `ANALYTICS_UTILIZATION`, `ANALYTICS_DEMAND`, `ANALYTICS_CAPACITY`, `ANALYTICS_DV_SUMMARY`, `ANALYTICS_GEOGRAPHIC`, `ANALYTICS_HMIS_HEALTH`)
+- **WHEN** a reader under `TenantContext=B` attempts to fetch the tenantA-prefixed key directly via the raw `CacheService` delegate (simulating a cache-poisoning attacker)
+- **THEN** the read path — if routed through `TenantScopedCacheService` — throws `IllegalStateException` tagged `CROSS_TENANT_CACHE_READ` via the envelope-verify check
+- **AND** an `audit_events` row with action `CROSS_TENANT_CACHE_READ` commits via `DetachedAuditPersister` REQUIRES_NEW even if the caller's transaction rolls back
+- **AND** `fabt.cache.get{cache=<name>,tenant=<tenantB-uuid>,result=cross_tenant_reject}` counter increments
+
+#### Scenario: Post-migration same-tenant hit rate sanity
+- **GIVEN** a freshly-started JVM with empty caches across all 10 migrated method paths
+- **WHEN** each migrated method is invoked once under `TenantContext=A` to warm the cache, then invoked a second time with the same arguments under the same tenant
+- **THEN** the second invocation is a cache HIT (not MISS) for all 10 paths
+- **AND** if any path regresses to MISS on the second call, the migration has produced divergent `put`-key / `get`-key strings (e.g., composite-key `toString()` drift) and fails the `PostMigrationCacheHitRateTest`
+
+### Requirement: cache-isolation-prometheus-alerts
+The project SHALL ship three Prometheus alert rules in
+`deploy/prometheus/alert-rules/fabt-cross-tenant-security.yml` at Phase C
+task 4.b landing — co-located with the v0.39.0 cross-tenant-isolation
+alerts so operators see one family.
+
+- **CRITICAL** — any cross-tenant cache-read rejection. PromQL:
+  `sum by (tenant) (rate(fabt_cache_cross_tenant_reject_total[5m])) > 0`.
+  The counter is emitted only on the wrapper's envelope-mismatch path,
+  which should be physically impossible under correct `TenantContext`
+  discipline. Non-zero → page on-call: async-continuation context drift,
+  scheduled-job-forgot-to-bind, or attacker.
+- **WARN** — malformed-entry rate non-zero over 15 minutes. PromQL:
+  `sum (rate(fabt_cache_malformed_entry_total[15m])) > 0`. Should be
+  zero once the `PENDING_MIGRATION_SITES` allowlist drains; non-zero
+  signals a caller bypassing the wrapper on the `put` side.
+- **WARN** — per-cache hit-rate drop > 50% vs 7-day moving average.
+  Catches a migration landing with divergent `put` / `get` keys — the
+  wrapper runs, the cache is present, but every call is a miss.
+
+#### Scenario: Cross-tenant reject fires CRITICAL alert immediately
+- **GIVEN** a cross-tenant read throws `CROSS_TENANT_CACHE_READ` in a single request
+- **WHEN** Prometheus scrapes the next interval
+- **THEN** `fabt_cache_cross_tenant_reject_total{cache,tenant}` increments
+- **AND** the CRITICAL alert fires with per-tenant `tenant` label routing to PagerDuty per Alertmanager config
+
+#### Scenario: Alert rules file lands in repo with task 4.b
+- **GIVEN** Phase C task 4.b lands v0.47.0
+- **WHEN** `deploy/prometheus/alert-rules/fabt-cross-tenant-security.yml` is rendered by CI
+- **THEN** the file contains all three rules (CRITICAL cross-tenant-reject + WARN malformed-entry + WARN hit-rate-drop)
+- **AND** Alertmanager routing already handles the CRITICAL (pagerduty) / WARN (slack #fabt-oncall-warn) labels used by the rules — no new infra

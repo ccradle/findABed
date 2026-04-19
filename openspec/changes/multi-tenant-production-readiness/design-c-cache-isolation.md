@@ -242,6 +242,267 @@ defending against.
 **Raised by:** external-standards review during ADR amendment pass
 (task 4.0b); pinned as decision here for cross-reference from spec.
 
+## Task 4.b warroom resolutions (2026-04-19 PM)
+
+Plan-review warroom (Alex + Marcus + Sam + Riley + Jordan + Casey + Elena)
+for the 9-site migration that drains `PENDING_MIGRATION_SITES`. All six
+decisions are additive — no prior D-C-* decision is reversed.
+
+### D-4.b-1 — Single PR, not staged
+
+**Decision:** all 9 call sites migrate in one PR. Rejected alternatives:
+two-wave (Analytics first, then BedSearch+Availability+Shelter) and three-
+wave (one per module).
+
+**Why:** Alex coupling finding — `BedSearchService.doSearch` and
+`AvailabilityService.createSnapshot` share `CacheNames.SHELTER_AVAILABILITY`.
+A staged migration would leave a writer on the old envelope format while a
+reader expects the new one (or vice-versa), which the wrapper's
+`MALFORMED_CACHE_ENTRY` guard fires on. Debugging that in prod under load is
+strictly worse than one atomic PR. Migration code is mechanical; the PR is
+reviewable by file-diff grouping (6 × Analytics method × same refactor, 2 ×
+AvailabilityService + ShelterService evict-path, 1 × BedSearch).
+
+**Raised by:** Alex (architecture).
+
+### D-4.b-2 — `"latest"` constant for empty-key migrations
+
+**Decision:** five sites produce an empty logical key after the caller-
+side tenant prefix strip — they all migrate to a literal `"latest"`
+constant as the logical key passed to the wrapper.
+
+The five sites are:
+
+1. `AvailabilityService.createSnapshot` — original key was `""` (stores a
+   per-tenant "current-snapshot" pointer)
+2. `ShelterService.evictTenantShelterCaches` — original key was `""`
+   (targets the whole tenant's shelter listing)
+3. `AnalyticsService.getDvSummary` — original key was `tenantId.toString()`
+   (whole key was tenant discriminator; strips to empty)
+4. `AnalyticsService.getGeographic` — same pattern, tenant-singleton cache
+5. `AnalyticsService.getHmisHealth` — same pattern, tenant-singleton cache
+
+**Why not alternatives:** (a) passing `""` produces `<tenant>|` keys that
+Grafana + pg_stat_statements truncate into confusing `<tenant>|` orphans
+because most cache-key dashboards filter on a minimum length; (b) adding a
+`putCurrent(cacheName)` / `getCurrent(cacheName)` method pair to the
+wrapper bloats the API surface for five callers; (c) compat shim for
+existing code is unnecessary — none of the five paths have external
+callers beyond their own service-layer wrappers (grep-verified).
+
+**Post-warroom ratification 2026-04-19 night:** initial warroom wording
+named only sites 1 + 2. During implementation of the AnalyticsService
+slice, the author observed that sites 3-5 share the exact same post-
+strip-empty-key shape (whole caller-side key was `tenantId.toString()`,
+the wrapper's prefix now supplies the tenant discriminator, nothing else
+remains). Alex ratified the extension to all 5 sites in the 4.b slice-1
+review; rationale and forbidden-alternatives reasoning apply uniformly.
+
+**Raised by:** Sam (performance observability review); extension
+ratified by Alex (architecture) during 4.b slice-1 warroom.
+
+### D-4.b-3 — Keep 2 explicit evicts in ShelterService (reject
+`invalidateTenant` refactor)
+
+**Decision:** `ShelterService.evictTenantShelterCaches` continues to call
+two explicit `evictAllByPrefix` invocations against
+`SHELTER_PROFILE` + `SHELTER_AVAILABILITY` — NOT a single
+`TenantScopedCacheService.invalidateTenant(tenantId)` call.
+
+**Why not the refactor:** Alex blocker — `invalidateTenant` iterates all
+11 registered cache names. Calling it from a shelter-specific code path
+evicts 9 unrelated caches (JWT claims, escalation policies, MFA tokens,
+etc.) which:
+
+1. Amplifies the evict cost 5.5× (2 → 11 caches)
+2. Spams the `TENANT_CACHE_INVALIDATED` audit log with rows whose
+   `details.trigger = "shelter update"` — confuses incident forensics
+   since the audit surface currently reserves `TENANT_CACHE_INVALIDATED`
+   for tenant-lifecycle FSM actions (Phase F F4: suspend / hard-delete)
+3. Semantic pollution — a shelter edit should not walk the same code path
+   as a tenant suspension
+
+`invalidateTenant` stays reserved for Phase F lifecycle paths. The
+`ShelterService.evictTenantShelterCaches` method keeps explicit evicts and
+lists the 2 cache names in a Javadoc so the next engineer sees the
+constraint.
+
+**Raised by:** Alex (architecture); seconded by Marcus (audit-surface
+hygiene).
+
+### D-4.b-4 — BedSearch DB-floor measurement via pg_stat_statements
+
+**Decision:** ship `docs/performance/probe-bedsearch-4b.sql` — a 100-call
+pg_stat_statements harness that measures the DB-side floor latency of
+`BedAvailabilityRepository.findLatestByTenantId` (the recursive skip-scan
+BedSearch issues on cache miss). Harness exercises the SQL directly via
+`PREPARE`/`EXECUTE` in psql, NOT through the wrapper. Includes an initial
+fingerprint-confirmation step so the aggregate stats can be trusted.
+
+**Why the harness is a floor measurement, not an A/B/C wrapper
+comparison:** raised by Sam in the post-commit warroom (2026-04-19
+night). The earlier draft framed scenarios as "pre-migration / post-
+migration cold / post-migration warm" but the DO-block exercised
+raw SQL bypassing Spring — scenarios B and C measured identical paths,
+not wrapper effects. Reframed to measure the DB floor only. The wrapper
+itself is exercised by `TenantScopedCacheServiceUnitTest`,
+`Task4bCacheHitRateTest`, and `Tenant4bMigrationCrossTenantAttackTest` —
+three test surfaces covering unit contract, put→get key stability, and
+cross-tenant envelope rejection respectively.
+
+**Why BedSearch-only:** Sam scope — BedSearch is the 1k-QPS hot path per
+the v0.45.0 production load profile. Analytics endpoints are cold-path
+(admin-dashboard refreshes every ~30s), SQL-dominated (95%+ of method
+time is aggregation), and the cache is secondary. A DB-floor harness on
+6 analytics methods is 600 probe runs for zero additional signal.
+
+**Interpretation:** `mean_exec_time` is the floor BedSearch pays on cache
+miss. Compare against prod-observed p95 at `/api/v1/queries/beds`. If
+prod p95 sits within 1.2× of `floor × cache-miss-rate`, the wrapper is
+doing its job + latency is DB-dominated. If prod p95 >> that envelope,
+investigate app-side cost (JDBC, Spring handler) rather than the cache
+layer.
+
+**Harness:** `docs/performance/probe-bedsearch-4b.sql` per
+`feedback_pgstat_for_index_validation.md` canonical pattern.
+
+**Raised by:** Sam (performance); reframed by Sam during post-commit
+warroom review.
+
+### D-4.b-5 — Riley test matrix: 1 parametrized attack × 8 caches + 1
+hit-rate sanity × 10 sites
+
+**Decision:** two parametrized integration-test classes:
+
+**a) `Tenant4bMigrationCrossTenantAttackTest`** — 1 test method with
+`@MethodSource` producing 8 rows, one per cache name written by a
+migrated site:
+
+- `CacheNames.SHELTER_PROFILE`
+- `CacheNames.SHELTER_AVAILABILITY`
+- `CacheNames.ANALYTICS_UTILIZATION`
+- `CacheNames.ANALYTICS_DEMAND`
+- `CacheNames.ANALYTICS_CAPACITY`
+- `CacheNames.ANALYTICS_DV_SUMMARY`
+- `CacheNames.ANALYTICS_GEOGRAPHIC`
+- `CacheNames.ANALYTICS_HMIS_HEALTH`
+
+Each row: `TenantContext.callWithContext(TENANT_A, () -> put(cacheName,
+"k", v))`, switch to tenant B, raw-`CacheService`-read the tenant-A-
+prefixed key (via reflection-access to the delegate bean to bypass the
+wrapper's prefix on the read side), assert `CROSS_TENANT_CACHE_READ` is
+thrown + `audit_events` row persists (visible under
+`TenantContext.callWithContext(TENANT_B, ...)` wrap for the count per
+Phase B V69 FORCE RLS). Runs inside a `TransactionTemplate` to verify
+REQUIRES_NEW survives rollback.
+
+**b) `PostMigrationCacheHitRateTest`** — 1 test method × 10
+`@MethodSource` rows, one per migrated method. Each row: warm cache with
+a put under tenant A, assert same-key same-tenant get returns HIT (not
+MISS). Catches the regression where migration drift produces different
+key strings on `put` vs. `get` paths (e.g., `toString()` drift on
+composite keys, accidentally not stripping a caller-side prefix on one
+side).
+
+**Why parametrized and not per-method classes:** 18 separate test files
+for 18 site-pairs creates noise; the `@MethodSource` pattern documents
+the matrix in one place and any future migrated site adds one row, not
+one file.
+
+**Raised by:** Riley (QA).
+
+### D-4.b-6 — Three Prometheus alert rules in
+`fabt-cross-tenant-security.yml`
+
+**Decision:** `deploy/prometheus/alert-rules/fabt-cross-tenant-security.yml`
+gains three new rules (co-located with the v0.39.0 cross-tenant-isolation
+rules so operators see them as one family):
+
+1. **CRITICAL** — `sum by (tenant) (rate(fabt_cache_cross_tenant_reject_total[5m])) > 0`
+   — ANY cross-tenant cache-read rejection page the on-call. Justified:
+   this counter fires only on the wrapper's value-stamp-and-verify
+   rejection path, which should be physically impossible under correct
+   `TenantContext` discipline. Non-zero = something else is wrong (async
+   continuation context drift, scheduled-job-forgot-to-bind, attacker).
+2. **WARN** — `sum (rate(fabt_cache_malformed_entry_total[15m])) > 0` —
+   a raw-`CacheService.put` wrote a non-envelope payload that a wrapper
+   read later fetched. Should be zero once 4.b lands. Non-zero signals
+   a caller that bypassed the wrapper on `put`.
+3. **WARN** — per-cache hit-rate drop > 50% vs 7-day moving average —
+   `(rate(fabt_cache_get_total{result="miss"}[1h]) / rate(fabt_cache_get_total[1h])) > 2 * avg_over_time(...7d)`.
+   Catches a migration that landed but broke the key — wrapper is
+   working, cache is present, but `put`-key and `get`-key diverged.
+
+**Why the three, not one:** Jordan (SRE) scope — cross-tenant-reject is
+a correctness signal (attacker or bug) and pages. Malformed-entry is a
+data-discipline signal and warns. Hit-rate drop is a performance signal
+and warns. Three levels = three different oncall behaviours.
+
+**Raised by:** Jordan (SRE).
+
+### D-4.b-7 — Release-notes title + Casey legal-scan posture
+
+**Decision:** `v0.47.0` CHANGELOG [Unreleased] entry headline:
+
+> **v0.47.0 — Phase C completes: cache isolation active across all
+> application call sites**
+
+Body lists the 4 shipped spec requirements (tenant-scoped-cache-service,
+tenant-scoped-cache-value-verification, cache-service-evict-all-by-prefix,
+tenant-scoped-cache-observability), notes zero end-user-visible change,
+notes the `PENDING_MIGRATION_SITES` allowlist-drain as the release gate.
+
+**Casey legal-scan posture:** avoid "compliant", "guarantees",
+"equivalent to", "compliance-ready". Prefer "active", "in place",
+"tenant-scoped", "across all call sites" — verifiable statements about
+the code, not quasi-legal claims. Per
+`feedback_legal_scan_in_comments.md`: the CI legal scan is context-blind
+and will flag CHANGELOG entries using any forbidden phrase even if
+surrounded by qualifiers.
+
+**Raised by:** Casey (legal review).
+
+### Alex coupling finding — BedSearch + Availability share a cache
+
+`BedSearchService.doSearch` reads from `CacheNames.SHELTER_AVAILABILITY`;
+`AvailabilityService.createSnapshot` writes to it. The two live in
+different service classes but share one cache namespace. Migrating one
+without the other would (under the wrapper) produce
+`MALFORMED_CACHE_ENTRY` on every read — reader expects the envelope,
+writer still writes raw values.
+
+**Mitigation:** single-PR migration (D-4.b-1). This finding is the
+load-bearing reason for D-4.b-1; documented here so a future reviewer
+doesn't re-litigate "why not staged" without seeing the coupling.
+
+### Marcus new surface — invalidateTenant registry + prefix-scan risk
+
+`TenantScopedCacheService.invalidateTenant` iterates the 11 eagerly-seeded
+cache names and calls `CacheService.evictAllByPrefix` on each. For the
+current Caffeine L1 implementation this is safe (filters `keySet()` in
+memory). For the future Redis L2 implementation, `SCAN MATCH <prefix>*
+COUNT 1000` returns keys with the tenant UUID as the first token — an
+attacker with Redis read access could enumerate a tenant's cache
+footprint before the `UNLINK` pass completes.
+
+**Mitigation:** documented as an attack surface in the ADR (task 4.0b
+§"Cached-value tenant verification"). The on-read verification (D-C-11
+envelope check) catches a stolen cache value even if the attacker
+reads it directly — they can see WHICH keys exist but cannot USE a read
+value without a matching `TenantContext`. Additional physical mitigation
+lands when L2 Redis wires up (ADR shape 2 or 3): Redis ACL per-tenant
+OR per-tenant logical DB.
+
+**Raised by:** Marcus (security).
+
+### Jordan deployment concern — three alerts require Alertmanager routing
+
+The three new alert rules (D-4.b-6) need routing entries in
+`deploy/prometheus/alertmanager.yml`. CRITICAL routes to pagerduty
+(existing); WARN routes to `#fabt-oncall-warn` Slack (existing). No new
+infrastructure; Jordan confirms the routing table already handles labels
+used by these rules.
+
 ## Deferrals
 
 - Standard-tier Redis deployment is `project_standard_tier_untested.md`
