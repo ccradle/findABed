@@ -5,22 +5,64 @@ The system SHALL provide a `TenantScopedCacheService` wrapper (per C1) that prep
 
 The wrapper SHALL be published as a **distinct Spring bean** named `tenantScopedCacheService` (dependency-injected where callers want tenant scoping), NOT as `@Primary` over the existing `CacheService` bean. This is deliberate: the existing `CacheService` bean remains available for annotated-unscoped callers, and `@Primary` would silently double-prefix call sites that already manually embed `tenantId` in the key (producing stale `<tenant>:<tenant>:key` entries). Migration acceptance criteria: every converted call site SHALL strip any caller-side tenant prefix when routing through the wrapper.
 
+The prefix separator SHALL be `|` (pipe), NOT `:` (colon). This is deliberate per Phase C warroom D-4.1-9: existing composite call-site keys in `AnalyticsService` (and similar) use colon as a separator (e.g. `tenantId + ":" + from + ":" + to`). Using `|` between the tenant prefix and the caller's logical key produces unambiguous `<tenantA-uuid>|<from>:<to>` effective keys that are visually debuggable and cannot collide with the caller's internal structure.
+
+`IllegalStateException` messages propagated from the wrapper to HTTP response bodies SHALL NOT contain tenant UUIDs or cache values; they SHALL contain only short action tags (`CROSS_TENANT_CACHE_READ`, `MALFORMED_CACHE_ENTRY`, `TENANT_CONTEXT_UNBOUND`). UUIDs and details SHALL be persisted to `audit_events` rows + structured logs only.
+
 #### Scenario: Tenant-scoped put and get succeed within the same tenant
 - **GIVEN** a request is bound to tenant A via `TenantContext`
 - **WHEN** `TenantScopedCacheService.put("shelters:active", value)` runs, then `get("shelters:active")` runs
-- **THEN** the effective cache key is `<tenantA-uuid>:shelters:active`
+- **THEN** the effective cache key is `<tenantA-uuid>|shelters:active`
 - **AND** the value is returned on get
 
 #### Scenario: Cross-tenant read returns miss
 - **GIVEN** tenant A has written key `shelters:active` to its scoped cache
 - **WHEN** a new request bound to tenant B calls `TenantScopedCacheService.get("shelters:active")`
-- **THEN** the effective key resolves to `<tenantB-uuid>:shelters:active`
+- **THEN** the effective key resolves to `<tenantB-uuid>|shelters:active`
 - **AND** the lookup returns a cache miss — tenant A's entry is invisible
 
 #### Scenario: Missing tenant context fails fast
 - **WHEN** `TenantScopedCacheService.get("shelters:active")` is called with no `TenantContext` bound
-- **THEN** the call throws `IllegalStateException` with a message identifying the missing tenant context
+- **THEN** the call throws `IllegalStateException` tagged `TENANT_CONTEXT_UNBOUND` (exception message carries the tag only; no UUIDs)
 - **AND** no cache lookup is performed
+
+#### Scenario: Null value on put is rejected at runtime
+- **WHEN** `TenantScopedCacheService.put(cacheName, key, null, ttl)` is called
+- **THEN** the call throws `IllegalArgumentException` immediately (belt-and-suspenders with the Family C ArchUnit rule on `put(…, null, …)`)
+- **AND** no cache write occurs
+
+### Requirement: tenant-scoped-cache-value-verification
+The wrapper SHALL embed the writer's `TenantContext.getTenantId()` inside the stored cache value via a `TenantScopedValue<T>(UUID tenantId, T value)` record envelope on every `put`, and SHALL verify on every `get` that the envelope's `tenantId` matches the reader's current `TenantContext.getTenantId()`. Mismatches SHALL throw `IllegalStateException` tagged `CROSS_TENANT_CACHE_READ`.
+
+This defends against wrong-tenant-context-on-write — the leading 2025-2026 cache-leak pattern per Redis Inc. Feb 2026 and OWASP ASVS 5.0 (May 2025). Key-prefix alone defends the read side; value-stamp-and-verify defends the write side. Both layers must fail in the same direction for a leak.
+
+The cross-tenant-read audit row SHALL be persisted via a `@Transactional(propagation = REQUIRES_NEW)` helper (e.g., `AuditEventPersister.persist`) so the audit row commits independently of the caller's transaction fate. An attacker who triggers a cross-tenant read followed by a rollback SHALL NOT erase the audit evidence.
+
+`IllegalStateException` messages propagated from the wrapper SHALL contain only the action tag `CROSS_TENANT_CACHE_READ` — never tenant UUIDs, key values, or cached payload fragments.
+
+#### Scenario: Cross-tenant write-then-read throws
+- **GIVEN** a writer bound to tenant A calls `put("shelters:active", value)` — envelope stamped with tenantA
+- **WHEN** a reader bound to tenant B directly reads the tenantA-prefixed key via raw `CacheService` (bypassing the wrapper's prefix) OR the wrapper's prefix computation produces the same underlying cache key due to a future bug
+- **THEN** the wrapper's envelope verification rejects the read with `IllegalStateException` tagged `CROSS_TENANT_CACHE_READ`
+- **AND** `fabt.cache.get{cache,tenant,result=cross_tenant_reject}` Micrometer counter is incremented
+- **AND** an `audit_events` row with action `CROSS_TENANT_CACHE_READ` is persisted
+
+#### Scenario: Cross-tenant-read audit survives caller rollback
+- **GIVEN** a request bound to tenant B triggers a cross-tenant cache read inside a `@Transactional` method
+- **WHEN** the wrapper detects the mismatch and throws `IllegalStateException` — caller's transaction rolls back
+- **THEN** the `audit_events` row persisted via `REQUIRES_NEW` remains committed after the caller's rollback
+- **AND** the audit row is visible to subsequent platform-admin queries
+
+#### Scenario: Malformed cache entry (pre-migration raw write) throws
+- **GIVEN** a caller bypasses the wrapper and writes a non-`TenantScopedValue` payload directly via raw `CacheService.put`
+- **WHEN** a wrapper `get` encounters that entry
+- **THEN** the wrapper throws `IllegalStateException` tagged `MALFORMED_CACHE_ENTRY` (exception message carries tag only; no UUIDs or payload)
+- **AND** a Micrometer counter signals the malformed read for operator alerting
+
+#### Scenario: Exception message does not leak tenant UUIDs
+- **GIVEN** a `CROSS_TENANT_CACHE_READ` exception propagates to the HTTP response via `GlobalExceptionHandler`
+- **WHEN** the response body is serialised
+- **THEN** the response body contains only the action tag `CROSS_TENANT_CACHE_READ` — never the expected or observed tenant UUID, key, or cached value
 
 ### Requirement: archunit-family-c-cache-coverage
 The project SHALL maintain an ArchUnit Family C rule (per C2) that fails the build when any class in `*.service`, `*.api`, `*.security`, `*.auth.*` (or their subpackages) calls `CacheService.get` / `CacheService.put` / `TieredCacheService.get` / `TieredCacheService.put` or constructs `Caffeine.newBuilder()` directly without routing through `TenantScopedCacheService` OR carrying a `@TenantUnscopedCache("<justification>")` annotation with a non-empty justification.
@@ -116,6 +158,10 @@ The project SHALL publish an ADR (per C4, D6) documenting the Redis deployment p
 ### Requirement: tenant-scoped-cache-invalidate-tenant
 The system SHALL expose a `TenantScopedCacheService.invalidateTenant(UUID tenantId)` method that evicts every cache entry whose key begins with the given tenant's prefix, across every registered cache name. Called at tenant suspend / hard-delete (Phase F F4) and on demand by the platform-admin API.
 
+The wrapper SHALL maintain an authoritative registry of cache names populated at `@PostConstruct` from `CacheNames.class` reflection — NOT lazily on first `put`. A lazy registry would silently no-op after JVM restart for tenants that haven't yet been written to, turning a 3am tenant-suspension-FSM page into "invalidation succeeded" with an empty iteration set. Eager seeding converts this failure mode into a bootstrap-time error: if `CacheNames` is empty or unreadable, the wrapper fails to start. The wrapper SHALL additionally expose a `fabt.cache.registered_cache_names` Micrometer gauge + an INFO-level startup log naming each seeded cache so operators can verify at a glance.
+
+The `invalidateTenant` method SHALL be idempotent: a failed SCAN/UNLINK pass (network blip, Redis restart mid-batch, SIGTERM mid-iteration, backend crash) SHALL be safe to retry. Partial completion SHALL be reflected in the emitted audit row's per-cache eviction counts. The tenant-lifecycle FSM re-invokes `invalidateTenant` on state-transition replay (Phase F F4) — operators SHALL NOT have to reason about whether the last call finished.
+
 #### Scenario: Suspending a tenant clears its cache entries
 - **GIVEN** tenant A has 3 entries across 2 cache names
 - **WHEN** `invalidateTenant(tenantA-uuid)` runs
@@ -125,7 +171,59 @@ The system SHALL expose a `TenantScopedCacheService.invalidateTenant(UUID tenant
 #### Scenario: invalidateTenant emits an audit row
 - **GIVEN** `invalidateTenant(tenantA-uuid)` is called via the platform-admin API
 - **WHEN** the call completes
-- **THEN** an `audit_events` row is written with action `TENANT_CACHE_INVALIDATED` and the tenant_id in the details column
+- **THEN** an `audit_events` row is written with action `TENANT_CACHE_INVALIDATED` and the tenant_id + per-cache eviction counts in the details column
+
+#### Scenario: Registry is seeded eagerly at startup, not lazily on first put
+- **GIVEN** the wrapper has just started and no `put` has been called yet
+- **WHEN** `invalidateTenant(tenantA-uuid)` runs for a tenant that has not yet written any entry
+- **THEN** the wrapper iterates every `CacheNames` constant (not an empty set)
+- **AND** returns zero evictions per cache without NPE
+- **AND** emits an audit row recording the zero-eviction state so operator tooling can distinguish "successfully ran against an empty state" from "no-op because registry was empty"
+
+#### Scenario: invalidateTenant is idempotent
+- **WHEN** `invalidateTenant(tenantA-uuid)` is called twice in succession
+- **THEN** the first call evicts N entries and emits an audit row with eviction count N
+- **AND** the second call evicts 0 entries and emits an audit row with eviction count 0
+- **AND** neither call throws
+
+### Requirement: cache-service-evict-all-by-prefix
+The `CacheService` interface SHALL expose `long evictAllByPrefix(String cacheName, String prefix)` returning the count of entries evicted. Both `CaffeineCacheService` and `TieredCacheService` SHALL implement it; the Redis L2 path (future) MUST use `SCAN MATCH <prefix>*` + `UNLINK` per batch, never `KEYS` or `DEL` (both are main-thread-blocking on large key counts per Redis Inc. guidance).
+
+The Caffeine implementation SHALL filter `cache.asMap().keySet()` by prefix and invalidate each match. The Redis implementation (when wired per ADR shape 2 or 3) SHALL use `SCAN 0 MATCH "<prefix>*" COUNT 1000` iteratively with `UNLINK` per batch.
+
+This API exists to support `TenantScopedCacheService.invalidateTenant` without either breaking the `CacheService` abstraction (reflection into the delegate would couple the wrapper to Caffeine) or duplicating per-tenant keyset state in the wrapper (stateful duplication breaks on JVM restart).
+
+#### Scenario: Prefix-filter evicts only matching keys
+- **GIVEN** a cache named `shelter-profile` contains keys `tenantA|s1`, `tenantA|s2`, `tenantB|s1`
+- **WHEN** `evictAllByPrefix("shelter-profile", "tenantA|")` runs
+- **THEN** the return value is `2`
+- **AND** subsequent `get("shelter-profile", "tenantA|s1")` and `get("shelter-profile", "tenantA|s2")` return empty
+- **AND** `get("shelter-profile", "tenantB|s1")` still hits
+
+#### Scenario: Prefix-filter on empty cache returns 0
+- **GIVEN** a cache name that has never been written to
+- **WHEN** `evictAllByPrefix(cacheName, "tenantA|")` runs
+- **THEN** the return value is `0` and no exception is thrown
+
+### Requirement: tenant-scoped-cache-observability
+The wrapper SHALL emit Micrometer counters `fabt.cache.get{cache,tenant,result}` and `fabt.cache.put{cache,tenant}` on every get/put operation. The `result` tag SHALL be one of `hit`, `miss`, `cross_tenant_reject`, `malformed_entry`. The `tenant` tag SHALL match the G4 OTel baggage key (`tenant`, NOT `tenant_id`).
+
+Cardinality budget: ~N_tenants × N_caches × N_results × N_ops series. At 100 pooled tenants × 11 registered caches × 4 result values × 2 operations = ~8800 time-series maximum. Acceptable within Prometheus's practical per-metric-family ceiling; reviewable as tenant count grows past 500.
+
+#### Scenario: Hit increments the hit counter with tenant tag
+- **GIVEN** tenant A's request reads a cached key that exists under tenant A's envelope
+- **WHEN** `get` runs
+- **THEN** `fabt.cache.get{cache=<name>,tenant=<tenantA-uuid>,result=hit}` increments by 1
+
+#### Scenario: Miss increments the miss counter
+- **GIVEN** tenant A's request reads a key that does not exist
+- **WHEN** `get` runs
+- **THEN** `fabt.cache.get{cache=<name>,tenant=<tenantA-uuid>,result=miss}` increments by 1
+
+#### Scenario: Cross-tenant read increments the reject counter
+- **GIVEN** tenant B's request reads a key whose envelope is stamped tenant A
+- **WHEN** `get` throws `CROSS_TENANT_CACHE_READ`
+- **THEN** `fabt.cache.get{cache=<name>,tenant=<tenantB-uuid>,result=cross_tenant_reject}` increments by 1
 
 ### Requirement: reflection-cache-bleed-fixture
 The project SHALL maintain a reflection-driven cache-bleed test fixture (per C5) that discovers every `@Cacheable`-annotated method and every `CacheService.get` / `TieredCacheService.get` call site, and for each site generates a parameterized test asserting `tenantA.write(k); tenantA.read(k)` returns a HIT (precondition), then `tenantB.read(k)` returns a cache miss (isolation assertion).

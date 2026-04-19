@@ -120,18 +120,127 @@ EXPECTED_MIN_SITES is pinned to the concrete count at Phase C kickoff
 
 ## Non-decisions (defer to implementation phase)
 
-- **Exact cache-name registry for `invalidateTenant`:** the wrapper
-  needs to enumerate cache names to evict per tenant. Easiest
-  implementation: `TenantScopedCacheService` maintains its own
-  `Set<String> registeredCacheNames` populated on first `put` per name.
-  Alternative: inject `CacheManager` and iterate. Pick at implementation
-  time; both satisfy the spec.
 - **Negative-cache helper signature:** `putNegative(String key)` vs.
   `putNegative(String key, Duration ttl)` — decide when first caller
   appears. Zero callers today.
 - **Redis ACL syntax:** the ADR (task 4.0) documents the POSTURE
   (single-tenant default, ACL-per-tenant for regulated), not the syntax.
   Actual Redis deployment is out of scope for Phase C.
+
+## Task 4.1 warroom resolutions (2026-04-19 PM)
+
+Skeleton-review warroom (Alex + Marcus + Sam + Riley + Jordan + Elena)
+closed six remaining implementation decisions. All captured as additive
+spec scenarios; no decisions above were reversed.
+
+### D-C-8 — Eager registry seed, NOT lazy-on-first-put
+
+**Decision:** `TenantScopedCacheService.registeredCacheNames` is seeded
+at `@PostConstruct` from `CacheNames.class` reflection. The previously-
+considered "populate on first put" pattern was a correctness bug: after
+a JVM restart, `invalidateTenant(UUID)` for a tenant not yet written
+would iterate an empty set and return 0 evictions silently — turning
+the Phase F tenant-suspension FSM page at 3am into a false "succeeded"
+signal.
+
+**Observability:** wrapper also publishes `fabt.cache.registered_cache_names`
+gauge + an INFO-level startup log enumerating each seeded name so
+operators can verify on boot.
+
+**Raised by:** Alex (architecture) + Jordan (SRE) independently during
+skeleton review.
+
+### D-C-9 — Cross-tenant-read audit uses REQUIRES_NEW
+
+**Decision:** `CROSS_TENANT_CACHE_READ` audit rows are persisted via
+`AuditEventPersister` injected directly (not via
+`ApplicationEventPublisher`), wrapped in a small helper method with
+`@Transactional(propagation = REQUIRES_NEW)`. This diverges from the
+codebase's usual event-bus audit pattern.
+
+**Why the divergence is justified:** the existing `AuditEventService`
+`@EventListener` pattern is synchronous so the audit INSERT joins the
+caller's transaction (documented at `AuditEventService.java:45-49`).
+For normal audits that is a feature — an action that rolls back
+shouldn't audit as having happened. For `CROSS_TENANT_CACHE_READ` it
+is an anti-feature: an attacker who triggers a cross-tenant read in a
+transactional endpoint and relies on the subsequent ISE to roll the
+caller's tx back would erase the one audit signal proving the attempt
+happened. REQUIRES_NEW cuts the audit loose so it survives caller
+rollback.
+
+**Normal audits** (`TENANT_CACHE_INVALIDATED` for `invalidateTenant`
+calls) continue to use the event-bus pattern — they are operator-
+initiated, not attacker-triggered, and the normal rollback-coupling
+semantics are correct.
+
+**Raised by:** Marcus (security) during skeleton review.
+
+### D-C-10 — Prefix separator is `|`, not `:`
+
+**Decision:** the tenant-prefix separator is `|` (pipe). Existing
+call sites in `AnalyticsService` (lines 66, 94, 125) already use `:`
+as an internal composite-key separator: `tenantId + ":" + from +
+":" + to`. Colon would produce visually-confusing debug output like
+`tenantA:tenantA:2026-04-01:2026-04-15`. Pipe produces
+`tenantA|tenantA:2026-04-01:2026-04-15` — still shows the redundant
+duplicate (flagged for task 4.b migration to strip), but unambiguous
+at separator boundaries.
+
+**Raised by:** Alex (architecture) during skeleton review.
+
+### D-C-11 — IllegalStateException messages never carry UUIDs
+
+**Decision:** all `IllegalStateException` and `IllegalArgumentException`
+messages produced by the wrapper MUST use short action tags only
+(`TENANT_CONTEXT_UNBOUND`, `CROSS_TENANT_CACHE_READ`,
+`MALFORMED_CACHE_ENTRY`). UUIDs, keys, and payload fragments go to
+audit rows and structured logs, never to exception messages.
+
+**Why:** exceptions propagate through `GlobalExceptionHandler` into
+HTTP response bodies. A leaky exception message turns an isolation
+fault into an information disclosure. OWASP ASVS 5.0 §7.4.1 (error
+handling) explicitly calls this out.
+
+**Raised by:** Marcus (security) during skeleton review.
+
+### D-C-12 — `CacheService.evictAllByPrefix` is the right API extension
+
+**Decision:** extend `CacheService` with
+`long evictAllByPrefix(String cacheName, String prefix)`. Caffeine
+implementation filters `cache.asMap().keySet()` by prefix; future
+Redis L2 implementation uses `SCAN MATCH <prefix>* COUNT 1000` + `UNLINK`
+per batch.
+
+**Why not alternatives:** (a) duplicating per-(tenant, cacheName)
+keyset state inside the wrapper breaks on JVM restart + creates a
+stateful wrapper that must be kept consistent with the underlying
+cache; (b) reflecting into the Caffeine delegate couples the wrapper
+to the impl detail, breaking the `CacheService` abstraction. The
+interface extension is clean, Redis-ready per ADR shape 2, and makes
+the wrapper stateless with respect to the underlying cache.
+
+**Raised by:** Alex (architecture) during skeleton review.
+
+### D-C-13 — Value stamp-and-verify is a write-side defence, separate from prefix
+
+**Decision:** the `TenantScopedValue<T>(UUID tenantId, T value)`
+envelope + on-read verification is a **second** isolation control,
+not a replacement for the key prefix. Prefix defends the read side
+(reader cannot guess another tenant's keys). Stamp-and-verify defends
+the write side (a caller with wrong `TenantContext` bound can't
+silently poison another tenant's keyspace). Both must fail for a
+leak.
+
+**Why it's load-bearing:** per Redis Inc.'s Feb 2026 multi-tenant-SaaS
+post-mortem survey + OWASP ASVS 5.0 (May 2025), wrong-tenant-context-
+on-write is the leading 2025-2026 cache-leak pattern, outranking
+prefix-collision. Specifically names async-continuation context drift
+and scheduled-job-forgot-to-bind as the failure modes we are
+defending against.
+
+**Raised by:** external-standards review during ADR amendment pass
+(task 4.0b); pinned as decision here for cross-reference from spec.
 
 ## Deferrals
 
