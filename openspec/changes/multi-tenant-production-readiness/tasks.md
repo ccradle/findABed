@@ -126,16 +126,16 @@ Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (p
 
 ## 5. Phase D — Control-plane hardening (1 week)
 
-- [ ] 5.1 Audit every controller with path parameters — create inventory of write-path controllers with `{tenantId}` or resource ID (D1)
-- [ ] 5.2 Apply D11 URL-path-sink pattern to `TenantController PUT /{id}/*`: source tenantId from TenantContext; ignore path-tenantId
-- [ ] 5.3 Apply D11 to `TenantConfigController.updateConfig`: source from TenantContext
-- [ ] 5.4 Apply D11 to `OAuth2ProviderController.list` read-side: filter by caller tenant; 404 on URL-path mismatch (consistency with write-path)
-- [ ] 5.5 Validate `TenantConfigController` inputs against typed schema (L5 dependency — once typed config lands, tighten here)
-- [ ] 5.6 Update `infra/docker/nginx.conf` — add `proxy_set_header X-FABT-Tenant-Id $fabt_tenant_from_jwt;` after JWT-extract map directive; remove any client-supplied `X-Scope-OrgID` / `X-Tenant-Id` via `proxy_set_header X-Scope-OrgID "";`
-- [ ] 5.7 Add nginx-integration test (extends `sse-cache-regression.spec.ts` pattern): verify client-set tenant header is ignored; backend uses JWT-resolved tenant
-- [ ] 5.8 Document `docs/security/ingress-tenant-binding.md` — mTLS pattern for regulated tier (D4); defer actual implementation to regulated-tier deploy
-- [ ] 5.9 Integration test: cross-tenant access via `TenantController PUT /{foreignTenantId}/config` → 404
-- [ ] 5.10 Commit Phase D + open PR
+- [x] 5.1 Audit every controller with path parameters — create inventory of write-path controllers with `{tenantId}` or resource ID (D1)
+- [x] 5.2 Apply D11 URL-path-sink pattern to `TenantController PUT /{id}/*` (3 PUTs + 1 GET symmetric): new `TenantPathGuard.requireMatchingTenant` helper + inline calls; source tenantId from TenantContext; ignore path-tenantId
+- [x] 5.3 Apply D11 to `TenantConfigController` GET + PUT — both endpoints now guarded
+- [x] 5.4 Apply D11 to `OAuth2ProviderController` list/create/update/delete — POST already had inline D11 (pre-existing); refactored to the shared helper for consistency with the other 3 methods
+- [ ] 5.5 Validate `TenantConfigController` inputs against typed schema (L5 dependency — once typed config lands, tighten here) — **deferred to Phase L**
+- [ ] 5.6 Update `infra/docker/nginx.conf` — add `proxy_set_header X-FABT-Tenant-Id $fabt_tenant_from_jwt;` after JWT-extract map directive; remove any client-supplied `X-Scope-OrgID` / `X-Tenant-Id` via `proxy_set_header X-Scope-OrgID "";` — **follow-up PR (not blocking v0.48 ship; controller-layer guard is the security-critical bit, nginx is defence-in-depth)**
+- [ ] 5.7 Add nginx-integration test (extends `sse-cache-regression.spec.ts` pattern): verify client-set tenant header is ignored; backend uses JWT-resolved tenant — **paired with 5.6**
+- [ ] 5.8 Document `docs/security/ingress-tenant-binding.md` — mTLS pattern for regulated tier (D4); defer actual implementation to regulated-tier deploy — **paired with 5.6**
+- [x] 5.9 Integration test: `TenantPathGuardIntegrationTest` — 7 cross-tenant-404 cases + 1 same-tenant-200 control, all green. Covers PUT /tenants/{B}/config, GET /tenants/{B}/config, PUT /tenants/{B} display-name, PUT /tenants/{B}/observability, GET /tenants/{B}/observability, GET /tenants/{B}/oauth2-providers, POST /tenants/{B}/oauth2-providers.
+- [ ] 5.10 Commit Phase D + open PR — **pending (bundling with V76/V77 + UI chip as v0.48 branch)**
 
 ## 6. Phase E — Per-tenant operational boundaries (2 weeks)
 
@@ -293,16 +293,17 @@ Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (p
 - [ ] 14.1 Casey pre-merge review — confirm `Blue Ridge CoC (demo)` + `Pamlico Sound CoC (demo)` branding in all surfaces, no real-PII patterns, no partnership implication for either tenant, no name collision with HUD-registered CoCs (M2, M8)
 - [ ] 14.2 Marcus pre-merge review — confirm both new-tenant seeds contain no real credentials, no real addresses, no real names (M8)
 - [ ] 14.3 Maria pre-merge review — confirm procurement-audience-appropriate language in walkthrough covering all three tenants (M8)
-- [ ] 14.4 Flyway V76 — `dev-coc-west` tenant seed (Blue Ridge CoC (demo)) with UUID `a0000000-0000-0000-0000-000000000002` (M1)
-- [ ] 14.5 V76 — 6 `dev-coc-west` users: `admin@blueridge.fabt.org`, `cocadmin@blueridge.fabt.org`, `coordinator@blueridge.fabt.org`, `outreach@blueridge.fabt.org`, `dv-coordinator@blueridge.fabt.org`, `dv-outreach@blueridge.fabt.org` (all password `admin123`)
-- [ ] 14.6 V76 — 3-5 `dev-coc-west` (Blue Ridge-themed) shelters including at least one DV shelter, fictional names (e.g., "Example House North", "Example Family Center", "Blue Ridge Example Shelter (demo)", "Safe Haven Demo DV")
-- [ ] 14.7 V76 — sample bed availability for `dev-coc-west` shelters + 1 sample pending DV referral
-- [ ] 14.8 V76 idempotency — `INSERT ... ON CONFLICT DO UPDATE` pattern on every row
-- [ ] 14.4b Flyway V77 — `dev-coc-east` tenant seed (Pamlico Sound CoC (demo)) with UUID `a0000000-0000-0000-0000-000000000003` (M1)
-- [ ] 14.5b V77 — 6 `dev-coc-east` users: `admin@pamlico.fabt.org`, `cocadmin@pamlico.fabt.org`, `coordinator@pamlico.fabt.org`, `outreach@pamlico.fabt.org`, `dv-coordinator@pamlico.fabt.org`, `dv-outreach@pamlico.fabt.org` (all password `admin123`)
-- [ ] 14.6b V77 — 3-5 `dev-coc-east` (Pamlico Sound-themed) shelters including at least one DV shelter, fictional names (e.g., "Example Coastal House", "Pamlico Example Shelter (demo)", "Pamlico Example Family Center", "Safe Haven Demo DV East")
-- [ ] 14.7b V77 — sample bed availability for `dev-coc-east` shelters + 1 sample pending DV referral
-- [ ] 14.8b V77 idempotency — `INSERT ... ON CONFLICT DO UPDATE` pattern on every row
+- [x] 14.4 Flyway V76 — `dev-coc-west` tenant seed (Blue Ridge CoC (demo)) with UUID `a0000000-0000-0000-0000-000000000002` + tenant.config including `noaa_station_id: KAVL` (M1)
+- [x] 14.5 V76 — 6 `dev-coc-west` users (admin, cocadmin, coordinator, outreach, dv-coordinator, dv-outreach — all password `admin123`)
+- [x] 14.6 V76 — 3 `dev-coc-west` shelters: Example House North (Boone), Blue Ridge Example Shelter (Waynesville), Safe Haven Demo DV West (Undisclosed) — real cities, fictional streets per D12
+- [x] 14.7 V76 — bed_availability for all 3 west shelters (5 rows, ~66% utilised). **Sample pending DV referral deferred** to a later pass — non-blocking for v0.48 demo-login flow; tracked as 14.7c below.
+- [x] 14.8 V76 idempotency — `ON CONFLICT DO UPDATE` on tenant / user / shelter / shelter_constraints; `ON CONFLICT DO NOTHING` on bed_availability (no natural unique key)
+- [x] 14.4b Flyway V77 — `dev-coc-east` tenant seed (Pamlico Sound CoC (demo)) with UUID `a0000000-0000-0000-0000-000000000003` + `noaa_station_id: KEWN`
+- [x] 14.5b V77 — 6 `dev-coc-east` users (parallel to V76)
+- [x] 14.6b V77 — 3 `dev-coc-east` shelters: Example Coastal House (New Bern), Pamlico Example Shelter (Washington NC), Safe Haven Demo DV East (Undisclosed)
+- [x] 14.7b V77 — bed_availability for all 3 east shelters (4 rows). DV referral deferred per 14.7c.
+- [x] 14.8b V77 idempotency — same pattern as V76
+- [ ] 14.7c **Follow-up**: seed a sample pending DV referral in each new tenant so coordinator screening demo is non-empty end-to-end. Can land pre-v0.48 tag or in the Phase M proper bundle.
 - [ ] 14.9 Frontend — update `Layout.tsx` header: visible tenant indicator with three distinct accent colors + tenant name (M3, three-tenant-aware)
 - [ ] 14.10 Frontend — update `<title>` element to include tenant name per page
 - [ ] 14.11 Frontend — login UI tenantSlug dropdown shows all three tenants with "(demo)" suffix on west + east
@@ -338,10 +339,10 @@ Observation during Phase M-light seed bring-up (2026-04-20): the NOAA weather st
 
 Warroom consensus (Casey + Marcus + Alex + Riley 2026-04-20): with three tenants about to go live in prod via V76/V77, the footer-version field is not enough for wayfinding. Accent colors from the original 14.9 are walked back (gimmicky on a shelter app, make screenshots inconsistent). Ship a neutral header chip + augmented footer instead — both surfaces carry `tenant.name` verbatim (already includes the "(demo)" suffix for Blue Ridge + Pamlico per Elena). Hide the header chip behind the kebab on narrow screens per the existing responsive pattern.
 
-- [ ] 14.t-1 `Layout.tsx` header — add tenant-name chip left of the user menu. Reads `user.tenantName` (JWT claim, already plumbed). Neutral pill styling (no accent color — save for Phase M proper if we ever want per-tenant theming). `data-testid="app-tenant-name"`. Hidden on narrow screens behind the existing kebab menu.
-- [ ] 14.t-2 `Layout.tsx` footer — append ` — {tenantName}` to the existing version string. Keep existing `data-testid="app-version"` intact; add separate `data-testid="app-tenant-name-footer"` wrapping the tenant segment so tests can assert without string-parsing.
-- [ ] 14.t-3 Playwright coverage — extend `post-deploy-smoke.spec.ts` tests 13 + 14 to assert the header chip renders the expected tenant name after login ("Blue Ridge CoC (demo)" / "Pamlico Sound CoC (demo)"). Add to `deploy-verify.spec.ts` equivalent if applicable.
-- [ ] 14.t-4 Screenshot the three-tenant footer + header states for the eventual Phase M proper walkthrough bundle (14.16 dependency — capture now, consume later).
+- [x] 14.t-1 `Layout.tsx` header — tenant-name chip left of the user menu, neutral pill (rgba bg + border), `data-testid="app-tenant-name"`, desktop-only (hidden behind mobile kebab per existing pattern). Shows `user.tenantName` verbatim (incl. "(demo)" suffix).
+- [x] 14.t-2 `Layout.tsx` footer — " — {tenantName}" appended to the version string wrapped in `data-testid="app-tenant-name-footer"`. Existing `app-version` testid preserved.
+- [x] 14.t-3 Playwright smoke 13 + 14 assert both `app-tenant-name` + `app-tenant-name-footer` render the expected tenant string after login. 3/3 green.
+- [ ] 14.t-4 Screenshot capture deferred to Phase M proper walkthrough bundle (14.16).
 
 Intentionally deferred to Phase M proper (14.9 + 14.10 as originally written): per-tenant accent colors, `<title>` element tenant awareness, tenant-slug login-UI dropdown, login-screen helper text.
 
