@@ -334,6 +334,17 @@ Observation during Phase M-light seed bring-up (2026-04-20): the NOAA weather st
 - [ ] 14.w-9 Admin UI copy — wherever the observability dashboard shows temperature, surface the station id clearly so operators understand which geography they're looking at (may be existing — confirm).
 - [ ] 14.w-longterm **Warroom deferred**: long-term per-tenant weather strategy — first-class typed column vs multi-station per tenant vs shared-catalog model. Consult Alex, Jordan, Sam + web-search NOAA/weather.gov rate limits + HUD CoC geographic best practices. Fold decision into appropriate later phase. Not in scope for this change.
 
+### Phase M-light fold-in — tenant-identity UI surfaces (for v0.48 bundle)
+
+Warroom consensus (Casey + Marcus + Alex + Riley 2026-04-20): with three tenants about to go live in prod via V76/V77, the footer-version field is not enough for wayfinding. Accent colors from the original 14.9 are walked back (gimmicky on a shelter app, make screenshots inconsistent). Ship a neutral header chip + augmented footer instead — both surfaces carry `tenant.name` verbatim (already includes the "(demo)" suffix for Blue Ridge + Pamlico per Elena). Hide the header chip behind the kebab on narrow screens per the existing responsive pattern.
+
+- [ ] 14.t-1 `Layout.tsx` header — add tenant-name chip left of the user menu. Reads `user.tenantName` (JWT claim, already plumbed). Neutral pill styling (no accent color — save for Phase M proper if we ever want per-tenant theming). `data-testid="app-tenant-name"`. Hidden on narrow screens behind the existing kebab menu.
+- [ ] 14.t-2 `Layout.tsx` footer — append ` — {tenantName}` to the existing version string. Keep existing `data-testid="app-version"` intact; add separate `data-testid="app-tenant-name-footer"` wrapping the tenant segment so tests can assert without string-parsing.
+- [ ] 14.t-3 Playwright coverage — extend `post-deploy-smoke.spec.ts` tests 13 + 14 to assert the header chip renders the expected tenant name after login ("Blue Ridge CoC (demo)" / "Pamlico Sound CoC (demo)"). Add to `deploy-verify.spec.ts` equivalent if applicable.
+- [ ] 14.t-4 Screenshot the three-tenant footer + header states for the eventual Phase M proper walkthrough bundle (14.16 dependency — capture now, consume later).
+
+Intentionally deferred to Phase M proper (14.9 + 14.10 as originally written): per-tenant accent colors, `<title>` element tenant awareness, tenant-slug login-UI dropdown, login-screen helper text.
+
 ## 15. Verification + archive
 
 - [ ] 15.1 `openspec validate multi-tenant-production-readiness --strict` green
