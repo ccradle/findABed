@@ -1,15 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: dev-coc-west-demo-seed
-The system SHALL add a permanent second tenant "Asheville CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V76. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000002`; slug SHALL be `dev-coc-west`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral.
+The system SHALL add a permanent second tenant "Blue Ridge CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V76. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000002`; slug SHALL be `dev-coc-west`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral. "Blue Ridge" is a fictional-for-CoC-purposes regional name (geographic mountain range spanning multiple states; NOT a HUD-registered CoC).
 
 #### Scenario: Seed creates tenant with pinned UUID
 - **WHEN** V76 runs on a fresh DB
 - **THEN** a tenant row with UUID `a0000000-0000-0000-0000-000000000002` and slug `dev-coc-west` exists
-- **AND** the display name is `Asheville CoC (demo)` per D12
+- **AND** the display name is `Blue Ridge CoC (demo)` per D12
 
 #### Scenario: Seed is idempotent
-- **GIVEN** V76 has already run and the Asheville tenant exists
+- **GIVEN** V76 has already run and the Blue Ridge tenant exists
 - **WHEN** V76 (or an equivalent re-seed script) runs again
 - **THEN** the INSERT ... ON CONFLICT DO UPDATE pattern preserves the tenant UUID and updates changed columns
 - **AND** no duplicate tenant rows, users, or shelters are created
@@ -22,18 +22,18 @@ The system SHALL add a permanent second tenant "Asheville CoC (demo)" to `infra/
 #### Scenario: Seed users include full role matrix
 - **WHEN** the seed completes
 - **THEN** `dev-coc-west` has users for PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH roles
-- **AND** the demo credential `admin@asheville.fabt.org / admin123` works for login
+- **AND** the demo credential `admin@blueridge.fabt.org / admin123` works for login
 
 ### Requirement: dev-coc-east-demo-seed
-The system SHALL add a permanent third tenant "Beaufort County CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V77. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000003`; slug SHALL be `dev-coc-east`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral. Credential convention: `admin@beaufort.fabt.org` / `admin123` (mirrors west and core tenant passwords for demo-visitor convenience).
+The system SHALL add a permanent third tenant "Pamlico Sound CoC (demo)" to `infra/scripts/seed-data.sql` (per M1, D12) via Flyway migration V77. Tenant UUID SHALL be pinned to `a0000000-0000-0000-0000-000000000003`; slug SHALL be `dev-coc-east`. The seed SHALL be idempotent (INSERT ... ON CONFLICT DO UPDATE) and SHALL include a full matrix: 6 role users, 3-5 shelters (at least one DV shelter), sample bed availability, and 1 pending DV referral. Credential convention: `admin@pamlico.fabt.org` / `admin123` (mirrors west and core tenant passwords for demo-visitor convenience). "Pamlico Sound" is a fictional-for-CoC-purposes regional name (geographic coastal lagoon; NOT a HUD-registered CoC).
 
 #### Scenario: Seed creates tenant with pinned UUID
 - **WHEN** V77 runs on a fresh DB
 - **THEN** a tenant row with UUID `a0000000-0000-0000-0000-000000000003` and slug `dev-coc-east` exists
-- **AND** the display name is `Beaufort County CoC (demo)` per D12
+- **AND** the display name is `Pamlico Sound CoC (demo)` per D12
 
 #### Scenario: Seed is idempotent
-- **GIVEN** V77 has already run and the Beaufort County tenant exists
+- **GIVEN** V77 has already run and the Pamlico Sound tenant exists
 - **WHEN** V77 (or an equivalent re-seed script) runs again
 - **THEN** the INSERT ... ON CONFLICT DO UPDATE pattern preserves the tenant UUID and updates changed columns
 - **AND** no duplicate tenant rows, users, or shelters are created
@@ -46,30 +46,30 @@ The system SHALL add a permanent third tenant "Beaufort County CoC (demo)" to `i
 #### Scenario: Seed users include full role matrix
 - **WHEN** the seed completes
 - **THEN** `dev-coc-east` has users for PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH roles
-- **AND** the demo credential `admin@beaufort.fabt.org / admin123` works for login
+- **AND** the demo credential `admin@pamlico.fabt.org / admin123` works for login
 
 ### Requirement: branding-demo-suffix
-The system SHALL display the west tenant name as `Asheville CoC (demo)` and the east tenant name as `Beaufort County CoC (demo)` (per M2, D12) in login UI, landing page, admin panel header, page title, and training materials. Seed data SHALL use demonstrably-fictional shelter names (e.g., "Example House North"), non-geocodable addresses, and persona-derived fake contact names. Real-PII patterns SHALL NOT appear in either tenant.
+The system SHALL display the west tenant name as `Blue Ridge CoC (demo)` and the east tenant name as `Pamlico Sound CoC (demo)` (per M2, D12) in login UI, landing page, admin panel header, page title, and training materials. Both names are fictional regional labels NOT present in the HUD CoC registry; the `(demo)` suffix is retained as belt-and-suspenders per D12. Seed data SHALL use demonstrably-fictional shelter names (e.g., "Example House North", "Example Coastal House"), non-geocodable addresses, and persona-derived fake contact names. Real-PII patterns SHALL NOT appear in either tenant. Casey pre-merge review SHALL confirm no name collision with a registered HUD CoC.
 
-#### Scenario: Login UI surfaces west tenant as "Asheville CoC (demo)"
+#### Scenario: Login UI surfaces west tenant as "Blue Ridge CoC (demo)"
 - **WHEN** a demo visitor loads the login page and selects the west tenant (`dev-coc-west`)
-- **THEN** the tenant label reads "Asheville CoC (demo)" (not "Asheville CoC")
+- **THEN** the tenant label reads "Blue Ridge CoC (demo)" (not "Blue Ridge CoC")
 - **AND** the `(demo)` suffix is visible in the tenant-selector dropdown and page title
 
-#### Scenario: Login UI surfaces east tenant as "Beaufort County CoC (demo)"
+#### Scenario: Login UI surfaces east tenant as "Pamlico Sound CoC (demo)"
 - **WHEN** a demo visitor loads the login page and selects the east tenant (`dev-coc-east`)
-- **THEN** the tenant label reads "Beaufort County CoC (demo)" (not "Beaufort County CoC")
+- **THEN** the tenant label reads "Pamlico Sound CoC (demo)" (not "Pamlico Sound CoC")
 - **AND** the `(demo)` suffix is visible in the tenant-selector dropdown and page title
 
 #### Scenario: Shelter names are fictional in both new tenants
 - **WHEN** the seed completes
 - **THEN** every shelter name in `dev-coc-west` AND `dev-coc-east` matches documented fictional patterns (e.g., starts with "Example")
-- **AND** no real Asheville OR Beaufort County shelter names appear
+- **AND** no real shelter names from any specific jurisdiction appear
 
 #### Scenario: Addresses are non-geocodable in both new tenants
 - **WHEN** a demo visitor attempts to geocode any seeded address across `dev-coc-west` or `dev-coc-east`
 - **THEN** the geocode returns no match (addresses follow documented non-geocodable pattern)
-- **AND** no real Asheville OR Beaufort County street addresses appear in seed data
+- **AND** no real street addresses from any specific jurisdiction appear in seed data
 
 ### Requirement: visible-tenant-indicator-in-ui
 The system SHALL display a visible tenant indicator (per M3) in the Layout component (header or footer) showing the current tenant name + a subtle accent color differentiator. The `<title>` element SHALL carry the tenant name. Tenant switches between any pair of `dev-coc`, `dev-coc-west`, and `dev-coc-east` SHALL produce obviously-different UI state. Tenant name SHALL be announced on page load per WCAG 2.4.2. Each of the three tenants SHALL have a distinct accent color so screenshot evidence of isolation is visually unambiguous.
@@ -77,8 +77,8 @@ The system SHALL display a visible tenant indicator (per M3) in the Layout compo
 #### Scenario: Header shows active tenant for all three tenants
 - **WHEN** a user is logged into `dev-coc`
 - **THEN** the header displays "Dev CoC" with its accent color
-- **AND** when the same user re-logs as `dev-coc-west`, the header displays "Asheville CoC (demo)" with a distinct accent color
-- **AND** when the same user re-logs as `dev-coc-east`, the header displays "Beaufort County CoC (demo)" with a third distinct accent color
+- **AND** when the same user re-logs as `dev-coc-west`, the header displays "Blue Ridge CoC (demo)" with a distinct accent color
+- **AND** when the same user re-logs as `dev-coc-east`, the header displays "Pamlico Sound CoC (demo)" with a third distinct accent color
 
 #### Scenario: Page title carries tenant
 - **WHEN** a user navigates to the admin panel
@@ -139,7 +139,7 @@ The project SHALL publish `docs/training/multi-tenant-demo-walkthrough.md` (per 
 - **GIVEN** `docs/training/multi-tenant-demo-walkthrough.md` is published
 - **WHEN** a demo visitor opens the doc
 - **THEN** the walkthrough steps are readable in under 3 minutes
-- **AND** it covers log in `dev-coc` → observe shelters → log out → log in `dev-coc-west` (Asheville) → observe different shelters + different DV posture → attempt cross-tenant URL → observe educational 404 → log out → log in `dev-coc-east` (Beaufort County) → same isolation probe → observe educational 404
+- **AND** it covers log in `dev-coc` → observe shelters → log out → log in `dev-coc-west` (Blue Ridge CoC (demo)) → observe different shelters + different DV posture → attempt cross-tenant URL → observe educational 404 → log out → log in `dev-coc-east` (Pamlico Sound CoC (demo)) → same isolation probe → observe educational 404
 
 #### Scenario: Landing page links the walkthrough
 - **WHEN** a visitor loads findabed.org
@@ -168,7 +168,7 @@ The system SHALL add a Grafana panel (per M7) titled "Tenant-pair last validatio
 - **AND** after 7 days with no validation the panel turns red
 
 ### Requirement: seed-migration-safety-gate
-The project SHALL require pre-merge review (per M8) on BOTH Flyway migrations that create new demo tenants (V76 for `dev-coc-west` / Asheville; V77 for `dev-coc-east` / Beaufort County): Casey confirms branding consistency + real-city-name disclaimer on both, Marcus confirms no real-PII patterns in either seed, Maria confirms procurement-audience language. Deploy SHALL only proceed after the all-tenant post-deploy smoke (M5) passes.
+The project SHALL require pre-merge review (per M8) on BOTH Flyway migrations that create new demo tenants (V76 for `dev-coc-west` / Blue Ridge CoC (demo); V77 for `dev-coc-east` / Pamlico Sound CoC (demo)): Casey confirms fictional-name posture + no HUD-CoC-registry collision + `(demo)` suffix in every display surface, Marcus confirms no real-PII patterns in either seed, Maria confirms procurement-audience language. Deploy SHALL only proceed after the all-tenant post-deploy smoke (M5) passes.
 
 #### Scenario: Three-reviewer sign-off required on each migration
 - **GIVEN** the V76 (`dev-coc-west`) OR V77 (`dev-coc-east`) seed PR is open
