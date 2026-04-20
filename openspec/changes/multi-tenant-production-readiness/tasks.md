@@ -319,6 +319,21 @@ Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (p
 - [ ] 14.22 **CHANGE-CLOSURE GATE**: Deploy to prod. Run post-deploy smoke all-tenant. Open public browser against findabed.org, attempt cross-tenant URLs in all three directions, verify educational 404. Screenshot evidence for each direction.
 - [ ] 14.23 Commit Phase M + open PR — FINAL PR OF THE CHANGE (V76 + V77 may be separate PRs per M8, or a single combined PR; warroom decision at implementation time)
 
+### Phase M fold-in — per-tenant-weather-station (Option A)
+
+Observation during Phase M-light seed bring-up (2026-04-20): the NOAA weather station was a single global `@Value("${fabt.monitoring.noaa.station-id:KRDU}")` injected into `NoaaClient` + `OperationalMonitorService`, and the cached `TemperatureStatus` was a single non-tenant-scoped field. A Blue Ridge admin seeing "Raleigh-Durham temperature" is wrong for mountain geography and undermines the surge-gap signal. Option A (minimum-viable, in-scope here) adds per-tenant station lookup; Option B (typed column + admin UI) and Option C (per-shelter or multi-station) deferred to warroom research (14.w-longterm).
+
+- [x] 14.w-1 `NoaaClient.getCurrentTemperatureFahrenheit(String stationId)` overload — accepts explicit station, falls back to injected default on null/blank; keep no-arg overload for callers wanting default.
+- [x] 14.w-2 `ObservabilityConfigService.ObservabilityConfig` record — add nullable `String noaaStationId`; parse `noaa_station_id` from `tenant.config.observability` JSON; DEFAULTS pass `null`.
+- [x] 14.w-3 `OperationalMonitorService.checkTemperatureSurgeGap` — fan out per tenant, resolve station per tenant config (fallback to global default), memoize per-station fetch within the cycle so shared stations don't fan-hit NOAA.
+- [x] 14.w-4 `cachedTemperatureStatus` → `Map<UUID, TemperatureStatus> cachedTemperatureByTenant`; expose `getTemperatureStatus(UUID tenantId)`.
+- [x] 14.w-5 `MonitoringController.getTemperatureStatus` — read `TenantContext.getTenantId()` and return per-tenant cached status (not a global singleton).
+- [x] 14.w-6 Seed updates — Blue Ridge tenant config adds `noaa_station_id: KAVL` (Asheville regional, covers Boone/Waynesville); Pamlico adds `noaa_station_id: KEWN` (New Bern coastal). `dev-coc` keeps the global default (KRDU) since Raleigh is the original reference station.
+- [x] 14.w-7 Unit tests — 2 added (`tenantSpecificStationIsUsed`, `nullStationFallsBackToGlobalDefault`); all 11 OperationalMonitorServiceTest methods green.
+- [ ] 14.w-8 Integration test — start backend with 3 tenants (dev-coc, dev-coc-west, dev-coc-east), run the monitor, assert each tenant's `/api/v1/monitoring/temperature` reports the expected station id.
+- [ ] 14.w-9 Admin UI copy — wherever the observability dashboard shows temperature, surface the station id clearly so operators understand which geography they're looking at (may be existing — confirm).
+- [ ] 14.w-longterm **Warroom deferred**: long-term per-tenant weather strategy — first-class typed column vs multi-station per tenant vs shared-catalog model. Consult Alex, Jordan, Sam + web-search NOAA/weather.gov rate limits + HUD CoC geographic best practices. Fold decision into appropriate later phase. Not in scope for this change.
+
 ## 15. Verification + archive
 
 - [ ] 15.1 `openspec validate multi-tenant-production-readiness --strict` green

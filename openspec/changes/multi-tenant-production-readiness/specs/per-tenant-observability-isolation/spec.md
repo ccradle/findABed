@@ -119,3 +119,39 @@ The system SHALL (regulated tier only, per G9) restrict tenant admins to read th
 - **WHEN** the CI isolation test runs (simulate cross-org query)
 - **THEN** the test asserts the org cannot see another tenant's data
 - **AND** a misconfiguration fails the build
+
+### Requirement: per-tenant-weather-station
+The system SHALL resolve the NOAA weather station used for the surge-trigger temperature monitor per tenant. The `tenant.config` JSONB `observability` block SHALL support an optional `noaa_station_id` field; `OperationalMonitorService` SHALL fan out per tenant and call `NoaaClient.getCurrentTemperatureFahrenheit(stationId)` with that tenant's station; multiple tenants sharing a station SHALL share a single upstream fetch per monitor cycle. If `noaa_station_id` is absent or blank, the system SHALL fall back to the global `fabt.monitoring.noaa.station-id` property (default `KRDU`). The `/api/v1/monitoring/temperature` endpoint SHALL return the caller's tenant-scoped cached `TemperatureStatus` (including the actual station id used), not a global singleton.
+
+This requirement captures **Option A** — the minimum-viable per-tenant station lookup. Option B (first-class typed `tenant.noaa_station_id` column + admin UI field + Flyway migration) and Option C (per-shelter or multi-station per tenant for large geographies) are out of scope for this change; they are tracked for a later phase pending warroom review + best-practices research (task 14.w-longterm).
+
+#### Scenario: Tenant-specific station is queried
+- **GIVEN** tenant A's `tenant.config.observability.noaa_station_id = "KAVL"`
+- **WHEN** the hourly `checkTemperatureSurgeGap` monitor runs
+- **THEN** `NoaaClient.getCurrentTemperatureFahrenheit("KAVL")` is invoked for tenant A
+- **AND** the cached `TemperatureStatus` for tenant A has `stationId = "KAVL"`
+- **AND** the global default station `KRDU` is NOT queried on behalf of tenant A
+
+#### Scenario: Missing station falls back to global default
+- **GIVEN** tenant B has no `noaa_station_id` in its config
+- **WHEN** the monitor runs for tenant B
+- **THEN** the global default (e.g., `KRDU`) is used
+- **AND** the cached status reports `stationId = "KRDU"`
+
+#### Scenario: Shared station fetches once per cycle
+- **GIVEN** two tenants both have `noaa_station_id = "KAVL"`
+- **WHEN** the monitor runs
+- **THEN** `NoaaClient.getCurrentTemperatureFahrenheit("KAVL")` is invoked exactly once
+- **AND** both tenants receive the same temperature reading for that cycle
+
+#### Scenario: Temperature endpoint is tenant-scoped
+- **GIVEN** tenant A is cached at 38°F/KAVL and tenant B is cached at 28°F/KEWN
+- **WHEN** a user authenticated to tenant A calls `GET /api/v1/monitoring/temperature`
+- **THEN** the response reports tenant A's reading (38°F, KAVL)
+- **AND** tenant B's reading does not leak into the response
+
+#### Scenario: NOAA failure for one station does not affect other tenants
+- **GIVEN** tenant A uses KAVL (healthy) and tenant B uses a station returning null
+- **WHEN** the monitor runs
+- **THEN** tenant A's `TemperatureStatus` is cached successfully
+- **AND** tenant B's per-tenant work is skipped without throwing, leaving the prior cached status (if any) intact
