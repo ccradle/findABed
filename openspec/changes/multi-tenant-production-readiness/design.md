@@ -151,6 +151,34 @@ Alternative: range partition by time + tenant_id filter in queries. Rejected: li
 
 L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementally as each A–L theme lands. `TenantScoped<SigningKey>` lands with A1; `TenantScoped<SecretKey>` with A3; `TenantScoped<Cache>` with C1; etc. ArchUnit Family F activates progressively (starts with each theme, tightens as more modules adopt). Avoids a big-bang retrofit that would block every other workstream.
 
+### D15 — PLATFORM_ADMIN role-split deferred to Phase F (2026-04-20)
+
+**Current state:** `Role.PLATFORM_ADMIN` (`backend/src/main/java/org/fabt/auth/domain/Role.java:3-8`) is a tenant-scoped role by implementation — users are keyed on `(tenantId, email)` (`AuthController.login:108-115`); JWTs carry a hard `tenantId` claim (`JwtService:186`); cross-tenant tokens rejected (`JwtService:409-424`). The name reads as "platform-spanning" but the bits implement "top role within a tenant." Phase M seeding `PLATFORM_ADMIN` into each of `dev-coc`, `dev-coc-west`, `dev-coc-east` surfaced the mismatch.
+
+**Decision (warroom 2026-04-20, Corey + 6 personas):** defer the rename + split to Phase F. For v0.48 Phase M-light, the three demo tenants each carry their own independently-seeded `PLATFORM_ADMIN`. Specified explicitly in `specs/multi-tenant-demo-seed/spec.md` Requirement `platform-admin-tenant-scoping-v0.48`.
+
+**Phase F work (tracked separately):** split `PLATFORM_ADMIN` into:
+
+- `TENANT_ADMIN` — the renamed existing role (tenant-scoped, replaces every current `@PreAuthorize("hasRole('PLATFORM_ADMIN')")` on per-tenant resources)
+- `PLATFORM_OPERATOR` — new role, distinct identity store (`platform_user` table with no `tenantId`), separate auth flow that issues tenantId-agnostic tokens, gated by `@PlatformAdminOnly` (Phase G) with per-access justification + `platform_admin_access_log` append-only audit (G2 / G3)
+
+Endpoints that are currently PLATFORM_ADMIN-gated split into two cohorts:
+
+- **Tenant-scoped (→ TENANT_ADMIN):** user management within tenant, tenant config, API key management, OAuth2 provider management, TOTP enrollment reset
+- **Platform-scoped (→ PLATFORM_OPERATOR):** `TenantController.create`, `BatchJobController`, `HmisExportController`, `TenantLifecycleController` (F12) break-glass endpoints, `TestResetController`
+
+**Phase F scope impact:** +2 engineer-days for the rename + split + test fixture updates. Phase G unchanged — `@PlatformAdminOnly` aspect always targeted the new role.
+
+**Rationale for NOT renaming in v0.48:**
+
+1. 13+ `@PreAuthorize` call sites plus `SecurityConfig:172/199/202`, seed SQL, JWT role claims, Playwright auth fixtures, admin UI role-check, i18n strings. A blanket rename is a 2-3 day PR.
+2. Some PLATFORM_ADMIN endpoints are genuinely platform-scoped and should keep gated by the NEW platform role. A rename-to-TENANT_ADMIN-then-split-at-F path does two renames (and two reviewer passes). Split-at-F does one.
+3. Marcus (security): current tenant-binding is SAFER than a sloppy cross-tenant flag. Cross-tenant elevation must go through a dedicated audited flow.
+4. Elena (privacy): VAWA H4 requires platform operators cannot silently read DV PII. Tenant-bound today preserves posture; `@PlatformAdminOnly` + `platform_admin_access_log` in Phase G deliver the audited channel.
+5. Jordan (SRE): 3am break-glass use-case is the K1 CLI (task 12.1–12.2), not a UI-spanning admin session.
+
+**Between v0.48 and Phase F:** operator cross-tenant actions flow through the K1 break-glass CLI. No UI pathway for cross-tenant operations.
+
 ## Risks / Trade-offs
 
 - **JWT invalidation outage on first deploy** — existing access tokens (15 min) + refresh tokens (7 days) are invalidated when per-tenant keys activate. All pilots forced to re-login. → **Mitigation:** coordinated notification 48h ahead + logout-banner on the login page for 7 days post-cutover.

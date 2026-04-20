@@ -48,6 +48,47 @@ The system SHALL add a permanent third tenant "Pamlico Sound CoC (demo)" to `inf
 - **THEN** `dev-coc-east` has users for PLATFORM_ADMIN, COC_ADMIN, COORDINATOR, OUTREACH_WORKER, DV_COORDINATOR, DV_OUTREACH roles
 - **AND** the demo credential `admin@pamlico.fabt.org / admin123` works for login
 
+### Requirement: platform-admin-tenant-scoping-v0.48
+
+The system SHALL treat `PLATFORM_ADMIN` as a **tenant-scoped role** in v0.48 (Phase M-light). Each of the three demo tenants (`dev-coc`, `dev-coc-west`, `dev-coc-east`) SHALL have its own independently-seeded `PLATFORM_ADMIN` user; per-tenant seeds are intentional, not a bug or redundancy. A user issued `PLATFORM_ADMIN` in one tenant SHALL NOT be able to log in to a different tenant with the same credential — their JWT's `tenantId` claim fails cross-check against any other tenant's per-tenant signing key per Phase A D25 (`JwtService.validateNew` at `backend/src/main/java/org/fabt/auth/service/JwtService.java:409-424`).
+
+This matches current behavior (Role enum at `backend/src/main/java/org/fabt/auth/domain/Role.java:3-8`; login flow at `AuthController.login` keying users on `(tenantId, email)`). The name "PLATFORM_ADMIN" is a **known misnomer** — it reads as "platform-spanning super-admin" but implements as "top role within a tenant." The rename + split is deferred to **Phase F** (see D15 below).
+
+**Rationale for deferral (warroom 2026-04-20):**
+
+- 13+ `@PreAuthorize("hasRole('PLATFORM_ADMIN')")` call sites across controllers plus SecurityConfig entries; a blanket rename today is a 2-3 day PR of its own
+- Some of those endpoints ARE genuinely platform-scoped (`TenantController.create`, `BatchJobController`, `HmisExportController`) — they should stay gated by a TRUE platform role once one exists. A bulk rename to TENANT_ADMIN would then need reverse-migration at F/G → two renames instead of one
+- Marcus verdict: current tenant-binding is actually SAFER than a sloppy cross-tenant flag; the kid-resolves-to-tenant cross-check is a hard containment boundary. Cross-tenant elevation MUST go through a dedicated flow (per-access justification + audit), never a role flag on a regular session
+- Elena verdict: VAWA H4 (design.md §H4) requires platform operators cannot silently read DV survivor PII; tenant-bound today preserves that posture. The `@PlatformAdminOnly` aspect + `platform_admin_access_log` table in Phase G (tasks 8.2, 8.7, 8.8, 8.16) deliver the audited-unseal channel
+- Jordan verdict: the 3am break-glass use-case is the K1 CLI (task 12.1–12.2), not a UI-spanning admin session
+
+**Until Phase F closes** (introduces `TenantLifecycleController` break-glass endpoints + new platform-scoped identity), operator cross-tenant actions SHALL flow through the K1 break-glass CLI — not a UI session.
+
+#### Scenario: `dev-coc` PLATFORM_ADMIN cannot log in to `dev-coc-west`
+
+- **GIVEN** a user `admin@dev.fabt.org` has `PLATFORM_ADMIN` role in `dev-coc`
+- **WHEN** they attempt `/api/v1/auth/login` with `tenantSlug=dev-coc-west` + their same email/password
+- **THEN** authentication fails with `Invalid credentials` (the `(tenantId, email)` lookup finds no matching user in `dev-coc-west`'s row set)
+
+#### Scenario: Cross-tenant JWT replay rejected
+
+- **GIVEN** a valid JWT issued for `dev-coc`'s `PLATFORM_ADMIN`
+- **WHEN** a request targeting a `dev-coc-west`-scoped resource carries that token
+- **THEN** JWT validation rejects with `CrossTenantJwtException` (kid-resolved tenantId ≠ claim.tenantId) OR the subsequent request reaches `TenantContext=dev-coc` and RLS blocks the cross-tenant read
+
+#### Scenario: Each tenant has its own independently-seeded PLATFORM_ADMIN
+
+- **WHEN** V76 + V77 seeds complete
+- **THEN** `dev-coc-west` has an `admin@blueridge.fabt.org` user with `PLATFORM_ADMIN` role
+- **AND** `dev-coc-east` has an `admin@pamlico.fabt.org` user with `PLATFORM_ADMIN` role
+- **AND** these are three distinct user records (one per tenant) — NOT the same principal spanning three tenants
+
+#### Scenario: Documentation surfaces the tenant-scoped semantics
+
+- **GIVEN** a demo visitor reads the multi-tenant walkthrough doc (M6)
+- **THEN** the doc explicitly notes that `PLATFORM_ADMIN` in v0.48 means "top role within this CoC," not "platform-spanning"
+- **AND** the doc references Phase F / Phase G as the point where a platform-spanning break-glass identity ships
+
 ### Requirement: branding-demo-suffix
 The system SHALL display the west tenant name as `Blue Ridge CoC (demo)` and the east tenant name as `Pamlico Sound CoC (demo)` (per M2, D12) in login UI, landing page, admin panel header, page title, and training materials. Both names are fictional regional labels NOT present in the HUD CoC registry; the `(demo)` suffix is retained as belt-and-suspenders per D12. Seed data SHALL use demonstrably-fictional shelter names (e.g., "Example House North", "Example Coastal House"), non-geocodable addresses, and persona-derived fake contact names. Real-PII patterns SHALL NOT appear in either tenant. Casey pre-merge review SHALL confirm no name collision with a registered HUD CoC.
 
