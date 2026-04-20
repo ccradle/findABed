@@ -290,17 +290,17 @@ Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (p
 
 ## 14. Phase M — Demo-site multi-tenant validation (1 week; change-closure gate)
 
-- [ ] 14.1 Casey pre-merge review — confirm `Asheville CoC (demo)` + `Beaufort County CoC (demo)` branding in all surfaces, no real-PII patterns, no partnership implication for either tenant (M2, M8)
+- [ ] 14.1 Casey pre-merge review — confirm `Blue Ridge CoC (demo)` + `Pamlico Sound CoC (demo)` branding in all surfaces, no real-PII patterns, no partnership implication for either tenant, no name collision with HUD-registered CoCs (M2, M8)
 - [ ] 14.2 Marcus pre-merge review — confirm both new-tenant seeds contain no real credentials, no real addresses, no real names (M8)
 - [ ] 14.3 Maria pre-merge review — confirm procurement-audience-appropriate language in walkthrough covering all three tenants (M8)
-- [ ] 14.4 Flyway V76 — `dev-coc-west` tenant seed (Asheville) with UUID `a0000000-0000-0000-0000-000000000002` (M1)
-- [ ] 14.5 V76 — 6 `dev-coc-west` users: `admin@asheville.fabt.org`, `cocadmin@asheville.fabt.org`, `coordinator@asheville.fabt.org`, `outreach@asheville.fabt.org`, `dv-coordinator@asheville.fabt.org`, `dv-outreach@asheville.fabt.org` (all password `admin123`)
-- [ ] 14.6 V76 — 3-5 `dev-coc-west` (Asheville-themed) shelters including at least one DV shelter, fictional names (e.g., "Example House North", "Example Family Center", "Western NC Example Shelter (demo)", "Safe Haven Demo DV")
+- [ ] 14.4 Flyway V76 — `dev-coc-west` tenant seed (Blue Ridge CoC (demo)) with UUID `a0000000-0000-0000-0000-000000000002` (M1)
+- [ ] 14.5 V76 — 6 `dev-coc-west` users: `admin@blueridge.fabt.org`, `cocadmin@blueridge.fabt.org`, `coordinator@blueridge.fabt.org`, `outreach@blueridge.fabt.org`, `dv-coordinator@blueridge.fabt.org`, `dv-outreach@blueridge.fabt.org` (all password `admin123`)
+- [ ] 14.6 V76 — 3-5 `dev-coc-west` (Blue Ridge-themed) shelters including at least one DV shelter, fictional names (e.g., "Example House North", "Example Family Center", "Blue Ridge Example Shelter (demo)", "Safe Haven Demo DV")
 - [ ] 14.7 V76 — sample bed availability for `dev-coc-west` shelters + 1 sample pending DV referral
 - [ ] 14.8 V76 idempotency — `INSERT ... ON CONFLICT DO UPDATE` pattern on every row
-- [ ] 14.4b Flyway V77 — `dev-coc-east` tenant seed (Beaufort County) with UUID `a0000000-0000-0000-0000-000000000003` (M1)
-- [ ] 14.5b V77 — 6 `dev-coc-east` users: `admin@beaufort.fabt.org`, `cocadmin@beaufort.fabt.org`, `coordinator@beaufort.fabt.org`, `outreach@beaufort.fabt.org`, `dv-coordinator@beaufort.fabt.org`, `dv-outreach@beaufort.fabt.org` (all password `admin123`)
-- [ ] 14.6b V77 — 3-5 `dev-coc-east` (Beaufort County-themed) shelters including at least one DV shelter, fictional names (e.g., "Example Washington House", "Eastern NC Example Shelter (demo)", "Pamlico Example Family Center", "Safe Haven Demo DV East")
+- [ ] 14.4b Flyway V77 — `dev-coc-east` tenant seed (Pamlico Sound CoC (demo)) with UUID `a0000000-0000-0000-0000-000000000003` (M1)
+- [ ] 14.5b V77 — 6 `dev-coc-east` users: `admin@pamlico.fabt.org`, `cocadmin@pamlico.fabt.org`, `coordinator@pamlico.fabt.org`, `outreach@pamlico.fabt.org`, `dv-coordinator@pamlico.fabt.org`, `dv-outreach@pamlico.fabt.org` (all password `admin123`)
+- [ ] 14.6b V77 — 3-5 `dev-coc-east` (Pamlico Sound-themed) shelters including at least one DV shelter, fictional names (e.g., "Example Coastal House", "Pamlico Example Shelter (demo)", "Pamlico Example Family Center", "Safe Haven Demo DV East")
 - [ ] 14.7b V77 — sample bed availability for `dev-coc-east` shelters + 1 sample pending DV referral
 - [ ] 14.8b V77 idempotency — `INSERT ... ON CONFLICT DO UPDATE` pattern on every row
 - [ ] 14.9 Frontend — update `Layout.tsx` header: visible tenant indicator with three distinct accent colors + tenant name (M3, three-tenant-aware)
@@ -329,5 +329,5 @@ Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (p
 - [ ] 15.6 `/opsx:verify multi-tenant-production-readiness` passes
 - [ ] 15.7 `/opsx:sync multi-tenant-production-readiness` merges delta specs into main specs
 - [ ] 15.8 `/opsx:archive multi-tenant-production-readiness`
-- [ ] 15.9 Update memory `project_live_deployment_status.md` — multi-tenant mode active; `dev-coc-west` (Asheville) + `dev-coc-east` (Beaufort County) present alongside `dev-coc`
+- [ ] 15.9 Update memory `project_live_deployment_status.md` — multi-tenant mode active; `dev-coc-west` (Blue Ridge) + `dev-coc-east` (Pamlico Sound) present alongside `dev-coc`
 - [ ] 15.10 Publish GitHub release + announcement

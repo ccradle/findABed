@@ -4,7 +4,7 @@ Post v0.40 (cross-tenant-isolation-audit shipped 2026-04-16), FABT has service-l
 
 Architecture stays with the discriminator + RLS hybrid (not schema-per-tenant or DB-per-tenant). Current deploy target is Oracle Always Free A1 Flex ARM64 (Postgres 16, single Docker compose, Cloudflare edge). Pilot prospects span standard-tier (generic CoC) and regulated-tier (HIPAA BAA / VAWA-exposed DV CoCs). Change-closure gate is a demonstrable second tenant on `findabed.org` answering "show us multi-tenant isolation" from a procurement browser.
 
-Key stakeholders: Corey (engineering lead, 1-person core team + AI collab), Marcus Webb (AppSec persona for audit), Casey Drummond (legal persona for compliance artifacts), Sarah Dickerson (City of Asheville contact — Casey's branding guardrail motivation for M2).
+Key stakeholders: Corey (engineering lead, 1-person core team + AI collab), Marcus Webb (AppSec persona for audit), Casey Drummond (legal persona for compliance artifacts), Sarah Dickerson (NC municipal contact whose presence in project conversations motivated Casey's no-real-jurisdiction-in-demo-names posture for M2 — see D12 revision 2026-04-20).
 
 ## Goals / Non-Goals
 
@@ -120,18 +120,26 @@ Step-by-step:
 
 Documented boundary: audit_events rows with `tenant_id = <shredded_uuid>` may remain in PITR backups within the retention window. Operator runbook states this explicitly; satisfies "proportionate" per EDPB framework.
 
-### D12 — Two-new-tenant branding: `Asheville CoC (demo)` + `Beaufort County CoC (demo)` per Casey
+### D12 — Two-new-tenant branding: `Blue Ridge CoC (demo)` + `Pamlico Sound CoC (demo)` per Casey (revised 2026-04-20)
 
-M2 decision (revised 2026-04-18 to cover two new tenants): use two real NC jurisdictions with geographic spread (Western NC + Eastern NC), each with a mandatory `(demo)` suffix in every display surface (login UI, landing page, admin panel header, page title):
+**M2 decision (revised 2026-04-20):** use two FICTIONAL region-themed names that do NOT match any real HUD-registered CoC jurisdiction. Each carries a mandatory `(demo)` suffix in every display surface (login UI, landing page, admin panel header, page title):
 
-- **`dev-coc-west` — "Asheville CoC (demo)"** — Western NC, City of Asheville area. Project-relevant context (Sarah Dickerson / City of Asheville contact) makes Asheville the obvious peer-tenant choice for WNC.
-- **`dev-coc-east` — "Beaufort County CoC (demo)"** — Eastern NC, Washington NC county seat. Chosen to demonstrate geographic spread within NC without implying state-capital or Triangle-area partnership context.
+- **`dev-coc-west` — "Blue Ridge CoC (demo)"** — Blue Ridge is a mountain range spanning multiple states, NOT a HUD-registered CoC. Fictional regional framing avoids any real-jurisdiction partnership implication.
+- **`dev-coc-east` — "Pamlico Sound CoC (demo)"** — Pamlico Sound is a geographic feature (NC coastal lagoon), NOT a HUD-registered CoC. Fictional regional framing.
 
-Seed uses demonstrably-fictional shelter names ("Example House North"), non-geocodable addresses, persona-derived fake contacts in BOTH tenants. Pre-merge review gate (M8) by Casey confirms branding consistency on each migration (V76 for west, V77 for east); Marcus confirms no real-PII patterns in either; Maria confirms procurement-audience language.
+Seed uses demonstrably-fictional shelter names ("Example House North", "Example Coastal House"), non-geocodable addresses, persona-derived fake contacts in BOTH tenants. Pre-merge review gate (M8) by Casey confirms name-fiction + `(demo)` suffix on each migration (V76 for west, V77 for east) + cross-checks the HUD CoC registry to confirm no name collision; Marcus confirms no real-PII patterns in either; Maria confirms procurement-audience language.
 
-Alternative considered: two fictional city names (e.g., "Riverbend CoC" + "Pine Ridge CoC"). Rejected because real named peer tenants with clear `(demo)` labeling are more demonstrably "real-tenant-shaped" than fictional cities, and using NC jurisdictions keeps the walkthrough grounded in project context.
+**Prior revision history:**
 
-Alternative considered (2026-04-18 scope expansion): single Asheville tenant. Rejected because two geographically-distinct peer tenants exercise a broader cross-tenant-probe matrix (east↔west, east→core, west→core) as regression guards — and east-west geographic pairing is more legible to procurement than core-vs-peer pairing alone.
+- **2026-04-20 revision (ACTIVE):** fictional regional names (Blue Ridge / Pamlico Sound). Rationale: Corey explicitly directed that real-jurisdiction demo-tenant names shall not appear anywhere in the project, citing the Sarah Dickerson meeting proximity. `feedback_truthfulness_above_all.md` applies — no commitment-implication. Warroom (2026-04-20) recommended Blue Ridge + Pamlico Sound as fiction-with-regional-flavor; both verified absent from HUD CoC registry.
+
+- **2026-04-18 revision (SUPERSEDED):** real-NC-jurisdiction demo-tenant names with `(demo)` suffix. Rejected by Corey 2026-04-20 after the Sarah Dickerson meeting (2026-04-14) made real-jurisdiction naming feel too close to an implied partnership regardless of suffix.
+
+**Alternatives considered and rejected:**
+
+- Real NC jurisdictions (2026-04-18 choice) — rejected per Corey 2026-04-20 (above).
+- Generic cardinal names (e.g., "Demo CoC West" + "Demo CoC East") — rejected for being insufficiently "real-tenant-shaped" to exercise procurement-audience legibility. Mountain-vs-coastal fictional framing gives the walkthrough a narrative hook (different DV postures across geographies) while staying non-committal.
+- Single Blue Ridge tenant — rejected because two geographically-distinct peer tenants exercise a broader cross-tenant-probe matrix (east↔west, east→core, west→core) as regression guards.
 
 ### D13 — Partition audit_events + hmis_audit_log by tenant_id (list partitioning)
 
@@ -142,6 +150,34 @@ Alternative: range partition by time + tenant_id filter in queries. Rejected: li
 ### D14 — Module-by-module rollout of `TenantScoped<T>` SPI; not retrofit-all-at-once
 
 L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementally as each A–L theme lands. `TenantScoped<SigningKey>` lands with A1; `TenantScoped<SecretKey>` with A3; `TenantScoped<Cache>` with C1; etc. ArchUnit Family F activates progressively (starts with each theme, tightens as more modules adopt). Avoids a big-bang retrofit that would block every other workstream.
+
+### D15 — PLATFORM_ADMIN role-split deferred to Phase F (2026-04-20)
+
+**Current state:** `Role.PLATFORM_ADMIN` (`backend/src/main/java/org/fabt/auth/domain/Role.java:3-8`) is a tenant-scoped role by implementation — users are keyed on `(tenantId, email)` (`AuthController.login:108-115`); JWTs carry a hard `tenantId` claim (`JwtService:186`); cross-tenant tokens rejected (`JwtService:409-424`). The name reads as "platform-spanning" but the bits implement "top role within a tenant." Phase M seeding `PLATFORM_ADMIN` into each of `dev-coc`, `dev-coc-west`, `dev-coc-east` surfaced the mismatch.
+
+**Decision (warroom 2026-04-20, Corey + 6 personas):** defer the rename + split to Phase F. For v0.48 Phase M-light, the three demo tenants each carry their own independently-seeded `PLATFORM_ADMIN`. Specified explicitly in `specs/multi-tenant-demo-seed/spec.md` Requirement `platform-admin-tenant-scoping-v0.48`.
+
+**Phase F work (tracked separately):** split `PLATFORM_ADMIN` into:
+
+- `TENANT_ADMIN` — the renamed existing role (tenant-scoped, replaces every current `@PreAuthorize("hasRole('PLATFORM_ADMIN')")` on per-tenant resources)
+- `PLATFORM_OPERATOR` — new role, distinct identity store (`platform_user` table with no `tenantId`), separate auth flow that issues tenantId-agnostic tokens, gated by `@PlatformAdminOnly` (Phase G) with per-access justification + `platform_admin_access_log` append-only audit (G2 / G3)
+
+Endpoints that are currently PLATFORM_ADMIN-gated split into two cohorts:
+
+- **Tenant-scoped (→ TENANT_ADMIN):** user management within tenant, tenant config, API key management, OAuth2 provider management, TOTP enrollment reset
+- **Platform-scoped (→ PLATFORM_OPERATOR):** `TenantController.create`, `BatchJobController`, `HmisExportController`, `TenantLifecycleController` (F12) break-glass endpoints, `TestResetController`
+
+**Phase F scope impact:** +2 engineer-days for the rename + split + test fixture updates. Phase G unchanged — `@PlatformAdminOnly` aspect always targeted the new role.
+
+**Rationale for NOT renaming in v0.48:**
+
+1. 13+ `@PreAuthorize` call sites plus `SecurityConfig:172/199/202`, seed SQL, JWT role claims, Playwright auth fixtures, admin UI role-check, i18n strings. A blanket rename is a 2-3 day PR.
+2. Some PLATFORM_ADMIN endpoints are genuinely platform-scoped and should keep gated by the NEW platform role. A rename-to-TENANT_ADMIN-then-split-at-F path does two renames (and two reviewer passes). Split-at-F does one.
+3. Marcus (security): current tenant-binding is SAFER than a sloppy cross-tenant flag. Cross-tenant elevation must go through a dedicated audited flow.
+4. Elena (privacy): VAWA H4 requires platform operators cannot silently read DV PII. Tenant-bound today preserves posture; `@PlatformAdminOnly` + `platform_admin_access_log` in Phase G deliver the audited channel.
+5. Jordan (SRE): 3am break-glass use-case is the K1 CLI (task 12.1–12.2), not a UI-spanning admin session.
+
+**Between v0.48 and Phase F:** operator cross-tenant actions flow through the K1 break-glass CLI. No UI pathway for cross-tenant operations.
 
 ## Risks / Trade-offs
 
@@ -161,7 +197,7 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 - **Audit hash chain becomes un-verifiable after crypto-shred** (D9/D11) — once a tenant is hard-deleted, the weekly external anchor for that tenant's chain is a historical artifact; future recomputation fails. → **Mitigation:** document explicitly; the last anchor before shred is the final integrity proof.
 
-- **Real-jurisdiction branding confusion risk** (M2) — even with `(demo)` suffix, a demo visitor may momentarily think "wait, is FABT actually deployed in Asheville / Beaufort County?" → **Mitigation:** Casey's pre-merge review of every copy-written surface in BOTH new tenants; FAQ entry on landing page explicitly disclaiming both; explicit disclaimer in login UI. Risk multiplied by two tenants but mitigation is symmetric.
+- **Branding confusion risk** (M2) — mitigated by 2026-04-20 pivot to fictional regional names (D12). Blue Ridge + Pamlico Sound are not HUD-registered CoCs, so a visitor cannot mistake the demo tenants for live pilots in a specific jurisdiction. `(demo)` suffix retained as belt-and-suspenders. Casey's pre-merge review confirms no name collision with the HUD CoC registry + enforces suffix in every display surface.
 
 - **Demo-site cross-tenant drill frequency (M10/M11)** — quarterly operator drills on `dev-coc-west` OR `dev-coc-east` (rotating per quarter) require someone to run them. For a 1-engineer team, this is meaningful ops overhead — and doubling the tenant count does NOT double the drill count because the two new tenants share the drill rotation. → **Mitigation:** automate drills into a nightly or weekly cron once validated manually; Grafana panel (M7) exposes freshness; rotate target tenant so both exercise their lifecycle across a year.
 
@@ -199,7 +235,7 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 13. **L1–L10 — Developer guardrails** (~1–2 weeks). `TenantScoped<T>` SPI rolled out progressively across phases 2–8; module boundary ArchUnit, typed config, typed feature flags, stage environment, DR drill, cost allocation, rotation runbooks consolidated at end.
 
-14. **M1–M11 — Demo-site multi-tenant validation** (~1 week, AFTER F ships). V76 `dev-coc-west` / Asheville seed, V77 `dev-coc-east` / Beaufort County seed, three-tenant UI indicator with distinct accent colors, educational 404 envelope, post-deploy smoke all-tenant coverage (minimum 3-probe rotation across the 6-pair matrix), walkthrough doc covering all three tenants, tenant-pair validation Grafana panel. **Change-closure gate: `opsx:archive` blocked until M validated on live `findabed.org` for all three tenants.**
+14. **M1–M11 — Demo-site multi-tenant validation** (~1 week, AFTER F ships). V76 `dev-coc-west` / Blue Ridge CoC (demo) seed, V77 `dev-coc-east` / Pamlico Sound CoC (demo) seed, three-tenant UI indicator with distinct accent colors, educational 404 envelope, post-deploy smoke all-tenant coverage (minimum 3-probe rotation across the 6-pair matrix), walkthrough doc covering all three tenants, tenant-pair validation Grafana panel. **Change-closure gate: `opsx:archive` blocked until M validated on live `findabed.org` for all three tenants.**
 
 ### Rollback strategy
 
@@ -219,7 +255,7 @@ L1 rollout: introduce `TenantScoped<T>` interface + implementations incrementall
 
 1. **Q: `FABT_ENCRYPTION_KEY` env var (the Phase 0 master KEK) for standard tier — acceptable under HIPAA BAA for a regulated pilot that doesn't need full Vault?** — Casey to advise. If `No`, regulated tier deploy MUST use Vault Transit (D3).
 
-2. **Q: Asheville tenant — keep name as "Asheville CoC (demo)" or rename to fictional city pre-merge?** — **RESOLVED 2026-04-18 (Corey):** keep Asheville, and add a second real-NC-jurisdiction tenant "Beaufort County CoC (demo)" with slug `dev-coc-east`. Asheville tenant slug becomes `dev-coc-west` (geographic positioning explicit in slug). Both tenants carry mandatory `(demo)` suffix per D12.
+2. **Q: Demo-tenant branding — real jurisdictions or fictional names?** — **RE-RESOLVED 2026-04-20 (Corey):** use FICTIONAL regional names "Blue Ridge CoC (demo)" (slug `dev-coc-west`) and "Pamlico Sound CoC (demo)" (slug `dev-coc-east`). Neither is a real HUD-registered CoC. Supersedes the 2026-04-18 resolution that chose real-NC-jurisdiction names. Rationale: post-Sarah-Dickerson-meeting proximity made real-jurisdiction naming feel too close to implied partnership regardless of `(demo)` suffix. See D12 for full revision history.
 
 3. **Q: Crypto-shred verification test — can we assert ciphertext is unrecoverable without exposing the KEK in test?** — D11 test design; resolve in F6 implementation PR.
 
