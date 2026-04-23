@@ -83,9 +83,9 @@ The harness SHALL NOT send real SMTP email or hit real ntfy.sh during alert-rout
 
 #### Scenario: Synthetic CRITICAL alert routes to stub receivers
 
-- **WHEN** the harness fires a synthetic `FabtRehearsalTest` alert with `severity=critical` against the stubbed alertmanager
-- **THEN** the local SMTP stub records receipt
-- **AND** the local ntfy stub records receipt
+- **WHEN** the harness fires a synthetic `FabtRehearsalTest` alert with `severity=critical` against the stubbed alertmanager via `docker exec fabt-rehearsal-alertmanager-1 amtool --alertmanager.url http://127.0.0.1:9093 alert add ...`
+- **THEN** the Mailpit container (`axllent/mailpit`, port 1025 SMTP / 8025 HTTP UI) records SMTP receipt queryable via its HTTP API
+- **AND** the Python `http.server` ntfy stub records the webhook POST
 - **AND** no traffic leaves the operator laptop
 
 #### Scenario: Real-receiver opt-in is gated
@@ -101,7 +101,8 @@ The harness SHALL run the Playwright post-deploy smoke spec against `http://loca
 #### Scenario: Smoke runs against nginx port
 
 - **WHEN** the harness's smoke step executes
-- **THEN** the invocation sets `BASE_URL=http://localhost:8081`
+- **THEN** the invocation sets `FABT_BASE_URL=http://localhost:8081` (NOT `BASE_URL` — `post-deploy-smoke.spec.ts` reads `process.env.FABT_BASE_URL` directly, bypassing Playwright's `baseURL` config)
+- **AND** the spec is invoked explicitly as `npx playwright test ./deploy/post-deploy-smoke.spec.ts --project chromium` (since `playwright.config.ts` `testDir` is `./tests`, not `./deploy`)
 - **AND** output is tee'd to `logs/rehearsal-smoke-<timestamp>.log` per `feedback_run_tests_once_to_logs.md`
 
 #### Scenario: Smoke failure fails the harness
@@ -140,6 +141,16 @@ The system SHALL add a `rehearsal-green-within-72h` pin to `deploy/release-gate-
 - **WHEN** a PR bumps `backend/pom.xml` version AND adds a new `## [vX.Y.Z]` line to `CHANGELOG.md`
 - **THEN** the PR description (or a sidecar artifact) MUST reference the rehearsal log filename or attest that rehearsal passed within the last 72 h
 - **AND** `verify-release-gate-pins.sh` flags violations
+
+### Requirement: Full-suite Playwright run is clean before harness ships
+
+The change SHALL fix the known strict mode violation in `e2e/playwright/tests/demo-211-import-edit.spec.ts` so that the full Playwright suite (chromium + nginx projects) passes with no unexpected failures before this change merges. This ensures the harness verification step (task 8.1) runs against a clean baseline.
+
+#### Scenario: 211 import negative-case test passes in both projects
+
+- **WHEN** the full Playwright suite runs with `BASE_URL=http://localhost:8081 NGINX=1`
+- **THEN** `demo-211-import-edit.spec.ts › headers-only file shows error message` passes in both `[chromium]` and `[nginx]` projects
+- **AND** no strict mode violation is raised by the locator in that test
 
 ### Requirement: Operator-laptop only — no CI integration in this change
 

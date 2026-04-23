@@ -49,16 +49,20 @@ Alternatives considered:
 
 Rationale: Makefile makes the intent explicit, separates throwaway-rehearsal from long-lived-dev workflows, and is discoverable via `make help`.
 
-**2. Stubbed receivers via local containers, NOT mocked-in-script.**
+**2. Stubbed receivers: Mailpit container (SMTP) + Python `http.server` subprocess (ntfy).**
 
-Decision: For receiver-routing tests (alertmanager → email + ntfy), spin up a local MailHog container (port 8025) for SMTP capture and a local `socat`-or-nginx stub for ntfy webhook capture.
+Decision: For receiver-routing tests (alertmanager → email + ntfy):
+- **SMTP stub**: `axllent/mailpit` container on port 1025 (SMTP) / port 8025 (HTTP UI). Mailpit is the actively-maintained drop-in successor to MailHog — MailHog's last commit was 2020 and is unmaintained. Same port contract, same API, ~15 MB image.
+- **ntfy stub**: Python built-in `http.server` started as a background subprocess — returns 200 to any POST, logs bodies to the rehearsal artifact dir. No extra container image; Python is universally available in Git Bash. Simpler than nginx.
 
 Alternatives considered:
-- Mock the receiver behavior in bash (e.g. just check that alertmanager logs show "would send"). REJECTED — doesn't exercise the actual TCP flow; misses things like SMTP STARTTLS handshake.
-- Use real Gmail with a throwaway app password. REJECTED — Marcus red line, plus real-Gmail rate limits would make the harness flaky.
-- Skip receiver-routing entirely. REJECTED — that's the v0.49 issue #3 (template error in receiver) class we want to catch.
+- MailHog (`mailhog/mailhog`). CONSIDERED. REJECTED — abandoned since 2020; Mailpit is the maintained replacement.
+- nginx container as ntfy stub. CONSIDERED. REJECTED — overengineered for a 200-OK stub; Python `http.server` requires no extra image.
+- Mock in bash only (check logs for "would send"). REJECTED — doesn't exercise actual TCP flow; misses SMTP handshake errors.
+- Real Gmail with throwaway app password. REJECTED — Marcus red line; real rate limits make harness flaky.
+- Skip receiver-routing entirely. REJECTED — that's the v0.49 issue #3 class.
 
-Rationale: stubbed-via-container exercises the real TCP/HTTP path without touching real services; runs offline; ~30 MB extra disk per stub container. Trade-off accepted.
+Rationale: Mailpit exercises the real SMTP path; Python stub handles the ntfy webhook with zero extra infrastructure. Combined extra disk: ~15 MB.
 
 **3. Container UID enumeration via `docker inspect` + bind-mount perm check.**
 
@@ -78,17 +82,22 @@ Rationale: catches v0.49 issue #1 in <100 ms with a clear error message. Reusabl
 
 **5. Use `docker compose alpha dry-run` for compose merge validation.**
 
-Decision: Where available (Docker Engine 24+), prefer `docker compose alpha dry-run up alertmanager backend frontend` over manual `config + diff`.
+Decision: Where available, prefer `docker compose alpha dry-run -- up alertmanager backend frontend` over manual `config + diff`. The `--` separator is required in Compose v5 to separate the `dry-run` subcommand from the target command — confirmed on Docker 29.2.1 / Compose v5.0.2 (operator's machine). Fall back to `docker compose config + diff vs golden` if unavailable.
 
 Alternatives considered:
 - Stick with `compose config + diff vs golden`. CONSIDERED — what v0.49 runbook used; works but produces noisy diffs.
 - Use both. PARTIAL — fall back to `config + diff` if `alpha dry-run` is unavailable.
 
-Rationale: `dry-run` is the Docker-blessed approach for validation without side effects; less noisy output; future-proof.
+Rationale: `dry-run` is the Docker-blessed approach; less noisy; future-proof. Note: `docker compose alpha` is experimental — the `--` separator syntax is confirmed working on Compose v5.0.2.
 
 **6. Playwright smoke target = local nginx (port 8081), NOT bare Vite.**
 
 Decision: Per `feedback_check_ports_before_assuming.md` and `feedback_test_with_nginx_in_dev.md`, the rehearsal smoke MUST hit `http://localhost:8081` (the nginx-fronted port that mirrors prod's flow), not `http://localhost:5173` (bare Vite).
+
+Implementation detail (ground-truth verified): `e2e/playwright/deploy/post-deploy-smoke.spec.ts` uses `process.env.FABT_BASE_URL` (NOT `BASE_URL`) with a default of `https://findabed.org`. The spec bypasses Playwright's `baseURL` config entirely via `page.goto(BASE + '/...')`. Therefore:
+- The harness MUST set `FABT_BASE_URL=http://localhost:8081` (not `BASE_URL`).
+- `NGINX=1` and Playwright's project `baseURL` have no effect on this spec.
+- `playwright.config.ts` sets `testDir: './tests'` — the smoke spec lives in `./deploy/`, so the harness MUST invoke it with an explicit path: `npx playwright test ./deploy/post-deploy-smoke.spec.ts --project chromium`.
 
 **7. Service-recreate matrix is encoded in the harness itself.**
 
@@ -99,7 +108,7 @@ Rationale: ensures "what the harness does" and "what the runbook says" never dri
 ## Risks / Trade-offs
 
 - **[Harness drift from prod compose layout]** — prod compose chain is 4 files; the rehearsal overlay only mirrors the structure with stub values. If a real prod compose file changes structurally (new override, new service), the rehearsal overlay must be updated in lockstep. → Mitigated by listing the rehearsal overlay in the v0.50 runbook template's "service-recreate matrix" follow-up checklist; any prod compose-layout change requires a paired rehearsal-overlay update in the same PR.
-- **[Stub receiver behavior diverges from real Gmail/ntfy]** — MailHog accepts everything; real Gmail rejects malformed Subject headers, has DKIM/SPF, etc. → Accepted; harness catches template-engine-level errors (the v0.49 issue #3 class), not delivery-quality issues. Document this clearly in the harness output: "Receivers are stubbed; this run does NOT validate real-Gmail deliverability."
+- **[Stub receiver behavior diverges from real Gmail/ntfy]** — Mailpit accepts everything; real Gmail rejects malformed Subject headers, has DKIM/SPF, etc. → Accepted; harness catches template-engine-level errors (the v0.49 issue #3 class), not delivery-quality issues. Document this clearly in the harness output: "Receivers are stubbed; this run does NOT validate real-Gmail deliverability."
 - **[Operator skips the rehearsal under time pressure]** — without CI enforcement (Phase F), operator can tag without rehearsal. → Mitigated by adding the `rehearsal-green-within-72h` pin to `release-gate-pins.txt`; the v0.50 runbook template's pre-deploy gate references this pin and the runbook author MUST attach the rehearsal log file to the deploy incident thread. Not bulletproof; Phase F CI gate closes the loop.
 - **[Marcus/Security concern: stubbed `.env.rehearsal` has fake credentials]** — even fake credentials in committed example files can train operators to put real ones there by mistake. → Mitigated by `.env.rehearsal` being gitignored; `deploy/rehearsal.env.example` (committed) has obvious placeholder strings like `STUB_DO_NOT_USE_IN_PROD` and includes a top-of-file warning.
 - **[~10 min wall-time may discourage runs]** — `mvn clean package` is ~2 min, image build ~2 min, compose up + healthchecks ~2 min, Playwright smoke ~3 min. → Mitigated by `REHEARSAL_SKIP_BUILD=1` flag for fast iteration on harness changes (skips Maven if `target/*.jar` is fresher than last `git log -1 --format=%ct backend/`).
@@ -107,7 +116,7 @@ Rationale: ensures "what the harness does" and "what the runbook says" never dri
 
 ## Migration Plan
 
-1. Land `scripts/deploy-rehearsal.sh` + `deploy/rehearsal.env.example` + `deploy/rehearsal-prod-overlay.yml` + `Makefile` snippet + `FOR-DEVELOPERS.md` "Pre-tag rehearsal" subsection.
+1. Land `scripts/deploy-rehearsal.sh` + `deploy/rehearsal.env.example` + `deploy/rehearsal-prod-overlay.yml` + `Makefile` snippet + `docs/FOR-DEVELOPERS.md` "Pre-tag rehearsal" subsection.
 2. Operator runs the harness manually before tagging v0.50 (this is the first real-world test of the harness).
 3. If the harness catches an issue, fix it and re-run; if the harness itself is buggy, fix the harness in a follow-up commit.
 4. After 2 releases of manual use (v0.50 + v0.51), revisit Phase F (`phase-f-ci-rehearsal-gate`) — the harness should have ~2 weeks of operator-usage data to inform the CI gate's failure modes and tolerance.
@@ -117,7 +126,15 @@ Rollback: revert the commits. No production impact (harness runs only on operato
 
 ## Open Questions
 
-- Does `docker compose alpha dry-run` work reliably on the operator's Docker Desktop / Git Bash setup? Test as part of task 4 (verification); fall back to `compose config + diff` if not.
-- Should MailHog be replaced by a simpler `nc -l` listener? MailHog is ~30 MB extra; `nc` is built-in but doesn't parse SMTP. Decision deferred to implementation — try MailHog first, swap if it's flaky on Windows.
-- Does the rehearsal need to exercise the Cloudflare → host nginx → frontend chain, or just frontend → backend? Decision: frontend → backend only for v0.50; the host-nginx layer is operator-side state, not in-repo. Document the gap.
-- Does `feedback_devstart_pid_desync.md` apply — i.e., does the rehearsal harness need to manage PID files? Decision: no — rehearsal uses a separate `COMPOSE_PROJECT_NAME=fabt-rehearsal` so it doesn't collide with the operator's running dev stack.
+**[RESOLVED]** Does `docker compose alpha dry-run` work on the operator's Docker Desktop / Git Bash setup?
+→ Yes. Confirmed available as `docker compose alpha dry-run -- up [services]` on Docker 29.2.1 / Compose v5.0.2. The `--` separator is required. Fall back to `compose config` if the experimental subcommand is removed in a future Compose version.
+
+**[RESOLVED]** Should MailHog be replaced?
+→ Yes. MailHog is abandoned (last commit 2020). Use Mailpit (`axllent/mailpit`) — drop-in replacement, same ports, actively maintained. ntfy stub replaced with Python `http.server` subprocess (simpler, no extra image). See Decision 2.
+
+**[RESOLVED]** How to invoke `amtool` on Windows / Git Bash without a native binary?
+→ `amtool` is bundled in the `prom/alertmanager:v0.27.0` image at `/bin/amtool`. Invoke via `docker exec` against the running rehearsal alertmanager container: `docker exec fabt-rehearsal-alertmanager-1 amtool --alertmanager.url http://127.0.0.1:9093 alert add ...`. No Windows binary install required.
+
+Does the rehearsal need to exercise the Cloudflare → host nginx → frontend chain, or just frontend → backend? Decision: frontend → backend only for v0.50; the host-nginx layer is operator-side state, not in-repo. Document the gap.
+
+Does `feedback_devstart_pid_desync.md` apply — i.e., does the rehearsal harness need to manage PID files? Decision: no — rehearsal uses a separate `COMPOSE_PROJECT_NAME=fabt-rehearsal` so it doesn't collide with the operator's running dev stack.
