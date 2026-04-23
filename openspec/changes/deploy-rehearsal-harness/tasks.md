@@ -69,10 +69,10 @@
 
 ## 9. Commit + ship
 
-- [ ] 9.1 Stage all new files: `scripts/deploy-rehearsal.sh`, `deploy/rehearsal.env.example`, `deploy/rehearsal-prod-overlay.yml`, `Makefile` (or modifications), `FOR-DEVELOPERS.md` (modified), `deploy/release-gate-pins.txt` (modified), `scripts/ci/verify-release-gate-pins.sh` (modified)
-- [ ] 9.2 Commit with conventional message: `feat(ops): deploy rehearsal harness — operator-laptop prod-mirror gate before tagging`
-- [ ] 9.3 Push, open PR, wait for CI green per `feedback_release_after_scans.md`
-- [ ] 9.4 Merge to main; this change is operator-tooling, no version bump, no deploy
+- [x] 9.1 Stage all new files: `scripts/deploy-rehearsal.sh`, `deploy/rehearsal.env.example`, `deploy/rehearsal-prod-overlay.yml`, `Makefile` (or modifications), `FOR-DEVELOPERS.md` (modified), `deploy/release-gate-pins.txt` (modified), `scripts/ci/verify-release-gate-pins.sh` (modified)
+- [x] 9.2 Commit with conventional message: `feat(ops): deploy rehearsal harness — operator-laptop prod-mirror gate before tagging`
+- [x] 9.3 Push, open PR, wait for CI green per `feedback_release_after_scans.md`
+- [x] 9.4 Merge to main; this change is operator-tooling, no version bump, no deploy — merged as PR #149 (2026-04-23)
 
 ## 10. Post-merge validation (use it for v0.50)
 
