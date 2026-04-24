@@ -4,7 +4,7 @@
 - [x] 0.2 Migration numbering renumbered V79–V82 → V85–V88 (Phase F consumed V79–V84)
 - [x] 0.3 Design open questions #1 + #2 resolved (500-char UI / 1000-char server hold note; county detail-card only)
 - [x] 0.4 Design open question #4 resolved (features.reentryMode scoped into V85)
-- [ ] 0.5 **BLOCKER — resolve design open question #5**: V87 `held_for_client_*` encryption posture (tenant_dek-wrapped vs plaintext + 24h purge). Tracked in GitHub issue. Required BEFORE any V87 implementation starts.
+- [x] 0.5 Design open question #5 resolved to **Option A** (tenant_dek-wrapped ciphertext) via issue #152, closed 2026-04-24. V87 bundles tenant_dek.purpose CHECK update + reservation column adds. See §2.3 for shape.
 - [ ] 0.6 Book Casey Drummond i18n legal-review window for EN+ES disclaimer strings BEFORE implementation starts (not at task 15.6).
 - [ ] 0.7 Clarify Asheville stakeholder messaging posture (describe as "coming" or hold until tagged?).
 - [ ] 0.8 Re-verify Flyway HWM after Phase G tags — shift V85–V88 slots forward if Phase G's audit chain hash migration pushes HWM beyond V84.
@@ -13,13 +13,18 @@
 
 - [ ] 1.1 **SCAFFOLDED** — feature branch `feature/transitional-reentry-support` already created (2026-04-24); confirm still exists and pull latest main before resuming active work.
 - [ ] 1.2 Verify actual Flyway HWM: `SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1` — post-v0.51 is V84; post-Phase-G will shift. Adjust migration numbers in tasks 2.x if HWM has advanced beyond V84.
-- [ ] 1.3 Re-read design open question #5 resolution (V87 encryption posture) — write V87 per the chosen path.
+- [ ] 1.3 Re-confirm design open question #5 resolution = **Option A** (tenant_dek-wrapped). Write V87 per §2.3 below.
 
 ## 2. Database Migrations
 
 - [ ] 2.1 Write V85: add `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY' to `shelter`; add indexed `county` VARCHAR(100) nullable to `shelter`; UPDATE backfill `dvShelter=true` rows to `shelter_type='DV'`; add check constraint `CHECK (dvShelter = FALSE OR shelter_type = 'DV')`; add `features.reentryMode` key to tenant.config default shape (per open question #4 resolution)
 - [ ] 2.2 Write V86: add `eligibility_criteria` JSONB nullable to `shelter_constraints`; add GIN index `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)` — use `mixed=true` migration or separate non-transactional step (CONCURRENTLY cannot run inside a transaction block)
-- [ ] 2.3 Write V87: add `held_for_client_name`, `held_for_client_dob`, `hold_notes` — all nullable — to `reservation`. **Column types + encryption posture depend on design open question #5 resolution (task 0.5)**: plaintext VARCHAR(100)/DATE/TEXT OR `tenant_dek`-wrapped ciphertext columns.
+- [ ] 2.3 Write V87 **(Option A per issue #152)** — two coupled steps in one migration:
+  - (a) **ALTER `tenant_dek.purpose` CHECK constraint** to add `RESERVATION_PII` to the allowed set. V82 currently pins `CHECK (purpose IN ('TOTP', 'WEBHOOK_SECRET', 'OAUTH2_CLIENT_SECRET', 'HMIS_API_KEY'))`. Use the DROP/ADD CONSTRAINT pattern from V82 (not a plpgsql function rewrite).
+  - (b) **ALTER `reservation`** to add `held_for_client_name_encrypted TEXT`, `held_for_client_dob_encrypted TEXT`, `hold_notes_encrypted TEXT` — all nullable, all storing base64 v1 `EncryptionEnvelope`.
+  - Migration is Flyway-SQL (not Java) because neither step needs JCE; both are DDL.
+
+- [ ] 2.3a Add `KeyPurpose.RESERVATION_PII` enum value to `org.fabt.shared.security.KeyPurpose`. No associated `KeyDerivationService.deriveXxxKey` method needed — this purpose uses the random-DEK path exclusively (the deprecated HKDF derive methods are for the legacy backward-compat shim only).
 - [ ] 2.4 Write V88: add `requires_verification_call` BOOLEAN DEFAULT FALSE to `shelter`
 - [ ] 2.5 Verify V85 migration backfill: integration test confirms `dvShelter=true` rows all have `shelter_type='DV'` and check constraint is active post-migration
 
@@ -29,16 +34,16 @@
 - [ ] 3.2 Add `shelterType` and `county` fields to `Shelter` entity/domain record; update JDBC row mapper and `ShelterRepository`
 - [ ] 3.3 Add `requiresVerificationCall` boolean to `Shelter` entity; update row mapper
 - [ ] 3.4 Add `EligibilityCriteria` JSONB value type (record/class) with `CriminalRecordPolicy` sub-type; add to `ShelterConstraints` entity; JSONB serialization via `ObjectMapper`
-- [ ] 3.5 Add `heldForClientName`, `heldForClientDob`, `holdNotes` fields to `Reservation` entity; update row mapper
+- [ ] 3.5 Add `heldForClientName`, `heldForClientDob`, `holdNotes` fields to `Reservation` entity as plaintext Java types (String / LocalDate / String). **Domain layer holds plaintext; DB columns are the `_encrypted` siblings** (same pattern as `app_user.totpSecret` ↔ `totp_secret_encrypted`). Row mapper calls `SecretEncryptionService.decryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, columnValue)` on read; writer calls `encryptForTenant(...)` on write. Null-safe: null columns map to null fields without attempting decrypt.
 
 ## 4. Backend: Service and Repository Layer
 
 - [ ] 4.1 `BedSearchService`: add `shelterType` filter (enum, optional, multi-value); add `county` filter (string, case-insensitive, optional); add `acceptsFelonies` filter (boolean, optional — queries `eligibility_criteria->'criminal_record_policy'->>'accepts_felonies'`); update `BedSearchParams` record
 - [ ] 4.2 `BedSearchService`: when `acceptsFelonies=true`, shelters with null `eligibility_criteria` are excluded (unknown policy)
 - [ ] 4.3 `ShelterService`/`ShelterRepository`: persist `shelterType`, `county`, `eligibilityCriteria`, `requiresVerificationCall` on PUT/PATCH; validate `shelterType` against enum; validate `county` against `tenant.config.active_counties` if configured; enforce `dvShelter=true` implies `shelterType=DV` at application layer
-- [ ] 4.4 `ReservationService`: persist `heldForClientName`, `heldForClientDob`, `holdNotes` from hold creation request; validate `heldForClientDob` is before today and after 1900-01-01
+- [ ] 4.4 `ReservationService`: persist `heldForClientName`, `heldForClientDob`, `holdNotes` from hold creation request via `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)`. Store the resulting v1 envelope in the `_encrypted` columns. Validate `heldForClientDob` is before today and after 1900-01-01 BEFORE encryption (plaintext validation only). `dob` is serialized to ISO-8601 string before encryption (`LocalDate.toString()` round-trips cleanly).
 - [ ] 4.5 Add `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration` endpoint: accepts `holdDurationMinutes` integer (30–480), updates `tenant.config.holdDurationMinutes`, requires COC_ADMIN role; hold duration change applies to new holds only
-- [ ] 4.6 Extend Spring Batch cleanup job: null `heldForClientName`, `heldForClientDob`, `holdNotes` on reservation records where resolution time + 24h has passed; logic must be null-safe on pre-V81 databases (no-op if columns not present)
+- [ ] 4.6 Extend Spring Batch cleanup job: null `held_for_client_name_encrypted`, `held_for_client_dob_encrypted`, `hold_notes_encrypted` on reservation records where resolution time + 24h has passed. The job nulls the **ciphertext** columns (it has no key material and no need for it — NULL is NULL regardless of what was encrypted). Logic must be null-safe on pre-V87 databases (no-op if columns not present).
 
 ## 5. Backend: API Layer and DTOs
 
@@ -116,6 +121,8 @@
 - [ ] 13.10 V79 migration backfill: all `dvShelter=true` rows have `shelter_type='DV'`; DB constraint rejects diverged updates
 - [ ] 13.11 Cross-tenant isolation: `eligibility_criteria` on Shelter from Tenant A not returned in Tenant B queries
 - [ ] 13.12 Cross-tenant isolation: `heldForClientName` on Reservation from Tenant A not accessible from Tenant B session
+
+- [ ] 13.13 **[Option A encryption invariants]** Round-trip integration test: Tenant A encrypt `heldForClientName` = "Probe-<UUID>", read back via the row mapper's `decryptForTenant` path, assert plaintext matches. Bypass the service: load ciphertext directly from DB, assert it does NOT equal plaintext (proves at-rest ciphertext). Attempt `decryptForTenant` with Tenant B context on Tenant A's ciphertext: assert `CrossTenantCiphertextException` (inherits Phase F-6 kid-check). This exercises the exact invariant pass-2 Marcus required.
 - [ ] 13.13 `shelterType=DV` filter combined with `dvShelter=false` never returns a DV shelter (DV access control unaffected by new filter)
 
 ## 14. Playwright E2E Tests
