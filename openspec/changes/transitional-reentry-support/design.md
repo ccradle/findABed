@@ -1,0 +1,208 @@
+## Context
+
+FABT's shelter model currently treats all non-DV shelters as undifferentiated emergency shelters with five boolean constraints. Two practitioner categories — reentry housing navigators and call-center placement navigators — cannot use the platform without additional structured eligibility data that today only exists in shelter staff's heads, discovered by phone call.
+
+The current state:
+- `shelter_constraints` table: `requires_sobriety`, `requires_referral`, `requires_id`, `allows_pets`, `wheelchair_accessible` — five booleans, no extensibility
+- No shelter type taxonomy beyond the `dvShelter` boolean
+- No county field; no supervision geography filtering
+- Hold model: `reservation` table with no third-party attribution; `held_for_client_name`/`held_for_client_dob`/`hold_notes` absent
+- `holdDurationMinutes` in `tenant.config` JSONB has no admin UI
+
+National context (research-grounded): CSG 2023 found <5% of DOCs use dedicated technology for housing needs assessment; no platform nationally combines real-time bed availability + criminal record policy filtering + supervision geography matching. The criminal record policy data gap is documented — HSDS 3.0 explicitly defers to implementers; HMIS 2024 standards include no standardized field. The proposed offense-type vocabulary is grounded in documented national patterns (Prison Policy Initiative, Root & Rebound, GA THOR, OACRA).
+
+**Warroom contributors:** Alex Chen, Elena Vasquez, Marcus Webb, Riley Cho, Keisha Thompson, Tomás Herrera, Casey Drummond, Sam Okafor, Demetrius Holloway (primary design subject), Dr. Yemi Okafor.
+
+## Goals / Non-Goals
+
+**Goals:**
+- Enable bed search filtering by shelter type, county, and criminal record acceptance policy
+- Provide structured, extensible eligibility criteria per shelter with a guided editing UI
+- Support third-party navigator hold attribution with dignified labeling and 24h PII purge
+- Expose hold duration configuration in the admin panel
+- Render a non-dismissable, accessible policy disclaimer on all criminal record field displays
+- Maintain full backward compatibility — all existing workflows unaffected
+
+**Non-Goals:**
+- Integration with NC DAC supervision data for automated boundary enforcement (deferred; county filter is the practical MVP)
+- A distinct NAVIGATOR role with separate permissions (deferred to Phase E per-tenant role configuration)
+- Waitlist management or intake pipeline tracking
+- HUD VAWA compliance extensions for DV-involved reentry clients beyond the `vawa_protections_apply` boolean
+- Per-shelter-type availability semantics (program slots behave identically to beds in the data model)
+- Hold extension request mechanism (navigator-requested one-time extension)
+- Client profile or case management
+- Pre-release reservation model (longer-horizon soft commitment before release date; out of scope for initial phase)
+- HMIS CSV 7.0 export adapter (needs dedicated scoping; 2–3 day estimate in the source brief is not defensible per Kenji Watanabe warroom review)
+
+## Decisions
+
+### D1 — JSONB Schema for `eligibility_criteria`
+
+**Decision:** `eligibility_criteria` JSONB on `shelter_constraints` with the following schema:
+
+```json
+{
+  "criminal_record_policy": {
+    "accepts_felonies": true,
+    "excluded_offense_types": ["SEX_OFFENSE", "ARSON"],
+    "individualized_assessment": false,
+    "vawa_protections_apply": false,
+    "notes": "string"
+  },
+  "program_requirements": ["string"],
+  "documentation_required": ["string"],
+  "intake_hours": "string",
+  "custom_tags": ["string"]
+}
+```
+
+**Rationale:** Sub-object pattern lets the schema evolve without migrations. The `criminal_record_policy` sub-object is the primary reentry use case; `program_requirements`/`documentation_required`/`intake_hours` serve the transitional housing navigator use case. All keys nullable/optional.
+
+**`vawa_protections_apply` boolean:** HUD VAWA rules require CoC-funded programs to accept DV survivors whose criminal records are related to the violence they experienced — a shelter that categorically excludes violent offenses may still be required to accept VAWA-protected individuals. This boolean flags that nuance without the platform making legal determinations. Disclaimer text must mention it when `vawa_protections_apply = true`. *(Casey Drummond warroom)*
+
+**Alternatives considered:** Top-level columns for each policy field — rejected: each new offense category or program requirement type would require a migration. Current pattern scales without schema changes.
+
+**Warroom input (Alex Chen):** `requires_verification_call` remains a top-level column on `shelter` (V88), not in the JSONB. The sentinel must be queryable without JSONB extraction for the search UI "call to verify" indicator.
+
+### D2 — Shelter Type Taxonomy
+
+**Decision:** Controlled enum for `shelter_type` VARCHAR(50) with values:
+`EMERGENCY`, `DV`, `TRANSITIONAL`, `SUBSTANCE_USE_TREATMENT`, `MENTAL_HEALTH_TREATMENT`, `REENTRY_TRANSITIONAL`, `PERMANENT_SUPPORTIVE`, `RAPID_REHOUSING`
+
+V85 migration: DEFAULT `'EMERGENCY'`; backfill `dvShelter = true` rows to `shelter_type = 'DV'`. DB check constraint: `CHECK (dvShelter = FALSE OR shelter_type = 'DV')` — enforces at the database layer that these two representations of DV status cannot diverge. *(Alex Chen warroom — critical)*
+
+**Rationale:** `dvShelter` boolean is retained as-is; it is load-bearing for RLS policies (V68) and DV access control. `shelter_type` is a display/filter taxonomy. These serve different purposes and must not be conflated. The check constraint is the last line of defense against divergence.
+
+**`shelter_type` carries no implied compliance status** — it is a classification for filtering. A REENTRY_TRANSITIONAL shelter is one that self-classifies as such; the platform does not certify program eligibility or compliance with any regulation.
+
+**Alternatives considered:** Sub-type field separate from the DV boolean — accepted in this exact form. Removing the DV boolean — rejected: would require RLS policy rewrite, high risk, no benefit.
+
+### D3 — County Field Approach
+
+**Decision:** Controlled list, scoped to NC counties for the initial pilot. A FABT-wide enum of all 100 NC counties is acceptable. Deployment-configurable via `tenant.config.active_counties: string[]` — platform admins configure which counties are surfaced in their deployment's search UI.
+
+**Supervision geography is jurisdictional, not distance-based.** *(Research finding, warroom:* Demetrius Holloway*.)* The question a reentry navigator needs answered is: "Does this shelter fall within the supervision district where this person's supervising officer has jurisdiction?" A shelter 2 miles away in the wrong county is a supervision violation; a shelter 40 miles away in the right county is valid. The county field implements the jurisdictional boundary check, not geographic proximity.
+
+**Rationale:** Free text was considered and rejected — "Johnston County" vs "johnston county" vs "Johnston" creates unmatchable data. Controlled list enables reliable filtering. National expansion would require tenant configuration of county lists; NC pilot uses the NC 100-county enum.
+
+### D4 — Third-Party Hold Attribution PII Lifecycle
+
+**Decision:** `held_for_client_name` VARCHAR(100), `held_for_client_dob` DATE, `hold_notes` TEXT — all nullable. Spring Batch cleanup job extended to null all three fields on reservation records where `expires_at < NOW() - INTERVAL '24 hours'` OR `status IN ('CANCELLED', 'CONFIRMED', 'CANCELLED_SHELTER_DEACTIVATED', 'EXPIRED') AND updated_at < NOW() - INTERVAL '24 hours'`.
+
+`hold_notes` is explicitly in scope for PII purge. Navigator hold notes may include names and contact information of supervision officers. *(Casey Drummond warroom)* Operator documentation must state: hold notes are not a permanent record; they are purged 24h after hold resolution.
+
+**UI labeling:** Fields must use purpose-clear, dignity-centered labels. `held_for_client_name` → "Who is this hold for?" with sub-label "Name (for shelter check-in)". `held_for_client_dob` → "Date of birth (for shelter to confirm arrival)". `hold_notes` → "Note for shelter coordinator". Labels reviewed against dignity-centered language standards. *(Keisha Thompson warroom)*
+
+**Deployment order:** Spring Batch job extension must be deployed in the same release as V87 migration or later — never before. The job code must be null-safe on pre-V87 databases.
+
+### D5 — Hold Duration Configuration Semantics
+
+**Decision:** Hold duration change applies to **new holds only**. In-flight holds (already created, not yet expired/resolved) retain their `expires_at` as set at creation time. *(Riley Cho warroom: must be explicitly specified and tested.)*
+
+Admin panel range: 30–480 minutes. Default: 90 minutes. Reentry deployments configure 180–240 minutes. Hospital discharge deployments: 180+ minutes. The range covers both use cases without separate per-use-case configuration.
+
+`ReservationSettings` admin panel component already exists as a stub (`admin/components/ReservationSettings`). Wire to `tenant.config.holdDurationMinutes`. Endpoint: `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration`, COC_ADMIN+ role.
+
+### D6 — Criminal Record Policy Disclaimer
+
+**Decision:** `CriminalRecordPolicyDisclaimer` React component. Non-dismissable. Rendered adjacent to any display of `criminal_record_policy` fields (search results, shelter detail, shelter edit form).
+
+ARIA: `role="note"`. Visible at all zoom levels including 400%. Visible in dark mode with passing contrast. Included in screen reader reading order immediately after the data it annotates. *(Tomás Herrera warroom)*
+
+i18n key `shelter.criminalRecordPolicyDisclaimer` in both EN and ES locales. When `vawa_protections_apply = true` on the shelter, the disclaimer additionally reads the `shelter.vawa_protections_apply_note` key. *(Casey Drummond warroom: final i18n strings require legal review before merge.)*
+
+**Platform neutrality:** FABT represents what shelter programs actually do, not what they should do. The 2024 HUD proposed rule limiting criminal record screening was withdrawn January 2025; the current federal policy direction emphasizes owner discretion. The platform neither endorses nor normalizes any particular exclusion policy — it makes existing policies transparent to navigators who need the information.
+
+### D7 — NAVIGATOR Role
+
+**Decision:** Deferred. OUTREACH_WORKER is the correct role for reentry navigators in the current model. Third-party hold attribution fields are available to any OUTREACH_WORKER. A distinct NAVIGATOR role with different permissions (extended hold duration, supervision notes) is deferred to Phase E when per-tenant role configuration is built.
+
+**Rationale:** Role proliferation at this stage creates complexity without payoff. The functional requirements (longer holds, hold notes) are satisfied through configuration and field availability rather than role-based access differences.
+
+### D8 — Supervision Geography Enforcement
+
+**Decision:** County filter only for initial phase. No DAC integration attempt. The platform shows shelter county; the navigator applies their supervision boundary knowledge. Documented limitation: the county filter helps navigators pre-screen for likely-compliant shelters; it does not replace the home plan approval process. This limitation is documented in the runbook and training materials.
+
+### D9 — GIN Index on `eligibility_criteria` JSONB
+
+**Decision:** V86 migration includes `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)`. *(Elena Vasquez warroom — critical for query performance at pilot scale.)*
+
+**Flyway note:** `CREATE INDEX CONCURRENTLY` must run outside an explicit transaction block in Flyway. Use `mixed = true` or a separate non-transactional migration step. This is documented precedent in this codebase — follow existing concurrent index migration pattern.
+
+**Rationale:** The `accepts_felonies` filter in `BedSearchService` queries `eligibility_criteria->'criminal_record_policy'->>'accepts_felonies'`. Without a GIN index, this is a sequential scan on every bed search request. At demo scale (dozens of shelters) this is imperceptible; at deployment scale (hundreds of providers) it will impact the navigator use case.
+
+### D10 — `dvShelter` / `shelter_type` Sync
+
+**Decision:** DB-level check constraint (`CHECK (dvShelter = FALSE OR shelter_type = 'DV')`) added in V85 migration. Application layer also enforces: any PUT/PATCH that sets `dvShelter = true` must set `shelter_type = 'DV'`; any that sets `shelter_type = 'DV'` must ensure `dvShelter = true`. *(Alex Chen warroom — "the database constraint is the last line of defense.")*
+
+**Not a trigger:** A trigger that auto-syncs the two fields was considered and rejected. An auto-sync masks a programming error; a constraint surfaces it loudly.
+
+### D11 — Offense Type Controlled Vocabulary
+
+**Decision:** `excluded_offense_types` is `string[]` in JSONB but the UI presents a multi-select from a controlled vocabulary. Controlled values (research-grounded):
+
+| Value | Basis |
+|---|---|
+| `SEX_OFFENSE` | Most common categorical exclusion nationally; driven by SORN proximity laws |
+| `ARSON` | Second most common; frequently paired with sex offense in documented program policies |
+| `DRUG_MANUFACTURING` | Federal statute: mandatory exclusion for meth production on federally subsidized premises |
+| `VIOLENT_FELONY` | Variable; many programs use individualized assessment rather than categorical exclusion |
+| `PENDING_CHARGES` | Used by some programs as separate admission criterion |
+| `OPEN_WARRANTS` | Used by some programs; distinct from conviction-based exclusions |
+
+`custom_tags: string[]` in the JSONB provides an escape valve for free-text program-specific labels. The controlled vocabulary covers documented national patterns; custom tags cover edge cases.
+
+**Rationale:** Free-text `excluded_offense_types` would produce "violent crimes" vs "crimes of violence" — unmatchable. Controlled vocabulary enables reliable filtering. i18n keys required for each value.
+
+### D12 — Mobile Search UX: Advanced Filters
+
+**Decision:** `shelter_type`, `county`, and `accepts_felonies` filters are placed in a collapsible "Advanced Filters" section on `OutreachSearch.tsx`. On desktop: expanded by default. On mobile: collapsed by default. *(Tomás Herrera warroom: three new optional filters must not complicate the primary mobile bed-search flow for outreach workers like Darius.)*
+
+The optional `/navigator` desktop route (call-center-optimized layout) expands these filters prominently and adds inline eligibility detail cards. Stretch goal for initial phase.
+
+## Risks / Trade-offs
+
+**[Data quality risk: criminal record policy fields will be empty for most shelters at launch]** → Mitigation: `requires_verification_call = true` is the default sentinel for any shelter where criminal record policy JSONB is not populated. Navigators see "call to verify" rather than silence. Documentation and training materials emphasize that the platform reduces calls, it does not replace verification.
+
+**[JSONB filtering performance at scale]** → Mitigation: GIN index in V86 (D9). At demo scale, risk is zero. At deployment scale with the index, acceptable.
+
+**[`dvShelter` / `shelter_type` divergence if migration backfill is wrong]** → Mitigation: DB check constraint (D10) will reject any row that diverges. Test V85 migration backfill explicitly: verify `dvShelter = true` rows all have `shelter_type = 'DV'` post-migration.
+
+**[PII in hold notes purged before shelter coordinator records arrival]** → Trade-off accepted. The 24h window is the same as DV referral tokens. Shelters with longer intake processes should use their own intake system for records; the hold note is a transient coordination artifact, not a permanent record.
+
+**[Evidence base for transitional housing is contested]** → Platform neutrality: FABT facilitates matching. The platform makes no outcome claims. Documentation avoids "transitional housing works" framing. See national research synthesis (Recidiviz 2024 Iowa natural experiment; NYC ETH observational data).
+
+**[Federal policy on criminal record screening is in active flux]** → Platform neutrality: FABT represents actual shelter-reported policies. The 2024 HUD proposed rule (lookback period limits, individualized assessment requirements) was withdrawn January 16, 2025. Current direction emphasizes owner discretion. Platform stance: accurate representation of what programs do, with appropriate disclaimers; no compliance claims.
+
+**[Spring Batch job extension deployed before V87 migration]** → Mitigation: Job code must be null-safe; deploy as part of or after the V87 migration release, never before.
+
+## Migration Plan
+
+**Migrations renumbered V85–V88** post-v0.51.0 Phase F, which consumed V79–V84. **Re-verify HWM before writing any migration file** — if Phase G (expected next) claims slots beyond V84, shift V85–V88 up accordingly. Query: `SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1`.
+
+| Migration | Content | Notes |
+|---|---|---|
+| V85 | `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY'; `county` VARCHAR(100) indexed; backfill `dvShelter=true` → `shelter_type='DV'`; check constraint `dvShelter=false OR shelter_type='DV'` | Non-breaking; all existing shelters remain 'EMERGENCY' except DV shelters |
+| V86 | `eligibility_criteria` JSONB nullable on `shelter_constraints`; GIN index (CONCURRENTLY, outside transaction) | Flyway `mixed=true` or separate migration step for CONCURRENTLY |
+| V87 | `held_for_client_name`, `held_for_client_dob`, `hold_notes` on `reservation` — all nullable. **Type open**: VARCHAR/DATE/TEXT plaintext with 24h purge (original design) OR `tenant_dek`-wrapped ciphertext (warroom 2026-04-24 pass-2 Marcus flag). Decision pending — see proposal §Scheduling note. | Behavior unchanged until columns populated |
+| V88 | `requires_verification_call` BOOLEAN DEFAULT FALSE on `shelter` | Non-breaking; existing shelters default to false |
+
+**Rollback:** All new columns are nullable or have safe defaults. If any migration must be rolled back, the application code must not reference the missing columns — Spring Boot startup will fail if entities reference non-existent columns. Standard rollback posture: retag previous backend image, force-recreate backend only. Flyway migrations are immutable after apply; rollback requires a new forward migration if needed.
+
+**No data loss path:** The `dvShelter` boolean is untouched. No existing reservation behavior changes. Existing hold durations, shelter records, and search results are unaffected until shelter admins populate the new fields.
+
+## Open Questions
+
+1. **Hold note character limit:** *[RESOLVED — warroom 2026-04-24 pass-2]* UI enforces 500 chars, server-side validation 1000 chars.
+
+2. **County display in search results:** *[RESOLVED — warroom 2026-04-24 pass-2]* County in the detailed card only; not in the mobile summary list (space constraint).
+
+3. **`active_counties` tenant config key — who sets it?** *[BLOCKED on issue #141 resolution]* — recommendation (PLATFORM_ADMIN sets at tenant creation, not COC_ADMIN) depends on whether the split into TENANT_ADMIN + PLATFORM_OPERATOR changes who holds "deployment-scope configuration" authority. Resolves inside Phase G.
+
+4. **Reentry deployment identifier (`features.reentryMode` flag):** Decision — **scope in at V85 design time**. Adding the flag with V85 (shelter schema) is cheap; retrofitting later requires touching the shelter edit form + search UI in a second pass. Warroom 2026-04-24 pass-2 recommendation: include as a tenant-level config flag driven by admin panel; PLATFORM_ADMIN-level setting (same authority as `active_counties`).
+
+5. **[NEW] `held_for_client_*` PII encryption posture (V87 design blocker):** *[OPEN — pending Corey decision]* — should these columns ride `tenant_dek`-wrapped ciphertext (v0.51.0 Phase F-6 infrastructure) from V87 forward, or remain plaintext with the original 24h Spring Batch purge? Marcus Webb (warroom 2026-04-24 pass-2): shipping unencrypted PII columns two weeks after announcing per-tenant wrapped DEKs is a regression against the v0.51.0 security posture. Tracked in **[GitHub issue #152](https://github.com/ccradle/finding-a-bed-tonight/issues/152)**. Resolution required BEFORE V87 is written.
+
+6. **[NEW] Asheville stakeholder messaging:** *[OPEN — coordination item]* — should this capability be described as "coming next release" in City of Asheville materials, or held back until tagged? County filter directly enables Buncombe County deployment scope. Recommend holding back until Phase G tags and transitional-reentry branch begins active development, but flag now for awareness.
+
+7. **[NEW] Casey Drummond i18n legal-review window:** *[OPEN — coordination item]* — book Casey's bandwidth for EN+ES sign-off on `shelter.criminalRecordPolicyDisclaimer`, `shelter.vawaNoteDisclaimer`, `hold.clientAttributionPrivacyNote` strings BEFORE implementation starts (task 15.6 is too late). See warroom 2026-04-24 pass-2.
