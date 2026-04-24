@@ -248,25 +248,35 @@ KeyDerivationService's typed `deriveXxxKey` methods become dead code for the dat
 
 **Warroom 2026-04-24 pass-2 (Riley + Alex) blocker fix — cache invalidation is AFTER_COMMIT, not pre-DELETE.** Original draft invalidated caches before the DELETE, which desyncs cache from DB if the DELETE rolls back (stale cache absent, stale DB present → legitimate decrypts fail until the next transition fires). Spring's `@TransactionalEventListener(AFTER_COMMIT)` fires only on successful commit, matching the existing cache-invalidation pattern `TenantLifecycleService` uses for `TenantStateGuard`.
 
+**Implementation note (warroom pass-4 re-sync, 2026-04-24):** the committed
+implementation in `TenantLifecycleService.java` deviates from the pseudo-
+code below in two small ways the warroom approved after seeing the code:
+(1) the tombstone write moved from inside the main tx to the AFTER_COMMIT
+hook alongside cache invalidation (Alex retracted the pass-3
+"tombstone inside tx" recommendation) — both fire only on successful
+commit, keeping state consistent on rollback; (2) the after-commit hook
+uses `TransactionSynchronizationManager.registerSynchronization` rather
+than `@TransactionalEventListener(AFTER_COMMIT)` — equivalent semantics,
+simpler wiring, co-located with the method it serves. The pseudo-code
+here preserves the intent for design-reading purposes; cross-reference
+against the shipped code for exact behavior.
+
 ```java
 @Transactional
 public void hardDelete(UUID tenantId, UUID actorUserId, String reason) {
     Tenant t = tenantRepository.findById(tenantId).orElseThrow();
     t.getState().assertTransition(TenantState.DELETED);  // ARCHIVED → DELETED only
+    // (retention-window gate + archived_at null check also here — see shipped code)
 
     // 1. Capture the tenant_audit_chain_head hash BEFORE the CASCADE destroys
-    //    it (warroom 2026-04-24 pass-2 Riley fix). The tombstone row needs
-    //    this hash so external auditors can prove the chain terminated
-    //    cleanly at a specific Merkle root rather than "vanished."
-    String lastChainHash = jdbc.query(
-        "SELECT last_hash FROM tenant_audit_chain_head WHERE tenant_id = ?",
-        rs -> rs.next() ? bytesToHex(rs.getBytes(1)) : null,
-        tenantId);
+    //    it (warroom pass-2 Riley fix). The tombstone row needs this hash
+    //    so external auditors can prove the chain terminated cleanly at a
+    //    specific Merkle root rather than "vanished."
+    String lastChainHash = captureLastAuditChainHash(tenantId);  // returns hex or null
 
     // 2. Bind the shred-guard GUC (Q-F6-6 trigger uses this) so the
     //    BEFORE DELETE trigger on tenant_dek allows the CASCADE to fire.
-    //    Parameterized, tx-local (third arg `true` = is_local).
-    //    ArchUnit Family F rule 7.8j pins this call to this method only.
+    //    Parameterized, tx-local. ArchUnit rule 7.8j pins this call site.
     jdbc.queryForObject(
         "SELECT set_config('fabt.shred_in_progress', ?, true)",
         String.class, tenantId.toString());
@@ -275,32 +285,41 @@ public void hardDelete(UUID tenantId, UUID actorUserId, String reason) {
     //    rows AND tenant_dek rows (V82's CASCADE FK). This is THE single
     //    DB statement that performs the shred.
     int rows = jdbc.update("DELETE FROM tenant WHERE id = ?", tenantId);
-    if (rows != 1) throw new IllegalStateException("hardDelete expected 1 row, got " + rows);
+    if (rows != 1) throw new IllegalStateException("expected 1 row, got " + rows);
 
-    // 4. Write the platform-owned tombstone to audit_events (NULL tenant_id
-    //    marks it platform-scope, survives shred because audit_events has
-    //    no FK to tenant per V57/Q-F6-5). Embeds the chain hash captured
-    //    in step 1.
-    auditPersister.emitDetached(
-        AuditEventTypes.TENANT_HARD_DELETED,
-        null,               // tenant_id NULL — platform-owned tombstone
-        actorUserId,
-        Map.of(
-            "deleted_tenant_id", tenantId.toString(),
-            "deleted_at", Instant.now().toString(),
-            "reason", reason,
-            "last_audit_chain_hash", lastChainHash != null ? lastChainHash : "(no chain)"));
+    // 4. Schedule tombstone + cache invalidation for AFTER_COMMIT.
+    //    Both fire ONLY on successful commit; rollback leaves state
+    //    consistent (tenant row still present, caches not evicted).
+    scheduleHardDeleteAfterCommit(tenantId, /* previousState */, actorUserId,
+                                   reason, lastChainHash);
 }
 
-// After-commit hook — fires ONLY if hardDelete succeeds. If the DELETE
-// rolls back (FK not cascaded somewhere, trigger guard raised, etc.),
-// this listener never runs and the in-JVM cache stays consistent with
-// the DB (which still contains the wrapped DEKs).
-@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-public void onTenantHardDeleted(TenantHardDeletedEvent event) {
-    tenantDekService.invalidateTenantDeks(event.tenantId());
-    tenantStateGuard.invalidate(event.tenantId());
-    // (other per-tenant caches — kid_to_tenant_key resolution, etc.)
+// After-commit hook runs on TransactionSynchronizationManager.registerSynchronization
+// — fires ONLY on successful commit of the outer tx.
+private void scheduleHardDeleteAfterCommit(UUID tenantId, TenantState previous,
+                                            UUID actorUserId, String reason,
+                                            String lastChainHash) {
+    // 1. Cache invalidation — evicts per-(tenant, purpose) active-DEK cache +
+    //    per-kid resolution cache, plus the TenantStateGuard cache.
+    tenantDekService.invalidateTenantDeks(tenantId);
+    tenantStateGuard.invalidate(tenantId);
+
+    // 2. Platform-owned tombstone to audit_events. SYSTEM_TENANT_ID scope
+    //    (audit_events has no FK to tenant per V57 / Q-F6-5) so the row
+    //    survives the shred and gives auditors the "tenant X deleted on
+    //    Y by Z" record. Written via DetachedAuditPersister (REQUIRES_NEW).
+    detachedAuditPersister.persistDetached(
+        SYSTEM_TENANT_ID,
+        new AuditEventRecord(actorUserId, null,
+            AuditEventTypes.TENANT_HARD_DELETED,
+            Map.of(
+                "deleted_tenant_id", tenantId.toString(),
+                "actor_user_id", actorUserId.toString(),
+                "justification", reason,
+                "deleted_at", Instant.now().toString(),
+                "previous_state", previous.name(),
+                "last_audit_chain_hash", lastChainHash != null ? lastChainHash : "(no chain)"),
+            null));
 }
 ```
 
