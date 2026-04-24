@@ -4,7 +4,7 @@ Post v0.40 (cross-tenant-isolation-audit shipped 2026-04-16), FABT has service-l
 
 Architecture stays with the discriminator + RLS hybrid (not schema-per-tenant or DB-per-tenant). Current deploy target is Oracle Always Free A1 Flex ARM64 (Postgres 16, single Docker compose, Cloudflare edge). Pilot prospects span standard-tier (generic CoC) and regulated-tier (HIPAA BAA / VAWA-exposed DV CoCs). Change-closure gate is a demonstrable second tenant on `findabed.org` answering "show us multi-tenant isolation" from a procurement browser.
 
-Key stakeholders: Corey (engineering lead, 1-person core team + AI collab), Marcus Webb (AppSec persona for audit), Casey Drummond (legal persona for compliance artifacts), Sarah Dickerson (NC municipal contact whose presence in project conversations motivated Casey's no-real-jurisdiction-in-demo-names posture for M2 — see D12 revision 2026-04-20).
+Key stakeholders: Corey (engineering lead, 1-person core team + AI collab), Marcus Webb (AppSec persona for audit), Casey Drummond (legal persona for compliance artifacts). An NC municipal stakeholder conversation during March–April 2026 motivated Casey's no-real-jurisdiction-in-demo-names posture for M2 — see D12 revision 2026-04-20.
 
 ## Goals / Non-Goals
 
@@ -131,9 +131,9 @@ Seed uses demonstrably-fictional shelter names ("Example House North", "Example 
 
 **Prior revision history:**
 
-- **2026-04-20 revision (ACTIVE):** fictional regional names (Blue Ridge / Pamlico Sound). Rationale: Corey explicitly directed that real-jurisdiction demo-tenant names shall not appear anywhere in the project, citing the Sarah Dickerson meeting proximity. `feedback_truthfulness_above_all.md` applies — no commitment-implication. Warroom (2026-04-20) recommended Blue Ridge + Pamlico Sound as fiction-with-regional-flavor; both verified absent from HUD CoC registry.
+- **2026-04-20 revision (ACTIVE):** fictional regional names (Blue Ridge / Pamlico Sound). Rationale: Corey explicitly directed that real-jurisdiction demo-tenant names shall not appear anywhere in the project, citing NC municipal stakeholder meeting proximity. `feedback_truthfulness_above_all.md` applies — no commitment-implication. Warroom (2026-04-20) recommended Blue Ridge + Pamlico Sound as fiction-with-regional-flavor; both verified absent from HUD CoC registry.
 
-- **2026-04-18 revision (SUPERSEDED):** real-NC-jurisdiction demo-tenant names with `(demo)` suffix. Rejected by Corey 2026-04-20 after the Sarah Dickerson meeting (2026-04-14) made real-jurisdiction naming feel too close to an implied partnership regardless of suffix.
+- **2026-04-18 revision (SUPERSEDED):** real-NC-jurisdiction demo-tenant names with `(demo)` suffix. Rejected by Corey 2026-04-20 after an NC municipal stakeholder meeting (2026-04-14) made real-jurisdiction naming feel too close to an implied partnership regardless of suffix.
 
 **Alternatives considered and rejected:**
 
@@ -255,7 +255,7 @@ Endpoints that are currently PLATFORM_ADMIN-gated split into two cohorts:
 
 1. **Q: `FABT_ENCRYPTION_KEY` env var (the Phase 0 master KEK) for standard tier — acceptable under HIPAA BAA for a regulated pilot that doesn't need full Vault?** — Casey to advise. If `No`, regulated tier deploy MUST use Vault Transit (D3).
 
-2. **Q: Demo-tenant branding — real jurisdictions or fictional names?** — **RE-RESOLVED 2026-04-20 (Corey):** use FICTIONAL regional names "Blue Ridge CoC (demo)" (slug `dev-coc-west`) and "Pamlico Sound CoC (demo)" (slug `dev-coc-east`). Neither is a real HUD-registered CoC. Supersedes the 2026-04-18 resolution that chose real-NC-jurisdiction names. Rationale: post-Sarah-Dickerson-meeting proximity made real-jurisdiction naming feel too close to implied partnership regardless of `(demo)` suffix. See D12 for full revision history.
+2. **Q: Demo-tenant branding — real jurisdictions or fictional names?** — **RE-RESOLVED 2026-04-20 (Corey):** use FICTIONAL regional names "Blue Ridge CoC (demo)" (slug `dev-coc-west`) and "Pamlico Sound CoC (demo)" (slug `dev-coc-east`). Neither is a real HUD-registered CoC. Supersedes the 2026-04-18 resolution that chose real-NC-jurisdiction names. Rationale: post NC-municipal-stakeholder-meeting proximity made real-jurisdiction naming feel too close to implied partnership regardless of `(demo)` suffix. See D12 for full revision history.
 
 3. **Q: Crypto-shred verification test — can we assert ciphertext is unrecoverable without exposing the KEK in test?** — D11 test design; resolve in F6 implementation PR.
 
