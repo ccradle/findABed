@@ -2,7 +2,7 @@
 
 **Change:** multi-tenant-production-readiness
 **Checkpoint:** F-6.0 (prework for task 7.8)
-**Status:** GO-WITH-FIXES 2026-04-24 (warroom: Alex + Sam + Marcus + Jordan + Riley) — 5 blockers folded in, Appendix A pending task #38 before V82 ships
+**Status:** GO-WITH-FIXES 2026-04-24 pass-2 (warroom: Alex + Sam + Marcus + Jordan + Riley) — pass-1 5 blockers + pass-2 5 blockers all folded in; Appendix A complete; §11 test strategy + §12 ship checklist locked
 **Author:** Corey (drafted post-F-5 after TDD anchor `CryptoShredGapIntegrationTest` exposed the §D11 gap)
 
 ---
@@ -246,29 +246,67 @@ KeyDerivationService's typed `deriveXxxKey` methods become dead code for the dat
 
 ### hardDelete()
 
+**Warroom 2026-04-24 pass-2 (Riley + Alex) blocker fix — cache invalidation is AFTER_COMMIT, not pre-DELETE.** Original draft invalidated caches before the DELETE, which desyncs cache from DB if the DELETE rolls back (stale cache absent, stale DB present → legitimate decrypts fail until the next transition fires). Spring's `@TransactionalEventListener(AFTER_COMMIT)` fires only on successful commit, matching the existing cache-invalidation pattern `TenantLifecycleService` uses for `TenantStateGuard`.
+
 ```java
 @Transactional
 public void hardDelete(UUID tenantId, UUID actorUserId, String reason) {
     Tenant t = tenantRepository.findById(tenantId).orElseThrow();
     t.getState().assertTransition(TenantState.DELETED);  // ARCHIVED → DELETED only
 
-    // 1. Pre-invalidate caches so in-flight reads fail fast.
-    tenantDekService.invalidateTenantDeks(tenantId);
-    // (other cache invalidations — tenant_state, kid_to_tenant_key for JWTs,
-    //  audit_chain_head — per the full hardDelete checklist in tasks.md 7.8)
+    // 1. Capture the tenant_audit_chain_head hash BEFORE the CASCADE destroys
+    //    it (warroom 2026-04-24 pass-2 Riley fix). The tombstone row needs
+    //    this hash so external auditors can prove the chain terminated
+    //    cleanly at a specific Merkle root rather than "vanished."
+    String lastChainHash = jdbc.query(
+        "SELECT last_hash FROM tenant_audit_chain_head WHERE tenant_id = ?",
+        rs -> rs.next() ? bytesToHex(rs.getBytes(1)) : null,
+        tenantId);
 
-    // 2. DELETE tenant row — FK cascade destroys tenant_dek rows atomically.
-    //    This is the single DB statement that performs the shred.
+    // 2. Bind the shred-guard GUC (Q-F6-6 trigger uses this) so the
+    //    BEFORE DELETE trigger on tenant_dek allows the CASCADE to fire.
+    //    Parameterized, tx-local (third arg `true` = is_local).
+    //    ArchUnit Family F rule 7.8j pins this call to this method only.
+    jdbc.queryForObject(
+        "SELECT set_config('fabt.shred_in_progress', ?, true)",
+        String.class, tenantId.toString());
+
+    // 3. DELETE tenant row — FK cascade destroys all 18 per-tenant child
+    //    rows AND tenant_dek rows (V82's CASCADE FK). This is THE single
+    //    DB statement that performs the shred.
     int rows = jdbc.update("DELETE FROM tenant WHERE id = ?", tenantId);
     if (rows != 1) throw new IllegalStateException("hardDelete expected 1 row, got " + rows);
 
-    // 3. Audit the deletion (detached persister, REQUIRES_NEW tx so the
-    //    audit survives even if a downstream trigger fails).
-    auditPersister.emit(AuditEventTypes.TENANT_HARD_DELETED, tenantId, actorUserId, reason);
+    // 4. Write the platform-owned tombstone to audit_events (NULL tenant_id
+    //    marks it platform-scope, survives shred because audit_events has
+    //    no FK to tenant per V57/Q-F6-5). Embeds the chain hash captured
+    //    in step 1.
+    auditPersister.emitDetached(
+        AuditEventTypes.TENANT_HARD_DELETED,
+        null,               // tenant_id NULL — platform-owned tombstone
+        actorUserId,
+        Map.of(
+            "deleted_tenant_id", tenantId.toString(),
+            "deleted_at", Instant.now().toString(),
+            "reason", reason,
+            "last_audit_chain_hash", lastChainHash != null ? lastChainHash : "(no chain)"));
+}
+
+// After-commit hook — fires ONLY if hardDelete succeeds. If the DELETE
+// rolls back (FK not cascaded somewhere, trigger guard raised, etc.),
+// this listener never runs and the in-JVM cache stays consistent with
+// the DB (which still contains the wrapped DEKs).
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void onTenantHardDeleted(TenantHardDeletedEvent event) {
+    tenantDekService.invalidateTenantDeks(event.tenantId());
+    tenantStateGuard.invalidate(event.tenantId());
+    // (other per-tenant caches — kid_to_tenant_key resolution, etc.)
 }
 ```
 
-Every per-tenant child table already lands on CASCADE from V82 (or is added as a separate migration V84 — see §6). After the single DELETE the wrapped DEK rows are gone; the physical pages get reused on autovacuum and PITR-retention-pass.
+Every per-tenant child table already lands on CASCADE from V82 (`tenant_dek`) or V84 (the 18 flipped in §6). After the single DELETE the wrapped DEK rows are gone; the physical pages get reused on autovacuum and PITR-retention-pass.
+
+**Cache TTL trim for ARCHIVED tenants** (Alex pass-2 minor): to tighten the window between OFFBOARDING/ARCHIVED transitions and cache TTL expiry, the kid-resolution cache re-checks tenant state on cache hit for any tenant whose state transitioned in the last hour. Implementation: `TenantDekService.resolveDek` calls `tenantStateGuard.requireActiveOrOffboarding(resolvedTenantId)` on cache hit. If the tenant is ARCHIVED, the cache entry is evicted and a fresh DB lookup + unwrap fires (which may succeed briefly during the retention window, but only for data that HAS NOT been shredded yet).
 
 ---
 
@@ -333,15 +371,17 @@ Separate migration so the schema change is visible as its own audit unit. Comple
 
 ## 9. Tasks (to add to tasks.md under §7 Phase F)
 
-- **7.8a** V82 — create `tenant_dek` table + indexes + RLS policies
-- **7.8b** Implement `TenantDekService` + caches + `KeyDerivationService.deriveKekWrappingKey` (private)
+- **7.8a** V82 — create `tenant_dek` table + indexes + RLS policies + trigger guard
+- **7.8b** Implement `TenantDekService` + caches + `KeyDerivationService.deriveKekWrappingKey` (private); `PurposeMismatchException extends SecurityException`
 - **7.8c** Refactor `SecretEncryptionService.encryptForTenant` / `decryptForTenant` to route through `TenantDekService`
-- **7.8d** V83 — re-encrypt existing per-tenant ciphertexts under new random DEKs
-- **7.8e** V84 — flip child-table FKs to `ON DELETE CASCADE` (complete list from §6 audit)
-- **7.8f** Implement `TenantLifecycleService.hardDelete` — transition ARCHIVED → DELETED, DELETE tenant row, audit
+- **7.8d** V83 — re-encrypt existing per-tenant ciphertexts under new random DEKs; per-row tx with round-trip verify (V74 pattern); fold in rotation-readiness probe
+- **7.8e** V84 — flip 18 child-table FKs to `ON DELETE CASCADE` via DO-block + `NOT VALID` + `VALIDATE`; complete list from §6 audit
+- **7.8f** Implement `TenantLifecycleService.hardDelete` — transition ARCHIVED → DELETED, capture chain hash, bind shred GUC, DELETE tenant row, emit tombstone; cache invalidation via `@TransactionalEventListener(AFTER_COMMIT)`
 - **7.8g** Remove `@Disabled` on `CryptoShredGapIntegrationTest`; confirm green
 - **7.8h** ArchUnit Family F — forbid non-`TenantDekService` callers from `KeyDerivationService.deriveKekWrappingKey`
-- **7.8i** Release notes + runbook — "crypto-shred" is now a verifiable cryptographic property; backup-retention hygiene remains the ops side of the contract
+- **7.8i** Release notes + runbook — "crypto-shred" is a verifiable cryptographic property; backup-retention hygiene, PITR-into-shred-window warning, V84 rollback template, master-KEK-on-same-disk note
+- **7.8j** ArchUnit Family F — forbid non-`TenantLifecycleService.hardDelete` callers of `set_config('fabt.shred_in_progress', ...)` (warroom pass-2 Q-F6-6 resolution)
+- **7.8k** Implement §12 test suite (Jordan's 7-test minimum) — see §12 for individual test contracts
 
 ---
 
@@ -351,7 +391,9 @@ Separate migration so the schema change is visible as its own audit unit. Comple
 2. **Q-F6-2** (Sam) — **Per-row transaction with round-trip verify**, matching V74. 65 rewrites × ~10ms ≈ sub-second at pilot scale; per-row isolates failures and mirrors the established V74 pattern Flyway + ops already trust.
 3. **Q-F6-3** (Marcus + Alex) — **Yes, add the DB trigger.** `BEFORE DELETE ON tenant_dek` that raises unless the session role is the shred role (or the FK CASCADE path fires it). App-layer ArchUnit + DB-layer trigger is belt-and-braces for CSP-wrap stores; noise is negligible since no legitimate caller deletes from `tenant_dek` outside the CASCADE path.
 4. **Q-F6-4** (Jordan) — **Fold rotation-readiness probe into V83.** V83 already creates 12 DEKs; probing a rotation on one (pick any single `(tenant, purpose)`, bump generation, re-encrypt one sample row, flip back) adds ~2s and ensures the rotation path ships battle-tested rather than untested until Phase H.
-5. **Q-F6-5** (Riley) — **audit_events stays RESTRICT, converted to nullable tenant_id + tombstone.** CASCADE would destroy the record that proves the shred happened — a compliance self-own. `hardDelete` writes a platform-owned tombstone row (NULL tenant_id, action = `TENANT_HARD_DELETED`, JSONB with deletion metadata) just before the DELETE fires.
+5. **Q-F6-5** (Riley) — **audit_events stays RESTRICT, converted to nullable tenant_id + tombstone.** CASCADE would destroy the record that proves the shred happened — a compliance self-own. `hardDelete` writes a platform-owned tombstone row (NULL tenant_id, action = `TENANT_HARD_DELETED`, JSONB with deletion metadata + `tenant_audit_chain_head.last_hash` captured pre-CASCADE) just before the DELETE fires.
+
+6. **Q-F6-6** (warroom pass-2, Sam + Alex + Marcus) — **GUC-based shred guard, not a dedicated DB role.** FABT's single-role posture (`fabt_app`) is a deliberate operational simplification; adding `fabt_shred` means a second password in `.env.prod`, a second grant audit, and a new failure mode with Flyway mid-tx `SET ROLE` support. A tx-local session GUC (`set_config('fabt.shred_in_progress', <tenantId>, true)`) provides equivalent crypto-shred isolation: auto-clears on rollback, does not leak across tx boundaries, and the trigger's equality check (`current_setting IS DISTINCT FROM OLD.tenant_id::text`) binds the guard to a SPECIFIC tenant, not a generic "shred mode is on". Caveat baked into task 7.8j: ArchUnit rule forbids any non-`hardDelete` caller of `set_config('fabt.shred_in_progress', ...)`. Without that rule, a rogue dev-console call defeats the guard.
 
 ### Additional warroom finding — threat-model gap
 
@@ -364,7 +406,101 @@ Fix baked into §5: invalidate `TenantDekService` caches on transition to OFFBOA
 
 ---
 
-## 11. References
+## 11. Test strategy — the 7-test minimum (Jordan, warroom pass-2 2026-04-24)
+
+"Very careful and test thoroughly" (Corey 2026-04-24) means every crypto-shred invariant has at least one pinning test. All seven below MUST be green before the v0.51.0 release gate (see §13 ship checklist).
+
+### 11.1 — `CryptoShredGapIntegrationTest` (the TDD anchor, flipped)
+
+Exists today at `backend/src/test/java/org/fabt/shared/security/CryptoShredGapIntegrationTest.java` with `@Disabled` (commit `b5672da`). Task 7.8g removes the `@Disabled` and the test must flip green.
+
+**Acceptance:** under Option A, (a) encrypt a `SHRED-CANARY-<uuid>` under tenant T for each of the 4 `KeyPurpose` values; (b) record ciphertext bytes + master_KEK fingerprint to an in-memory buffer; (c) call `hardDelete(T)`; (d) bypass `TenantDekService` — reconstruct the decrypt attempt using ONLY `master_KEK` + recorded ciphertext bytes; (e) assert `resolveDek(kid)` throws `NoSuchElementException` AND assert that raw HKDF-based recomputation yields a key that does NOT decrypt the ciphertext (post-shred DEK ≠ pre-shred DEK because the DEK was random, not HKDF-derived). Single green run = gap closed.
+
+### 11.2 — `NTenantCanaryShredTest` (property-style, Jordan pass-1 request)
+
+Create 25 tenants each with 4 encrypted purposes (100 ciphertexts total). `hardDelete` 5 random tenants (20 ciphertexts → unrecoverable). Assert: 20 ciphertexts fail to decrypt via both happy path and adversary path; 80 remain intact and round-trip cleanly. Repeat with 10 different seeds in CI. Probabilistic coverage catches any correlation between shreds that a deterministic N=1 test would miss.
+
+### 11.3 — `RotationReadinessProbeTest` (Q-F6-4 fold-in)
+
+Pin V83's rotation-readiness probe. For one `(tenant, purpose)`:
+- Before: `tenant_dek` has 1 row, `(gen=1, active=TRUE)`.
+- Probe: INSERT gen=2 active=TRUE (atomically flipping gen=1 active=FALSE in same tx); re-encrypt 1 sample row under gen=2; flip back (gen=2 active=FALSE, gen=1 active=TRUE); re-encrypt the sample back.
+- After: `tenant_dek` has 2 rows (one per generation); exactly one `active=TRUE`; the sample row still round-trips through `decryptForTenant`.
+- Grace-window assertion: `resolveDek(gen=1_kid)` still returns a valid `ResolvedDek` even while gen=2 is active — old ciphertexts decrypt during rotation grace.
+
+### 11.4 — `TenantDekRlsTest` (PERMISSIVE+RESTRICTIVE policy pinning)
+
+Six assertions against a tenant A and tenant B with DEKs each:
+- Bind `app.tenant_id=A`; `SELECT * FROM tenant_dek WHERE tenant_id=B` → returns rows (PERMISSIVE SELECT, kids opaque).
+- Bind A; `INSERT ... tenant_id=B` → raises SQLSTATE `42501` (RESTRICTIVE INSERT narrows to A-only).
+- Bind A; `UPDATE tenant_dek SET active=FALSE WHERE tenant_id=B` → 0 rows affected.
+- Bind A; `DELETE FROM tenant_dek WHERE tenant_id=B` → 0 rows affected (RESTRICTIVE DELETE).
+- Unbind (no `app.tenant_id`); `DELETE FROM tenant_dek WHERE tenant_id=A` → 0 rows affected.
+- Bind A; `DELETE FROM tenant_dek WHERE tenant_id=A` WITHOUT the shred GUC → raises trigger-guard SQLSTATE `P0001` ('tenant_dek row deletion attempted outside hardDelete shred path').
+
+### 11.5 — `TenantChildCascadeAuditTest` (Flyway CI)
+
+Queries `pg_catalog.pg_constraint` (NOT `information_schema.referential_constraints` — the latter filters by current-user grants and misses rows under RLS):
+
+```sql
+SELECT conname, confdeltype, conrelid::regclass::text
+FROM pg_catalog.pg_constraint
+WHERE confrelid = 'public.tenant'::regclass AND contype = 'f'
+ORDER BY conrelid::regclass::text;
+```
+
+Assert every row in `MUST_CASCADE_FROM_TENANT` (the 22-table allowlist from Appendix A) has `confdeltype = 'c'`. Assert no FK exists for any table in `MUST_NOT_FK_TO_TENANT` (audit_events). Fail build with actionable diff listing which table + which rule.
+
+### 11.6 — `V83MigrationTest` (idempotency + completeness)
+
+Fixture setup: fresh Testcontainer, V79/V80/V81 applied, seed with a mix of v0 ciphertexts (Phase 0 plain envelope), v1-HKDF-DEK ciphertexts (Phase A3 output), and null columns. Run V82 then V83.
+
+**Idempotency:** re-run V83 in a second transaction; assert zero new `tenant_dek` rows created, zero column rewrites, identical audit event counts, all round-trips still succeed.
+
+**Completeness:** scan all 4 encrypted columns (`app_user.totp_secret_encrypted`, `subscription.callback_secret_hash`, `tenant_oauth2_provider.client_secret_encrypted`, `tenant.config → hmis_vendors[].api_key_encrypted`); for every non-null v1-envelope value, extract the kid via `EncryptionEnvelope.decode` and assert `tenant_dek WHERE kid = ?` returns exactly one row. Zero orphan v1 envelopes allowed.
+
+### 11.7 — `TenantDekShredGuardTest` (trigger semantics, Q-F6-6)
+
+Three cases:
+
+**Positive:** `TenantLifecycleService.hardDelete(T)` completes successfully; `tenant_dek WHERE tenant_id = T` returns 0 rows post-commit.
+
+**Negative (no GUC):** as `fabt_app` without calling `set_config('fabt.shred_in_progress', ...)`, execute `DELETE FROM tenant_dek WHERE tenant_id = T`; assert SQLSTATE `P0001` with message `'tenant_dek row deletion attempted outside hardDelete shred path'`.
+
+**Negative (cross-tenant GUC poisoning):** as `fabt_app`, set `fabt.shred_in_progress` to tenant A's id, execute `DELETE FROM tenant_dek WHERE tenant_id = B`; assert the trigger still raises (guard checks equality, not presence).
+
+### Existing test suite that must stay green under the refactor
+
+- `PerTenantEncryptionIntegrationTest` — all 8 existing cases (T1–T8) remain green through the Option A refactor. Confirms the refactor doesn't regress Phase A3 coverage.
+- `KeyDerivationServiceKatTest` (RFC 5869 test vectors) — HKDF itself is unchanged; KATs continue to pass.
+- Existing `TenantLifecycleServiceUnitTest` + `TenantLifecycleOffboardArchiveIntegrationTest` (F-1 through F-5) — `hardDelete` is additive; earlier states untouched.
+
+---
+
+## 12. Ship checklist (v0.51.0 release gate)
+
+Every line below green:
+
+- [ ] V82 + V83 + V84 apply cleanly on a fresh Testcontainer
+- [ ] V82 + V83 + V84 apply cleanly on a dump of the prod DB (pilot 3-tenant dataset)
+- [ ] `CryptoShredGapIntegrationTest` — `@Disabled` removed, passes (task 11.1)
+- [ ] `NTenantCanaryShredTest` — passes seeds 1..10 (task 11.2)
+- [ ] `RotationReadinessProbeTest` — passes (task 11.3)
+- [ ] `TenantDekRlsTest` — all 6 RLS assertions green (task 11.4)
+- [ ] `TenantChildCascadeAuditTest` — Flyway CI green; fail-loud if any FK drifts (task 11.5)
+- [ ] `V83MigrationTest` — idempotency + completeness (task 11.6)
+- [ ] `TenantDekShredGuardTest` — positive + negative + cross-tenant GUC (task 11.7)
+- [ ] ArchUnit Family F — `deriveKekWrappingKey` caller pin green (task 7.8h)
+- [ ] ArchUnit Family F — `set_config('fabt.shred_in_progress')` caller pin green (task 7.8j)
+- [ ] `PerTenantEncryptionIntegrationTest` — 8/8 green under refactored DEK path
+- [ ] Full backend regression — 1027+/1027+ green
+- [ ] Runbook updated: PITR-into-shred-window note, V84 rollback template, master_KEK-on-same-disk backup-hygiene, NIST SP 800-88 verbatim language, K1 shred-drill procedure
+- [ ] Casey Drummond sign-off recorded on `escalation_policy` RESTRICT→CASCADE flip
+- [ ] Release notes + CHANGELOG entries drafted and legal-scanned per `feedback_legal_claims_review`
+
+---
+
+## 13. References
 
 - NIST SP 800-88 Rev 2 (Sept 2025) §2.5 "Cryptographic Erase"
 - NIST SP 800-38F §6.3 AES-KWP
@@ -438,36 +574,93 @@ Not in the table because it has **no FK to tenant**. V29 created `audit_events` 
 
 No V84 action required for `audit_events` — it is **correctly configured already** for shred survival.
 
-### V84 migration body (auto-generated from above)
+### V84 migration body
+
+**Second warroom review fixed 3 things in this section** (Sam 2026-04-24 pass 2):
+
+1. **Lock claim corrected.** Original comment said "ACCESS EXCLUSIVE briefly; no row rewrite; catalog-only." FALSE. `ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY` (without `NOT VALID`) scans the child table to validate every existing row and holds ACCESS EXCLUSIVE on the child + ROW SHARE on `tenant` for the whole scan. Sub-second on the pilot but scales with child-table size — the honest pattern is `ADD CONSTRAINT ... NOT VALID` (catalog-only, fast) then a separate `VALIDATE CONSTRAINT` pass (SHARE UPDATE EXCLUSIVE — unblocks concurrent writes).
+
+2. **Constraint-name assumption removed.** Postgres's default `<table>_<column>_fkey` naming holds for tables created with inline FK syntax in V2–V4, but there's no guarantee. Replaced the static SQL with a `DO $$ ... $$` block that looks up the actual `conname` via `pg_constraint` at migration time. Also catches the case where a future developer renames a constraint.
+
+3. **Lock/statement timeouts added** per V74 C-A5-N1 pattern — prevents a background `VACUUM` on any of the 18 tables from stalling V84 indefinitely at real scale.
 
 ```sql
 -- V84__tenant_fk_cascade.sql
+-- Flips 18 per-tenant child FKs from NO ACTION (the implicit default)
+-- to ON DELETE CASCADE. Intent: TenantLifecycleService.hardDelete fires
+-- a bare `DELETE FROM tenant` and the CASCADE chain destroys every
+-- per-tenant child row. Tables not in the list are either already
+-- CASCADE (tenant_key_material, kid_to_tenant_key, tenant_audit_chain_head
+-- per V61/V80) or intentionally FK-less (audit_events per V57 — preserved
+-- through shred with a nullable tenant_id and a platform tombstone).
 
--- Drop + re-add 18 FKs with ON DELETE CASCADE. Constraint names follow
--- Postgres's default "<table>_<column>_fkey" naming unless explicitly
--- set elsewhere; verify per table via \d <table> before shipping.
+-- Bound per-statement time so a background VACUUM on one table can't
+-- hold up the rest of the migration.
+SET LOCAL lock_timeout = '10s';
+SET LOCAL statement_timeout = '60s';
 
-ALTER TABLE app_user                    DROP CONSTRAINT app_user_tenant_id_fkey,                    ADD CONSTRAINT app_user_tenant_id_fkey                    FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE api_key                     DROP CONSTRAINT api_key_tenant_id_fkey,                     ADD CONSTRAINT api_key_tenant_id_fkey                     FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE shelter                     DROP CONSTRAINT shelter_tenant_id_fkey,                     ADD CONSTRAINT shelter_tenant_id_fkey                     FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE import_log                  DROP CONSTRAINT import_log_tenant_id_fkey,                  ADD CONSTRAINT import_log_tenant_id_fkey                  FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE tenant_oauth2_provider      DROP CONSTRAINT tenant_oauth2_provider_tenant_id_fkey,      ADD CONSTRAINT tenant_oauth2_provider_tenant_id_fkey      FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE subscription                DROP CONSTRAINT subscription_tenant_id_fkey,                ADD CONSTRAINT subscription_tenant_id_fkey                FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE bed_availability            DROP CONSTRAINT bed_availability_tenant_id_fkey,            ADD CONSTRAINT bed_availability_tenant_id_fkey            FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE reservation                 DROP CONSTRAINT reservation_tenant_id_fkey,                 ADD CONSTRAINT reservation_tenant_id_fkey                 FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE surge_event                 DROP CONSTRAINT surge_event_tenant_id_fkey,                 ADD CONSTRAINT surge_event_tenant_id_fkey                 FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE referral_token              DROP CONSTRAINT referral_token_tenant_id_fkey,              ADD CONSTRAINT referral_token_tenant_id_fkey              FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE hmis_outbox                 DROP CONSTRAINT hmis_outbox_tenant_id_fkey,                 ADD CONSTRAINT hmis_outbox_tenant_id_fkey                 FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE hmis_audit_log              DROP CONSTRAINT hmis_audit_log_tenant_id_fkey,              ADD CONSTRAINT hmis_audit_log_tenant_id_fkey              FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE bed_search_log              DROP CONSTRAINT bed_search_log_tenant_id_fkey,              ADD CONSTRAINT bed_search_log_tenant_id_fkey              FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE daily_utilization_summary   DROP CONSTRAINT daily_utilization_summary_tenant_id_fkey,   ADD CONSTRAINT daily_utilization_summary_tenant_id_fkey   FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE one_time_access_code        DROP CONSTRAINT one_time_access_code_tenant_id_fkey,        ADD CONSTRAINT one_time_access_code_tenant_id_fkey        FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE notification                DROP CONSTRAINT notification_tenant_id_fkey,                ADD CONSTRAINT notification_tenant_id_fkey                FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE password_reset_token        DROP CONSTRAINT password_reset_token_tenant_id_fkey,        ADD CONSTRAINT password_reset_token_tenant_id_fkey        FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
-ALTER TABLE escalation_policy           DROP CONSTRAINT escalation_policy_tenant_id_fkey,           ADD CONSTRAINT escalation_policy_tenant_id_fkey           FOREIGN KEY (tenant_id) REFERENCES tenant(id) ON DELETE CASCADE;
+DO $$
+DECLARE
+    -- Allowlist of (owning_table, intended_delete_rule).
+    -- Must stay in sync with TenantChildCascadeAuditTest.MUST_CASCADE_FROM_TENANT.
+    target_tables text[] := ARRAY[
+        'app_user', 'api_key', 'shelter', 'import_log',
+        'tenant_oauth2_provider', 'subscription', 'bed_availability',
+        'reservation', 'surge_event', 'referral_token',
+        'hmis_outbox', 'hmis_audit_log', 'bed_search_log',
+        'daily_utilization_summary', 'one_time_access_code',
+        'notification', 'password_reset_token', 'escalation_policy'
+    ];
+    tbl text;
+    cname text;
+BEGIN
+    FOREACH tbl IN ARRAY target_tables LOOP
+        -- Look up the FK's actual constraint name. tenant is confrelid,
+        -- tbl is conrelid. If zero or more-than-one match exists, fail
+        -- loud rather than DROP the wrong thing.
+        SELECT conname INTO cname
+        FROM pg_constraint
+        WHERE contype = 'f'
+          AND conrelid = format('public.%I', tbl)::regclass
+          AND confrelid = 'public.tenant'::regclass;
+
+        IF cname IS NULL THEN
+            RAISE EXCEPTION 'V84: no FK from %.tenant_id to tenant(id) found on table %', tbl, tbl;
+        END IF;
+
+        -- 1. DROP the existing FK (catalog-only; fast).
+        EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', tbl, cname);
+
+        -- 2. ADD NOT VALID — catalog-only, no scan, ACCESS EXCLUSIVE for
+        --    the metadata write, then released. New writes are blocked
+        --    against the CASCADE rule immediately; existing rows are not
+        --    re-checked here.
+        EXECUTE format(
+            'ALTER TABLE public.%I '
+            'ADD CONSTRAINT %I FOREIGN KEY (tenant_id) '
+            'REFERENCES public.tenant(id) ON DELETE CASCADE NOT VALID',
+            tbl, cname);
+
+        -- 3. VALIDATE — scans existing rows. Holds SHARE UPDATE EXCLUSIVE,
+        --    does NOT block concurrent reads/writes. Slow only if the
+        --    table is large and contains a row that violates the FK
+        --    (none should; the constraint is a strict tightening).
+        EXECUTE format('ALTER TABLE public.%I VALIDATE CONSTRAINT %I', tbl, cname);
+    END LOOP;
+END;
+$$;
+
+COMMENT ON COLUMN tenant.id IS
+  'Parent of 18 CASCADE FKs (V84); hardDelete(tenant_id) chain-removes '
+  'every per-tenant child row in a single DELETE. audit_events preserves '
+  'its tenant_id without FK per shred-auditability contract (Q-F6-5).';
 ```
 
-Each `ALTER TABLE ... DROP/ADD CONSTRAINT` takes **ACCESS EXCLUSIVE** briefly on the owning table (no row rewrite; catalog-only metadata update). Sam (DBA): fine on 3-tenant pilot; document the lock in the migration header for future scale.
+### Why DO-block instead of static SQL
+
+- **Safer under name drift.** If someone renamed a constraint after initial creation, the static `DROP CONSTRAINT <table>_<col>_fkey` would fail or, worse, silently DROP a different constraint. The lookup pattern fails loud.
+- **Easier to re-run.** The allowlist array is one line per table, mirror of the `MUST_CASCADE_FROM_TENANT` test constant. Adding a table = one line here + one line in the test.
+- **CI alignment.** The post-migration `TenantChildCascadeAuditTest` reads from the same catalog (`pg_constraint`) the migration wrote to. Static SQL would be a separate source of truth that could drift.
 
 ### Allowlist constant for the Flyway CI check
 
