@@ -179,6 +179,25 @@ Ordering reflects the design warroom resolution (2026-04-19): Redis ADR first (p
 
 ## 8. Phase G — Audit + observability isolation (1 week)
 
+### 8.0 Phase G preflight — `AuditEventType` enum migration (closes [#98](https://github.com/ccradle/finding-a-bed-tonight/issues/98))
+
+Lands BEFORE any chain-hashing work (8.1+) so the serialized form of `audit_events.action` is locked up-front — once the first `row_hash` row is written, the field's on-wire shape becomes permanent hash input. Research settled in Slice F-1 (V79 `tenant_state` conversion): **Spring Data JDBC 4.x bypasses user converters for enums** (spring-data-relational #1689/#1697/#1705/#1935/#2083), so the pattern is Java enum + VARCHAR column + default `.name()` serialization. No CHECK constraint on `audit_events.action` (append-only column, types grow organically as phases add new events — CHECK would force a Flyway migration per new event type).
+
+- [ ] 8.0.1 Create `org.fabt.shared.audit.AuditEventType` enum with one case per `AuditEventTypes.*` constant (current inventory ~23 — read `AuditEventTypes.java` at migration time for authoritative list; includes lifecycle, rejection, cache-isolation, shelter, DV-referral, and BED_HOLDS_RECONCILED families)
+- [ ] 8.0.2 Update `AuditEventRecord` — change `String action` → `AuditEventType action`
+- [ ] 8.0.3 Update `AuditEventService.publish(...)` signature + all internal uses to take `AuditEventType`
+- [ ] 8.0.4 Update `DetachedAuditPersister.persistDetached(UUID, AuditEventRecord)` callers — Phase C's `TenantScopedCacheService.get` cross-tenant-read path + `EscalationPolicyService.findByTenantAndId` cross-tenant-read path (both already pass `AuditEventTypes.*` constants — just need the signature ripple)
+- [ ] 8.0.5 Update `AuditEventEntity` to serialize enum → String at persistence boundary via `.name()`; column type stays VARCHAR; zero schema change
+- [ ] 8.0.6 Refactor bare-string literal call sites to enum cases — `ShelterService.java:293` (`SHELTER_DV_FLAG_CHANGED`), `ShelterService.java:302` (`DV_SHELTER_ADDRESS_CHANGED`), `AccessCodeService.java:79` (`ACCESS_CODE_GENERATED`)
+- [ ] 8.0.7 Refactor threaded `String action` parameters in `UserService.applyAuditEvent`, `ReferralTokenService.publishAuditEvent`, `ReferralTokenController` audit path, `TenantLifecycleService.logRejection` — all take `AuditEventType` from typed callers
+- [ ] 8.0.8 Migrate `AuditEventTypesTest` — each test replaced with `assertThat(AuditEventType.X.name()).isEqualTo("X")` form; contract pin preserved because the DB string representation is unchanged
+- [ ] 8.0.9 Delete `AuditEventTypes.java` constants class — fully superseded by the enum
+- [ ] 8.0.10 Integration test: round-trip `publish(AuditEventType.TENANT_CREATED)` → DB row has `action='TENANT_CREATED'` — proves `.name()` wire form is stable and pre-existing rows from before the migration still query correctly
+- [ ] 8.0.11 Integration test: JSONB details payload + enum action serialize deterministically — this row is what Phase G's `canonical_json(row)` hash input will see
+- [ ] 8.0.12 Update `docs/FOR-DEVELOPERS.md` "Publishing audit events" section with the new enum pattern
+- [ ] 8.0.13 Full backend regression (`mvn verify`) — ~619 tests; catches any missed call sites
+- [ ] 8.0.14 Commit 8.0 + open PR targeting Phase G branch (NOT main directly — lands in the Phase G PR chain)
+
 - [ ] 8.1 Flyway V66 — add `prev_hash BYTEA`, `row_hash BYTEA` columns to `audit_events`
 - [ ] 8.2 Flyway V65 — create `platform_admin_access_log(id, admin_user_id, tenant_id, resource, resource_id, justification, timestamp)` table
 - [ ] 8.3 Create `tenant_audit_chain_head(tenant_id UUID PRIMARY KEY, last_hash BYTEA NOT NULL, last_row_id UUID NOT NULL, updated_at TIMESTAMPTZ NOT NULL)` table
