@@ -198,6 +198,11 @@ Lands BEFORE any chain-hashing work (8.1+) so the serialized form of `audit_even
 - [ ] 8.0.13 Full backend regression (`mvn verify`) — ~619 tests; catches any missed call sites
 - [ ] 8.0.14 Commit 8.0 + open PR targeting Phase G branch (NOT main directly — lands in the Phase G PR chain)
 
+### 8.0 — warroom-deferred follow-ups (apply during 8.1 work)
+
+- [ ] 8.0.15 ArchUnit rule (Family G-0): production packages `org.fabt.*.service|.*.api|.*.batch|.*.security|.*.web` may not reference `AuditEventType.TEST_PROBE`. Riley's warroom concern: the sentinel is necessary in tests but a developer could paste it into a production path and ship. Rule pattern precedent: `FamilyCArchitectureTest`.
+- [ ] 8.0.16 Consider `@NotNull` or compact-constructor assertion on `AuditEventRecord.action` — Casey's chain-of-custody concern: `new AuditEventRecord(null, null, null, null, null)` currently writes `action=NULL` to `audit_events`, which will get hashed by G-1 as `"action": null` in canonical_json. Forensically meaningless audit row. Decide: disallow null action OR document the null-action semantic intentionally.
+
 - [ ] 8.1 Flyway V66 — add `prev_hash BYTEA`, `row_hash BYTEA` columns to `audit_events`
 - [ ] 8.2 Flyway V65 — create `platform_admin_access_log(id, admin_user_id, tenant_id, resource, resource_id, justification, timestamp)` table
 - [ ] 8.3 Create `tenant_audit_chain_head(tenant_id UUID PRIMARY KEY, last_hash BYTEA NOT NULL, last_row_id UUID NOT NULL, updated_at TIMESTAMPTZ NOT NULL)` table
