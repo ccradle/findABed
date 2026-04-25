@@ -58,25 +58,48 @@
 > per-account MFA lockout requires DB columns + SECURITY DEFINER wrappers
 > on `platform_user`, which naturally lives with the auth flow that uses
 > them — so V88 is now claimed by G-4.2's `V88__platform_user_lockout_columns.sql`,
-> and the access log shifts to **V89** here. The slice content below is
-> unchanged; only the migration filename moves.
+> and the access log shifts to **V89** here.
+
+> **Warroom amendments (G-4.3 design review, 2026-04-25):** Seven
+> decisions locked before implementation, plus three scope additions
+> moved into G-4.3 from G-4.5. Numbered references appear inline below.
+>
+> **D1 (A2)** — PAL.audit_event_id has NO foreign-key constraint. Theoretical orphan risk accepted; AE deletes are forbidden by Phase B append-only posture. Revisit as F6 if a compliance audit flags it.
+>
+> **D2 (M3)** — `request_body_excerpt` stores `Content-Type` + `Content-Length` + `SHA-256(body)` only. Raw body content is NEVER captured; a forensic reader correlates the SHA-256 against application logs (which already redact sensitive fields per Phase A). Closes the "TenantController.create body contains config secrets" + "platform_user create contains password" leak vectors.
+>
+> **D3 (P1)** — `audit_events.details` JSONB does NOT contain `platform_user_email`. Stores `platform_user_id` only. Audit reader joins `platform_user` on demand; anonymized rows show "anonymized" in the join. Avoids the GDPR Art-17 retroactive-redaction problem in the audit chain.
+>
+> **D4 (E2)** — V89 ships an append-only trigger function `platform_admin_access_log_no_mutate()` raising on UPDATE/DELETE in addition to the `REVOKE`. Belt-and-suspenders against future `GRANT` regressions.
+>
+> **D5 (J1, F3 partial)** — `MDC.put("platform_action", "true")` set at aspect entry, removed at exit. Moved INTO G-4.3 (was deferred to G-4.5). The aspect is the natural place; without it the G-4.5 alerts have nothing to filter on.
+>
+> **D6 (A4)** — Lockout-transition PAL row is written by direct call from `PlatformAuthService.recordFailureAndMaybeLock`, NOT via the aspect. The lockout fires from an internal service path the aspect can't reach. New `PlatformAdminAccessLogger.logLockout(userId)` method exposes the same write surface.
+>
+> **D7 (A1)** — V89 schema adds CHECK constraints: `length(request_body_excerpt) <= 2000`, `pg_column_size(before_state) <= 65536`, `pg_column_size(after_state) <= 65536`. Aspect truncates / sanitizes pre-INSERT.
 
 - [ ] 4.1 Create Flyway V89 migration `V89__platform_admin_access_log.sql`:
-  - `CREATE TABLE platform_admin_access_log (id UUID PK, platform_user_id UUID FK platform_user(id), action TEXT NOT NULL, resource TEXT NULL, resource_id UUID NULL, justification TEXT NOT NULL CHECK (length(trim(justification)) >= 10), request_method TEXT NOT NULL, request_path TEXT NOT NULL, request_body_excerpt TEXT NULL, before_state JSONB NULL, after_state JSONB NULL, audit_event_id UUID NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW())`
+  - `CREATE TABLE platform_admin_access_log (id UUID PK, platform_user_id UUID FK platform_user(id), action TEXT NOT NULL, resource TEXT NULL, resource_id UUID NULL, justification TEXT NOT NULL CHECK (length(trim(justification)) >= 10), request_method TEXT NOT NULL, request_path TEXT NOT NULL, request_body_excerpt TEXT NULL CHECK (request_body_excerpt IS NULL OR length(request_body_excerpt) <= 2000), before_state JSONB NULL CHECK (before_state IS NULL OR pg_column_size(before_state) <= 65536), after_state JSONB NULL CHECK (after_state IS NULL OR pg_column_size(after_state) <= 65536), audit_event_id UUID NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW())` — **D1**: NO FK on `audit_event_id`; **D7**: size CHECKs on excerpt + state columns
   - `REVOKE UPDATE, DELETE ON platform_admin_access_log FROM fabt_app`
+  - **D4**: `CREATE FUNCTION platform_admin_access_log_no_mutate() RETURNS TRIGGER LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'platform_admin_access_log is append-only'; END; $$;` + `CREATE TRIGGER platform_admin_access_log_no_mutate_trigger BEFORE UPDATE OR DELETE ON platform_admin_access_log FOR EACH ROW EXECUTE FUNCTION platform_admin_access_log_no_mutate();`
   - Indexes: `(platform_user_id, timestamp DESC)`, `(timestamp DESC)`, `(resource_id) WHERE resource_id IS NOT NULL`, **`(action, timestamp DESC)`** (Elena's compliance-query optimization)
 - [ ] 4.2 Create annotation `@PlatformAdminOnly(reason String, emits AuditEventType)` per Decision 9. Both members are required (no default). Annotation has `@Target(ElementType.METHOD), @Retention(RetentionPolicy.RUNTIME)`.
-- [ ] 4.3 Add 10 new `AuditEventType` enum values: `PLATFORM_TENANT_CREATED`, `PLATFORM_TENANT_SUSPENDED`, `PLATFORM_TENANT_UNSUSPENDED`, `PLATFORM_TENANT_OFFBOARDED`, `PLATFORM_TENANT_HARD_DELETED`, `PLATFORM_KEY_ROTATED`, `PLATFORM_HMIS_EXPORTED`, `PLATFORM_OAUTH2_TESTED`, `PLATFORM_BATCH_JOB_TRIGGERED`, `PLATFORM_TEST_RESET_INVOKED`. Plus `PLATFORM_USER_LOCKED_OUT` and `PLATFORM_USER_CREATED` for identity-related actions.
-- [ ] 4.4 Create `JustificationValidationFilter.java` (Spring filter, NOT aspect — Alex's split recommendation): runs in filter chain BEFORE Spring Security; checks `X-Platform-Justification` header presence + length >= 10 chars on requests to `@PlatformAdminOnly`-annotated endpoints (uses request URI → controller method lookup); rejects 400 if invalid. Allows the JWT auth + `@PreAuthorize` to handle authorization next.
+- [ ] 4.3 Add 12 new `AuditEventType` enum values: `PLATFORM_TENANT_CREATED`, `PLATFORM_TENANT_SUSPENDED`, `PLATFORM_TENANT_UNSUSPENDED`, `PLATFORM_TENANT_OFFBOARDED`, `PLATFORM_TENANT_HARD_DELETED`, `PLATFORM_KEY_ROTATED`, `PLATFORM_HMIS_EXPORTED`, `PLATFORM_OAUTH2_TESTED`, `PLATFORM_BATCH_JOB_TRIGGERED`, `PLATFORM_TEST_RESET_INVOKED`, `PLATFORM_USER_LOCKED_OUT`, `PLATFORM_USER_CREATED`, plus `PLATFORM_USER_RESET_TO_BOOTSTRAP` (folded in from F5 follow-up captured during G-4.2 hardening commit `aceb1d9`).
+- [ ] 4.4 Create `JustificationValidationFilter.java` (Spring filter, NOT aspect — Alex's split recommendation): runs in filter chain BEFORE Spring Security; checks `X-Platform-Justification` header presence + length >= 10 chars on requests to `@PlatformAdminOnly`-annotated endpoints; rejects 400 if invalid. Allows the JWT auth + `@PreAuthorize` to handle authorization next.
+  - **(M2 implementation note):** Filter resolves the request to a controller method via `RequestMappingHandlerMapping.getHandler(request)`, then inspects the resolved `HandlerMethod.getMethodAnnotation(PlatformAdminOnly.class)`. Skip filter logic for non-`@PlatformAdminOnly` paths and for non-controller paths (static resources, error pages).
 - [ ] 4.5 Create `PlatformAdminLogger.java` (Spring AOP aspect, single-purpose per Alex): runs `@Around` on methods annotated `@PlatformAdminOnly`. In a single REQUIRES_NEW transaction:
+  - **D5**: `MDC.put("platform_action", "true")` at aspect entry; `MDC.remove("platform_action")` in finally block at exit
   - Generate UUIDs for new PAL row and new AE row up front (client-side, Decision 11)
+  - **D2**: Compute `request_body_excerpt = "Content-Type=" + ct + ";Content-Length=" + cl + ";SHA-256=" + hex(sha256(body))` — never raw body content
+  - **(P2 sanitization)**: For `before_state`/`after_state`, capture only an explicit allowlist of fields (`status`, `slug`, `name`, `created_at` for tenant actions; method-specific allowlists for others). NEVER capture credentials / OAuth2 secrets / API keys.
   - INSERT PAL with `audit_event_id = <pre-gen AE UUID>`, `justification = "<annotation reason> | request: <header value>"`
-  - INSERT AE with `id = <pre-gen AE UUID>`, `action = <annotation.emits()>`, `details = jsonb_build_object('platform_admin_access_log_id', <pre-gen PAL UUID>, 'platform_user_id', <pu-id>, 'platform_user_email', <email>, 'justification_excerpt', substr(justification, 1, 200), 'request_method', <method>, 'request_path', <path>)`
+  - **D3**: INSERT AE with `id = <pre-gen AE UUID>`, `action = <annotation.emits()>`, `details = jsonb_build_object('platform_admin_access_log_id', <pre-gen PAL UUID>, 'platform_user_id', <pu-id>, 'justification_excerpt', substr(justification, 1, 200), 'request_method', <method>, 'request_path', <path>)` — **NO `platform_user_email` field**
   - Determine AE `tenant_id` from method parameter named `tenantId` (UUID type) — defaults to SYSTEM_TENANT_ID
   - **Special case**: if `annotation.emits() == PLATFORM_TENANT_HARD_DELETED`, force `tenant_id = SYSTEM_TENANT_ID` regardless of method param (Decision 13 — survives the cascade delete)
   - If `tenant_id != SYSTEM_TENANT_ID`, AuditChainHasher chains the row (Phase G-1 path)
   - Commit; method body executes
   - On commit failure: log WARN to application log with `platform_action: true` MDC marker (Jordan's SOC filtering)
+- [ ] 4.5a **(D6)** Add `PlatformAdminAccessLogger.logLockout(UUID userId)` method that emits the same PAL + AE rows for `PLATFORM_USER_LOCKED_OUT` action, called directly (NOT via aspect) from `PlatformAuthService.recordFailureAndMaybeLock` when the lockout transition fires. The aspect can't reach internal service calls.
 - [ ] 4.6 Apply `@PlatformAdminOnly(reason="canary endpoint for G-4.3 — exercises AOP aspect", emits=AuditEventType.PLATFORM_BATCH_JOB_TRIGGERED)` to `BatchJobController.run` only (canary; rest in G-4.4); also apply `@PreAuthorize("hasRole('PLATFORM_OPERATOR')")`
 - [ ] 4.7 Add IT family `PlatformAdminAccessAspectTest`:
   - missing X-Platform-Justification → 400 (filter rejection), no log rows
@@ -87,9 +110,18 @@
   - tenant-affecting action (e.g., suspend with tenantId=X) → audit_events.tenant_id = X; chained
   - PLATFORM_TENANT_HARD_DELETED action → audit_events.tenant_id = SYSTEM_TENANT_ID (NOT target tenant — Decision 13)
   - platform-wide action (BatchJobController.run) → audit_events.tenant_id = SYSTEM_TENANT_ID; not chained
-- [ ] 4.8 Add ArchUnit test `PlatformAdminOnlyArchitectureTest`: any method annotated `@PlatformAdminOnly` MUST also be annotated `@PreAuthorize("hasRole('PLATFORM_OPERATOR')")` (defense-in-depth). Scope rule to `.java` source files only (Riley — exclude SQL migration files which legitimately mention `PLATFORM_ADMIN`).
+  - **(R1 from G-4.3 warroom)** body-not-captured: POST a body, assert `request_body_excerpt` contains `SHA-256=...` + `Content-Type=...` + `Content-Length=...`, NEVER raw body content
+  - **(R1)** FK enforcement: INSERT into PAL with `platform_user_id` not in `platform_user` raises constraint violation despite REVOKE on platform_user (proves FK works via constraint trigger)
+  - **(R1, J1)** MDC marker: assert `MDC.get("platform_action") == "true"` inside the proceeding business method; assert removed after aspect exit
+  - **(D4)** append-only trigger fires: directly attempt UPDATE / DELETE against PAL as fabt_app, expect `platform_admin_access_log is append-only` error
+  - **(P2)** sanitization: a tenant-suspend action's `before_state` does NOT contain OAuth2 client secrets / HMIS API keys / passwords
+- [ ] 4.7a **(R3)** Build `TestAuthHelper.setupPlatformUser(...)` once. Inserts a platform_user row at a chosen UUID with known email + bcrypt password + plaintext mfa_secret (skips the enrollment flow), generates 10 backup codes with known plaintexts → SHA-256+salt-stored. Returns `{userId, plaintextPassword, totpSecret, plaintextBackupCodes, accessToken}`. Used by every IT in G-4.3 / G-4.4 / G-4.5.
+- [ ] 4.8 Add ArchUnit test `PlatformAdminOnlyArchitectureTest`:
+  - **(existing)** Any method annotated `@PlatformAdminOnly` MUST also be annotated `@PreAuthorize("hasRole('PLATFORM_OPERATOR')")` (defense-in-depth). Scope rule to `.java` source files only (Riley — exclude SQL migration files which legitimately mention `PLATFORM_ADMIN`).
+  - **(R4 new)** Any method annotated `@PlatformAdminOnly` MUST be in a `..api..` package (controller layer only — service-layer audit annotations are out of scope for this aspect).
 - [ ] 4.9 Run `mvn test` locally
-- [ ] 4.10 Commit: `feat(audit): G-4.3 — V88 platform_admin_access_log + @PlatformAdminOnly(reason,emits) + JustificationValidationFilter + PlatformAdminLogger aspect`
+- [ ] 4.10 **(metrics — J2)** Aspect emits Micrometer counters: `fabt.platform.admin.action{action=<emits>, outcome=committed|aspect_failed|method_failed_after_audit}`; filter emits `fabt.platform.admin.justification.rejected{reason=missing|too_short}`. G-4.5 Prometheus alerts query these; without the counters the alert rules have nothing to fire on.
+- [ ] 4.11 Commit: `feat(audit): G-4.3 — V89 platform_admin_access_log + @PlatformAdminOnly(reason,emits) + JustificationValidationFilter + PlatformAdminLogger aspect (warroom-vetted)`
 
 ## 5. G-4.4 — Endpoint migration + Playwright + ArchUnit guard
 
