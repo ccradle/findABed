@@ -214,6 +214,42 @@
 - [ ] 6.21 Run `make rehearse-deploy` — should succeed (rehearsal stack uses lite profile + test seed)
 - [ ] 6.22 Commit: `feat(auth): G-4.5 — demo expansion + DV defenses + accessibility + monitoring`
 
+## 6a. G-4.6 — TenantLifecycleController REST endpoints (NEW slice, decided 2026-04-25)
+
+> **Why this slice was added:** during G-4.4 inventory we discovered
+> tasks.md §5.3 referenced a `TenantLifecycleController` (suspend /
+> unsuspend / offboard / hardDelete) that was aspirational — Phase F
+> shipped the service layer + state machine but never landed REST
+> endpoints. The audit-chain story for v0.53 wants every tenant
+> lifecycle action to flow through the `@PlatformAdminOnly` aspect so
+> operators get PAL + chained AE rows with justification + identity.
+> Without this slice, lifecycle actions in production would happen via
+> `psql` against the DB owner — no audit row produced, no MFA gate.
+> 4-6h of work; service layer + state machine already battle-tested in
+> Phase F so the controller is a thin wrapper. Captured as design.md F12.
+
+- [ ] 6a.1 Create `org.fabt.tenant.api.TenantLifecycleController`. Four endpoints, each a thin wrapper over the existing `TenantLifecycleService` method:
+  - `POST /api/v1/tenants/{id}/suspend` → `TenantLifecycleService.suspend(tenantId, justification)`
+  - `POST /api/v1/tenants/{id}/unsuspend` → `unsuspend(...)`
+  - `POST /api/v1/tenants/{id}/offboard` → `offboard(...)`
+  - `DELETE /api/v1/tenants/{id}` → `hardDelete(...)` (HTTP DELETE matches the destructive nature; controller method body is the same plumbing)
+- [ ] 6a.2 Each endpoint annotated:
+  - `@PreAuthorize("hasRole('PLATFORM_OPERATOR')")`
+  - `@PlatformAdminOnly(reason="<endpoint-specific>", emits=AuditEventType.PLATFORM_TENANT_<ACTION>)` — picks the matching enum value already added in G-4.3 §4.3
+- [ ] 6a.3 Each endpoint uses `PlatformActionStateCapture` (G-4.4 §5.4a) to record before/after state. Allowlist for tenant lifecycle: `{slug, name, state, archived_at, hard_deleted_at}` — never `tenantId` (in path), never DEKs/keys.
+- [ ] 6a.4 Add IT family `TenantLifecycleControllerTest`:
+  - happy-path suspend → 200, tenant.state=SUSPENDED, PAL + AE rows with PLATFORM_TENANT_SUSPENDED action, AE.tenant_id = target tenant (chained)
+  - happy-path unsuspend / offboard / hardDelete (state-machine valid pre-conditions)
+  - state-machine rejection: suspend on already-SUSPENDED tenant → 409 (or whatever the existing `IllegalStateTransitionException` maps to); aspect's audit row WAS committed (REQUIRES_NEW pre-method per Decision 11) so PAL row exists with PLATFORM_TENANT_SUSPEND_REJECTED... wait, Phase F's existing service emits TENANT_SUSPEND_REJECTED via `DetachedAuditPersister`. Decide: does the aspect-emitted PLATFORM_TENANT_SUSPENDED still write because the aspect commits BEFORE proceed throws? Per G-4.3 IT pattern "method throws AFTER aspect commit → both log rows persist" — yes, PAL row exists. Document this is acceptable: the aspect captures the ATTEMPT; runbook correlates with TENANT_SUSPEND_REJECTED at the same audit_event_id timestamp.
+  - PLATFORM_TENANT_HARD_DELETED: AE.tenant_id forced to SYSTEM_TENANT_ID (Decision 13) so the audit row survives the cascade delete; verify after the call that tenant row is gone but PAL + AE rows persist
+  - missing X-Platform-Justification → 400 (filter rejection per G-4.3)
+  - non-PLATFORM_OPERATOR caller (e.g., COC_ADMIN tenant JWT) → 403
+  - mfaVerified=false platform JWT → 401 (per G-4.4 §5.4b mfaVerified gate)
+- [ ] 6a.5 Update SecurityConfig.java: `/api/v1/tenants/**` URL rules — `POST/PUT/DELETE` paths require `PLATFORM_OPERATOR`; `GET /api/v1/tenants/*/oauth2-providers/public` remains public per G-4.2 (already permitAll).
+- [ ] 6a.6 New Playwright spec `tenant-lifecycle.spec.ts`: PLATFORM_OPERATOR triggers suspend with justification, verifies tenant.state=SUSPENDED via subsequent admin GET, then unsuspends. Includes the access-log spec verification — both PAL rows present.
+- [ ] 6a.7 Run full backend + Playwright tests
+- [ ] 6a.8 Commit: `feat(tenant): G-4.6 — TenantLifecycleController REST endpoints + audit integration`
+
 ## 7. Documentation + runbook
 
 - [ ] 7.1 Create `docs/runbook.md` section "First platform_user activation" (post-V87 deploy step): pre-requisites checklist (TOTP app installed, backup-code storage ready, fabt-cli pre-staged on VM); each command with expected output; troubleshooting ("What if `fabt-cli.jar` is not found?"); verification steps (Devon's hand-holding requirement)
