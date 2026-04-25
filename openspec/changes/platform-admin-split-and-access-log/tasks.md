@@ -126,30 +126,50 @@
 
 ## 5. G-4.4 — Endpoint migration + Playwright + ArchUnit guard
 
+> **Warroom amendments (G-4.4 design review, 2026-04-25):** 9 changes
+> applied based on the warroom held during G-4.3 CI runtime. Numbered
+> references inline.
+>
+> **Confirmed decisions (no scope change, captured for reference):**
+> - Frontend platform-operator UI is **out of scope for v0.53**; UI ships
+>   in a separate slice after G. Buttons that currently invoke platform
+>   endpoints will get 403; G-4.5 §6.b will add a UI shim that
+>   hides/grays them. Captured as F11 follow-up in design.md.
+> - Q1 from design.md (hide platform login link in prod public nav):
+>   **lean = yes, hide in prod, visible in dev** — confirm during
+>   implementation.
+> - G-4.3 MUST deploy before G-4.4. Naturally enforced by the
+>   `@PlatformAdminOnly` → V89 dependency chain.
+
 ### 5.a Migrate the 18 @PreAuthorize sites
 
 - [ ] 5.1 Identify the 11 tenant-scoped sites (verified ground truth from Phase G-3 deploy session): TestResetController (1), TenantConfigController (2), UserController, ApiKeyController, OAuth2ProviderController, TotpController, AccessCodeController, PasswordController, AvailabilityController (admin), ShelterController (admin) — exact split confirmed during implementation by grepping `@PreAuthorize.*PLATFORM_ADMIN` and reviewing each
-- [ ] 5.2 Migrate the 11 tenant-scoped sites: change `@PreAuthorize("hasRole('PLATFORM_ADMIN')")` → `@PreAuthorize("hasRole('COC_ADMIN')")`
-- [ ] 5.3 Identify the 7 platform-scoped sites: TenantController.create, TenantLifecycleController (suspend/unsuspend/offboard/hardDelete = 4 sites), TenantKeyRotationController.rotate (1), HmisExportController (6), OAuth2TestConnectionController.test (1), BatchJobController (4 — already canaried)
+- [ ] 5.2 Migrate the 11 tenant-scoped sites: change `@PreAuthorize("hasRole('PLATFORM_ADMIN')")` → `@PreAuthorize("hasRole('COC_ADMIN')")`. **(R-S3 pairing rule):** each endpoint migration commits PAIRED with its test migration (don't separate) to keep main green.
+- [ ] 5.3 Identify the 7 platform-scoped sites: TenantController.create, TenantLifecycleController (suspend/unsuspend/offboard/hardDelete = 4 sites), TenantKeyRotationController.rotate (1), HmisExportController (6), OAuth2TestConnectionController.test (1), BatchJobController (4 — `/run` already canaried in G-4.3, **plus 3 siblings: `/restart`, `/abandon`, `/stop` per warroom M-S3** must also receive `@PlatformAdminOnly`).
 - [ ] 5.4 Migrate the 7 platform-scoped sites: change `@PreAuthorize("hasRole('PLATFORM_ADMIN')")` → `@PreAuthorize("hasRole('PLATFORM_OPERATOR')")` AND add `@PlatformAdminOnly(reason="<endpoint-specific justification template>", emits=AuditEventType.<appropriate>)` annotation. Each site picks its own AuditEventType from the 10 new values.
-- [ ] 5.5 Update SecurityConfig.java path patterns (3 sites referencing PLATFORM_ADMIN — re-audit each for correct cohort per design.md)
+- [ ] 5.4a **(A-S1 NEW)** State capture mechanism. The G-4.3 aspect leaves `before_state` / `after_state` JSONB columns NULL because it can't reasonably know HOW to capture state per action. Add a request-scoped `PlatformActionStateCapture` bean exposing `captureBefore(Object stateAllowlist)` / `captureAfter(Object stateAllowlist)` helpers. Each `@PlatformAdminOnly` controller method that has meaningful state delta (TenantLifecycleController.suspend/unsuspend/offboard/hardDelete, TenantKeyRotationController.rotate) calls the helpers explicitly with an allowlisted snapshot. The aspect drains the captured state into the PAL row at audit-write time. Allowlist enforcement happens at the helper boundary so credentials / OAuth2 secrets / API keys CANNOT slip into PAL rows.
+- [ ] 5.4b **(M-S2 BLOCKER → F2 lands here)** `@PlatformAdminOnly` aspect or the JustificationValidationFilter MUST assert `mfaVerified=true` on the platform JWT. Defense-in-depth on top of G-4.2's `JwtAuthenticationFilter.handlePlatformToken` which already requires `mfaVerified` before binding SecurityContext. Reject 401 if a token somehow reaches a `@PlatformAdminOnly` endpoint with `mfaVerified=false`. ~5 LoC + 1 IT scenario (R-S4 below).
+- [ ] 5.5 Update SecurityConfig.java path patterns (3 sites referencing PLATFORM_ADMIN — re-audit each for correct cohort per design.md). The G-4.3 canary already widened `/api/v1/batch/**`; confirm the remaining 2 sites need similar treatment.
 - [ ] 5.6 Add ArchUnit test `NoPlatformAdminPreauthorizeTest`: build fails if any `@PreAuthorize` annotation in `org.fabt.*.api` references `PLATFORM_ADMIN`. Scope to `.java` files only.
 
 ### 5.b Playwright fixture refactor
 
 - [ ] 5.7 Create test helper `e2e/playwright/auth/multi-tenant-seed.ts`: seeds tenants A and B, creates COC_ADMIN of A, returns auth tokens for both. Reusable across CrossTenantIsolationTest scenarios (Riley's test infrastructure requirement).
-- [ ] 5.8 Create test helper `e2e/playwright/auth/totp-helper.ts`: reads `platform_user.mfa_secret` directly from test DB; computes valid TOTP code at test time using the secret + current Unix time / 30 (RFC 6238); used by platformOperatorPage fixture for automated MFA login (Riley's hard requirement)
+- [ ] 5.8 Create test helper `e2e/playwright/auth/totp-helper.ts`: **(R-S1 amendment)** instead of reading `platform_user.mfa_secret` directly from test DB (blocked by V87 REVOKE), the helper receives the plaintext secret from `TestAuthHelper.setupPlatformOperator` (or a small test-profile-only HTTP endpoint that wraps it). Computes valid TOTP code at test time using the secret + current Unix time / 30 (RFC 6238). Used by platformOperatorPage fixture for automated MFA login.
 - [ ] 5.9 Update `e2e/playwright/auth/admin.json` (the `cocadminPage` fixture): seed user already has COC_ADMIN via V87 backfill; verify fixture authenticates and JWT now has `roles=[COC_ADMIN]`; update any test that asserted role string explicitly
 - [ ] 5.10 Create `e2e/playwright/auth/platform-operator.json` fixture: helper provisions a test platform_user with known password + seeds TOTP secret directly (test profile only); platformOperatorPage fixture uses `/auth/platform/login` + totp-helper
-- [ ] 5.11 Update existing tests that explicitly required PLATFORM_ADMIN — replace with platformOperatorPage where appropriate
+- [ ] 5.11 Update existing tests that explicitly required PLATFORM_ADMIN — replace with platformOperatorPage where appropriate. Per R-S3, this happens IN THE SAME COMMIT as the corresponding endpoint migration in 5.2 / 5.4.
 - [ ] 5.12 Add new Playwright test `platform-admin-access-log.spec.ts`: PLATFORM_OPERATOR triggers BatchJobController.run with X-Platform-Justification header; verify audit_events row exists under SYSTEM_TENANT_ID and platform_admin_access_log row exists with expected justification
-- [ ] 5.13 Add Playwright test `platform-totp-lockout.spec.ts`: 5 failed TOTP verifications → account locked → 401 on subsequent attempts. Test profile overrides cron to clear lockout every 1 second (vs 15 min in prod) to make test runnable.
+- [ ] 5.13 Add Playwright test `platform-totp-lockout.spec.ts`: 5 failed TOTP verifications → account locked → 401 on subsequent attempts. **(R-S2 amendment)** Test profile externalizes `PlatformLockoutCronJob` rate via a `@Value("${fabt.platform.lockout-cron.fixed-rate-ms:60000}")` property + override in `application-test.yml`. OR: expose a test-only `unlockExpiredNow()` HTTP endpoint that the test calls deterministically. Recommend the test-only endpoint (more deterministic).
+- [ ] 5.13a **(R-S4 NEW, paired with 5.4b)** Add IT scenario to `PlatformAdminAccessAspectTest`: a forged platform JWT with `mfaVerified=false` presented to a `@PlatformAdminOnly` endpoint → 401, no log rows.
 
 ### 5.c Verification
 
 - [ ] 5.14 Run full backend `mvn test` locally; verify ArchUnit + integration + new aspect tests pass
 - [ ] 5.15 Run full Playwright suite via dev-start.sh nginx (port 8081)
-- [ ] 5.16 Commit: `feat(auth): G-4.4 — endpoint migration + Playwright fixtures + ArchUnit guard`
+- [ ] 5.16 **(M-S1 amendment)** PR description for the migration commit MUST include a per-endpoint OLD-role → NEW-role + chosen `AuditEventType` table. Reviewer signs off endpoint-by-endpoint. The ArchUnit guard at 5.6 catches "PLATFORM_ADMIN still appears" but not misclassification (wrong cohort, wrong AuditEventType, accidental role widening); this manual review step closes the gap.
+- [ ] 5.16a **(C-S1 NEW)** Customer-communication note for v0.53 release notes + runbook section: "Existing PLATFORM_ADMIN-bearing app_user accounts continue to work for tenant-scoped admin tasks (V87 backfill grants them COC_ADMIN). Tenant lifecycle (suspend/unsuspend/offboard/hard-delete), per-tenant JWT key rotation, HMIS exports, OAuth2 connection tests, and platform-wide batch jobs now require a separate platform-operator login at `/auth/platform/login` with MFA. Activation runbook in docs/runbook.md §G-4.2." Coordinate with Devon's training-material updates in G-4.5.
+- [ ] 5.17 Commit: `feat(auth): G-4.4 — endpoint migration + Playwright fixtures + ArchUnit guard + mfaVerified assertion (warroom-vetted)`
 
 ## 6. G-4.5 — Demo expansion + DV defenses + accessibility + monitoring (NEW slice — split from G-4.4 per Riley)
 
