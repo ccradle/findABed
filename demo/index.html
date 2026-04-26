@@ -337,16 +337,40 @@
   <div style="margin: 32px 0; padding: 28px; background: linear-gradient(135deg, #0c2940 0%, #1a3a5c 100%); border-radius: 14px; border: 2px solid #1a56db; text-align: center;">
     <div style="font-size: 20px; font-weight: 800; color: #e2e8f0; margin-bottom: 4px;">Try It Live</div>
     <p style="font-size: 16px; font-weight: 600; color: #4ade80; margin-bottom: 8px;">This is a safe demo.</p>
-    <p style="color: #94b8d8; margin-bottom: 16px; line-height: 1.6;">Browse every screen, search for beds, hold a reservation.<br>You can't break anything — account management and safety settings are protected.</p>
+    <p style="color: #94b8d8; margin-bottom: 16px; line-height: 1.6;">Browse every screen, search for beds, hold a reservation.<br>Three CoC tenants are available so you can see how a deployment looks at multi-tenant scale.<br>You can't break anything — account management and safety settings are protected.</p>
     <a href="/login" style="display: inline-block; background: #1a56db; color: #fff; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 17px;">Open Demo →</a>
-    <div style="margin-top: 16px; font-size: 13px; color: #94a3b8; line-height: 1.8;">
-      <span style="font-family: monospace;">Tenant: dev-coc</span><br>
-      <span style="font-family: monospace;">outreach@dev.fabt.org / admin123</span> ·
-      <span style="font-family: monospace;">cocadmin@dev.fabt.org / admin123</span><br>
-      <span style="font-family: monospace;">admin@dev.fabt.org / admin123</span> ·
-      <span style="font-family: monospace;">dv-outreach@dev.fabt.org / admin123</span><br>
-      <span style="font-family: monospace;">dv-coordinator@dev.fabt.org / admin123</span>
-    </div>
+    <p style="margin: 16px 0 4px 0; font-size: 12px; font-weight: 600; color: #fbbf24;">All passwords: <span style="font-family: monospace;">admin123</span></p>
+    <table aria-label="Demo accounts across three CoC tenants" style="margin: 12px auto 0 auto; border-collapse: collapse; font-size: 12px; color: #94a3b8; line-height: 1.6;">
+      <thead>
+        <tr style="color: #cbd5e1; border-bottom: 1px solid #334155;">
+          <th scope="col" style="text-align: left; padding: 6px 12px; font-weight: 600;">Tenant slug</th>
+          <th scope="col" style="text-align: left; padding: 6px 12px; font-weight: 600;">Role</th>
+          <th scope="col" style="text-align: left; padding: 6px 12px; font-weight: 600;">Email</th>
+        </tr>
+      </thead>
+      <tbody style="font-family: monospace;">
+        <tr><td rowspan="5" style="padding: 4px 12px; vertical-align: top; color: #fbbf24;">dev-coc<br/><span style="font-weight: 400; font-style: italic; color: #64748b; font-family: sans-serif;">(baseline / Raleigh-area)</span></td><td style="padding: 4px 12px;">CoC Admin</td><td style="padding: 4px 12px;">admin@dev.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">CoC Admin</td><td style="padding: 4px 12px;">cocadmin@dev.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">Outreach</td><td style="padding: 4px 12px;">outreach@dev.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">DV Coordinator</td><td style="padding: 4px 12px;">dv-coordinator@dev.fabt.org</td></tr>
+        <tr style="border-bottom: 1px solid #334155;"><td style="padding: 4px 12px;">DV Outreach</td><td style="padding: 4px 12px;">dv-outreach@dev.fabt.org</td></tr>
+        <tr><td rowspan="6" style="padding: 4px 12px; vertical-align: top; color: #fbbf24;">dev-coc-west<br/><span style="font-weight: 400; font-style: italic; color: #64748b; font-family: sans-serif;">(Blue Ridge / Asheville-area)</span></td><td style="padding: 4px 12px;">CoC Admin</td><td style="padding: 4px 12px;">admin@blueridge.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">CoC Admin</td><td style="padding: 4px 12px;">cocadmin@blueridge.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">Coordinator</td><td style="padding: 4px 12px;">coordinator@blueridge.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">Outreach</td><td style="padding: 4px 12px;">outreach@blueridge.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">DV Coordinator</td><td style="padding: 4px 12px;">dv-coordinator@blueridge.fabt.org</td></tr>
+        <tr style="border-bottom: 1px solid #334155;"><td style="padding: 4px 12px;">DV Outreach</td><td style="padding: 4px 12px;">dv-outreach@blueridge.fabt.org</td></tr>
+        <tr><td rowspan="6" style="padding: 4px 12px; vertical-align: top; color: #fbbf24;">dev-coc-east<br/><span style="font-weight: 400; font-style: italic; color: #64748b; font-family: sans-serif;">(Pamlico Sound / coastal NC)</span></td><td style="padding: 4px 12px;">CoC Admin</td><td style="padding: 4px 12px;">admin@pamlico.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">CoC Admin</td><td style="padding: 4px 12px;">cocadmin@pamlico.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">Coordinator</td><td style="padding: 4px 12px;">coordinator@pamlico.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">Outreach</td><td style="padding: 4px 12px;">outreach@pamlico.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">DV Coordinator</td><td style="padding: 4px 12px;">dv-coordinator@pamlico.fabt.org</td></tr>
+        <tr><td style="padding: 4px 12px;">DV Outreach</td><td style="padding: 4px 12px;">dv-outreach@pamlico.fabt.org</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top: 16px; padding: 10px 14px; background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 8px; color: #fdba74; font-size: 13px; font-weight: 600;">
+      These are real demo credentials in a real environment. The demo is monitored; abuse triggers automated rate-limits and alerts.
+    </p>
     <p style="margin-top: 12px; color: #64748b; font-size: 12px; font-style: italic;">Demonstration environment with fictional data. Do not enter real information.</p>
   </div>
 
