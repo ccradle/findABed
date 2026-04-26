@@ -94,7 +94,7 @@ Every feature starts as an OpenSpec change and follows this lifecycle:
 ```
 openspec/
 ├── config.yaml                          # OpenSpec configuration
-├── specs/                               # Main project specifications (57 capabilities)
+├── specs/                               # Main project specifications (91 capabilities)
 │   ├── auth-and-roles/                  # JWT auth, OAuth2 SSO, RBAC, API keys, DV access control
 │   ├── auth-rate-limiting/              # bucket4j brute force protection on login endpoints
 │   ├── bed-availability-query/          # Real-time bed search with ranked results
@@ -107,10 +107,11 @@ openspec/
 │   ├── typography-system/               # Global CSS, design tokens, system font stack
 │   ├── typography-playwright-tests/     # Font consistency + WCAG 1.4.12 text spacing tests
 │   ├── wcag-accessibility-compliance/   # WCAG 2.1 AA: axe-core, focus, color, touch targets, text spacing
-│   └── ... (45 more capabilities)       # Shelters, surge, HMIS, analytics, observability, etc.
+│   └── ... (79 more capabilities)       # Shelters, surge, HMIS, analytics, observability, platform_user/MFA, audit chain, demo defenses, etc.
 └── changes/
     ├── mcp-agent-integration/           # Active: MCP server + reference agent (specced, not yet implemented)
-    └── archive/                         # 23 completed changes
+    │   ... (11 other active changes)    # Run `openspec list --json` for the canonical list
+    └── archive/                         # 65 completed changes (run `openspec list --archived` to enumerate)
         ├── 2026-03-20-platform-foundation/           # v0.1.0 — backend, auth, shelter, PWA
         ├── 2026-03-20-bed-availability/              # v0.2.0 — snapshots, search, freshness
         ├── 2026-03-20-reservation-system/            # v0.3.0 — holds, countdown, auto-expiry
@@ -179,13 +180,32 @@ openspec/
 - **[nginx-dev-parity](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-30-nginx-dev-parity/)** — --nginx flag for dev-start.sh, Playwright nginx profile, SSE connectivity test, auth origin fix. 12/12 tasks. Archived 2026-03-30.
 - **[sse-stability](https://github.com/ccradle/findABed/tree/main/openspec/changes/archive/2026-03-31-sse-stability/)** — SseEmitter -1L timeout, fetch-event-source, Last-Event-ID replay, NetworkFirst cache, IllegalStateException race fix, Micrometer metrics, Grafana panels, SseStabilitySimulation. 24/24 tasks. Tagged v0.23.0. Archived 2026-03-31.
 
+> **Note:** After v0.23 (March 2026), the change archive grew faster than this README. Run `openspec list --archived --json` from the docs repo for the canonical listing of all **65 archived changes through v0.52**. Highlights since v0.23:
+> - **v0.34.0 — coc-admin-escalation** — DV referral escalation queue, claim/release soft-locks, coordinator-DV-shelter assignment policy
+> - **v0.39.0 — cross-tenant-isolation-audit** — `findById(UUID)` audit across ~30 call sites + RLS hardening (warroom-driven)
+> - **v0.45.0 — multi-tenant-production-readiness Phase A** — pgaudit, observability profile, OCI Always Free deploy
+> - **v0.48.0 — Phase B FORCE RLS** — 7 regulated tables locked down at the database layer
+> - **v0.49.0 — operational-alerting** — Prometheus → Alertmanager → Gmail SMTP + ntfy.sh push
+> - **v0.50.0 — deploy-rehearsal-harness** — operator-laptop prod-mirror gate (`make rehearse-deploy`)
+> - **v0.51.0 — Phase F crypto-shred** — per-tenant wrapped DEKs, real hardDelete tenant lifecycle
+> - **v0.52.0 — Phase G-1/G-2/G-3** — tamper-evident audit chain + OCI external anchor, audit-chain verifier
+> - **v0.53.0 (in PR review) — Phase G-4** — platform admin split (PLATFORM_OPERATOR + platform_user + MFA), per-action `platform_admin_access_log`, DV-aware demo defenses, accessibility refinements, platform-admin Prometheus monitoring
+
 ### Active Changes
 
-- **[mcp-agent-integration](https://github.com/ccradle/findABed/tree/main/openspec/changes/mcp-agent-integration/)** — Spring AI MCP server (28 tools, Streamable HTTP), reference agent (4 scenarios: natural language bed search, proactive alerting, conversational CoC reporting, coordinator voice updates), DV guardrails, OAuth 2.1 auth.
+12 active OpenSpec changes (run `openspec list --json` for the canonical list with status). Highlights:
 
-### Planned Changes
-
-(none — Phase 1 complete)
+- **[platform-admin-split-and-access-log](https://github.com/ccradle/findABed/tree/main/openspec/changes/platform-admin-split-and-access-log/)** — In PR review (PR #164) for v0.53. Splits PLATFORM_ADMIN authority into PLATFORM_OPERATOR + COC_ADMIN with mandatory MFA, per-action audit log, DV defenses, a11y refinements, platform monitoring.
+- **[mcp-agent-integration](https://github.com/ccradle/findABed/tree/main/openspec/changes/mcp-agent-integration/)** — Spring AI MCP server (28 tools, Streamable HTTP), reference agent (4 scenarios), DV guardrails, OAuth 2.1 auth.
+- **[multi-tenant-production-readiness](https://github.com/ccradle/findABed/tree/main/openspec/changes/multi-tenant-production-readiness/)** — Phase A/B/C/D/F/G slice plan, partial: A+B+C+D+F+G-1/2/3 shipped; G-4 in PR.
+- **[sse-backpressure-phase2](https://github.com/ccradle/findABed/tree/main/openspec/changes/sse-backpressure-phase2/)** — SSE Phase 2 audit findings (5 code bugs + 8 spec gaps).
+- **[notification-deep-linking](https://github.com/ccradle/findABed/tree/main/openspec/changes/notification-deep-linking/)** — Notification → focused-row routing, ≤30s time-to-accept target.
+- **[transitional-reentry-support](https://github.com/ccradle/findABed/tree/main/openspec/changes/transitional-reentry-support/)** — V90-V93 reentry-spec migrations queued post-v0.53.
+- **[capacitor-native-app](https://github.com/ccradle/findABed/tree/main/openspec/changes/capacitor-native-app/)** — Push notifications, biometric auth, SQLite offline (#53).
+- **[issue-reporting-feedback](https://github.com/ccradle/findABed/tree/main/openspec/changes/issue-reporting-feedback/)** — In-app issue reporting (#67).
+- **[unified-profile-menu](https://github.com/ccradle/findABed/tree/main/openspec/changes/unified-profile-menu/)** — Avatar trigger + /settings page (#60).
+- **[researcher-engagement](https://github.com/ccradle/findABed/tree/main/openspec/changes/researcher-engagement/)** — Data inventory and pilot partnership pathway (#80).
+- **[opsx-runbook-draft-skill](https://github.com/ccradle/findABed/tree/main/openspec/changes/opsx-runbook-draft-skill/)** + **[ci-runbook-consulted-check](https://github.com/ccradle/findABed/tree/main/openspec/changes/ci-runbook-consulted-check/)** — Runbook authoring tooling.
 
 ### How to Contribute a Change
 
