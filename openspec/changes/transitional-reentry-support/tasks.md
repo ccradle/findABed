@@ -1,13 +1,13 @@
 ## 0. Scaffolding status
 
 - [x] 0.1 Feature branch `feature/transitional-reentry-support` created in code repo (2026-04-24 post-v0.51.0)
-- [x] 0.2 Migration numbering renumbered V79–V82 → V85–V88 (Phase F consumed V79–V84)
+- [x] 0.2 Migration numbering renumbered V79–V82 → V85–V88 (Phase F consumed V79–V84) — **SUPERSEDED 2026-04-26**: Phase G has since taken V85, V87, V88, V89; renumber to V90–V93 before implementation. Tracked in task 0.8 + memory `project_reentry_spec_renumber.md`.
 - [x] 0.3 Design open questions #1 + #2 resolved (500-char UI / 1000-char server hold note; county detail-card only)
 - [x] 0.4 Design open question #4 resolved (features.reentryMode scoped into V85)
 - [x] 0.5 Design open question #5 resolved to **Option A** (tenant_dek-wrapped ciphertext) via issue #152, closed 2026-04-24. V87 bundles tenant_dek.purpose CHECK update + reservation column adds. See §2.3 for shape.
 - [ ] 0.6 Book Casey Drummond i18n legal-review window for EN+ES disclaimer strings BEFORE implementation starts (not at task 15.6).
-- [ ] 0.7 Clarify Asheville stakeholder messaging posture (describe as "coming" or hold until tagged?).
-- [ ] 0.8 Re-verify Flyway HWM after Phase G tags — shift V85–V88 slots forward if Phase G's audit chain hash migration pushes HWM beyond V84.
+- [x] 0.7 ~~Clarify Asheville stakeholder messaging posture~~ — **N/A per Corey 2026-04-26**: there is no Asheville implementation; this comms-posture concern doesn't apply. Item dropped.
+- [ ] 0.8 Re-verify Flyway HWM after Phase G tags — **CONFIRMED 2026-04-26**: Phase G has taken V85/V87/V88/V89. Renumber V85–V88 → **V90–V93** before implementation begins. Reference: `project_reentry_spec_renumber.md`.
 
 ## 1. Pre-flight
 
