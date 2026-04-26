@@ -12,9 +12,16 @@ Two categories: **User Role Personas** (the people who use the platform) and
 
 ## User Role Personas
 
-These are the four roles defined in the platform (`PLATFORM_ADMIN`, `COC_ADMIN`,
-`COORDINATOR`, `OUTREACH_WORKER`) made human. Use these when evaluating UX,
+These are the platform roles made human. Use these when evaluating UX,
 writing Playwright tests, auditing accessibility, or deciding what to demo first.
+
+**Post-G-4.4 (v0.53) role taxonomy:** `COC_ADMIN` (tenant-scoped admin),
+`COORDINATOR`, `OUTREACH_WORKER`, plus `PLATFORM_OPERATOR` for cross-tenant
+platform actions (separate identity backed by the `platform_user` table
+with mandatory MFA). The legacy `PLATFORM_ADMIN` role is deprecated; the
+V87 backfill grants `COC_ADMIN` to existing `PLATFORM_ADMIN`-bearing users
+so historical persona descriptions referencing PLATFORM_ADMIN map cleanly
+to today's COC_ADMIN.
 
 ---
 
@@ -335,6 +342,66 @@ How many clicks? What does the confirmation look like?"
 
 ---
 
+### 🔓 Demetrius Holloway — Reentry Housing Navigator
+
+**Real role:** `NAVIGATOR` (third-party hold model — holds on behalf of clients)
+**Organization:** Trillium-contracted reentry organization (Johnston, Wilson, Nash counties, NC)
+**Experience:** Certified Peer Support Specialist (CPSS); 7 years lived experience of incarceration; 3 years reentry housing navigation
+
+**Who he is:**
+Demetrius was released from North Carolina state prison in 2021 with $45, a bus ticket, and no verified home plan. He spent his first three nights in an emergency shelter, navigating bed availability through phone calls alone. That experience became his career. He now works as a CPSS and housing navigator for a Trillium-contracted reentry organization — placing people leaving incarceration into shelter, often on release day itself.
+
+He sits on his county's Local Reentry Council. He has never used a bed availability platform because one has never existed in his world. He works the phone. His case is not unusual: 28% of people released from NC prisons in 2024 were released into homelessness (5,610 of 19,690 releases). Housing instability at release is the primary predictor of reincarceration.
+
+**Device and environment:**
+- Field mobile — often in a parking lot, on a bus, or from a shelter lobby
+- Does not always have a smartphone available in the field
+- Clients are sometimes given a phone at release; others are not
+- Release day logistics create 2–4 hours of transport, paperwork, and transfer delays between hold and arrival
+
+**The three blockers (core design requirements he surfaces):**
+
+**Blocker 1 — Criminal record policy is invisible**
+Shelter criminal record acceptance policies are not in any system he uses. They vary: some accept all felonies, some exclude violent felonies, some exclude sex offenses, some have blanket bans. A bed availability number is useless without knowing whether that shelter will accept his client's charge. Every shelter call starts: *"Do you accept someone with a felony?"* He learns policies by calling. Every time. There is no list.
+- *Design implication:* Shelter records must expose criminal record acceptance policy as a structured field. All displays must carry a disclaimer: self-reported by shelter, verify directly before assuming eligibility.
+
+**Blocker 2 — Supervision geography is invisible**
+People on post-release supervision are restricted to an approved county or district by their supervision order. A bed in the wrong county is not a usable bed — accepting it triggers a supervision violation.
+- *Design implication:* County must be a discrete indexed field on shelter records with a filter in bed search. Full DAC integration for automatic boundary enforcement is future scope; county filter is the MVP.
+
+**Blocker 3 — Hold duration is too short for release day**
+Prison bus drops at 8am. Transport to shelter may take 2–4 hours depending on location, paperwork delays, and transfer logistics. A 90-minute hold frequently expires before the client arrives.
+- *Design implication:* Hold duration must be configurable at the tenant/deployment level with a UI-exposed setting in the admin panel. Reentry deployments set 180–240 minute holds.
+
+**Additional requirements he surfaces:**
+- **Third-party navigator hold** — he holds beds on behalf of clients who may not be platform users and may not have phones. Hold attribution requires `held_for_client_name` + `held_for_client_dob` — enough for the shelter to match the person at the door. PII nulled after 24h post-expiry (same pattern as DV referral tokens).
+- **Hold notes** — free text on the reservation record, visible to the shelter coordinator. Example: *"Client on post-release supervision, must arrive by noon, contact PO [name/number] if questions."*
+- **`requires_verification_call` flag** — boolean on the shelter record that surfaces to the navigator when this shelter requires a direct call to verify eligibility even when policy fields are populated.
+
+**His aspirational workflow (FABT):**
+1. Client release date confirmed — opens FABT on his phone
+2. Filters by county (approved supervision geography), shelter type, `accepts_felonies: true`
+3. Sees which shelters have available beds AND accept his client's charge category
+4. Calls the top two or three to confirm — the platform reduced his call list from six to two
+5. Places a hold with client name and hold notes for the shelter coordinator
+6. Transports client — hold is still active when they arrive (180-minute default)
+7. Shelter coordinator matches client name to hold record, completes intake
+
+**His design review questions:**
+1. Does the shelter accept people with felony records, and if so, which offense types are excluded?
+2. How long can a hold be extended, and who can release it if the client is delayed?
+3. What happens if the client doesn't have a phone? (Third-party model — the person seeking the bed is not always the person interacting with the platform)
+4. Can I see historical fill rates for a shelter? (A shelter that lists available beds every Monday but is full by 10am is not the same as genuine availability)
+5. What if the shelter's criminal record policy is wrong in the system? (He needs the disclaimer and the `requires_verification_call` flag — the platform reduces unnecessary calls, it does not replace verification)
+
+**His canonical quote:**
+*"The shelter might have a bed. But if they don't take his charge, that bed doesn't exist for us. I don't find that out until I call. And by then it's 9am and he's been standing outside for an hour."*
+
+**Broader lens:**
+Demetrius represents an entire practitioner category: CPSS workers, Local Reentry Council case managers, Trillium T-STAR Health Specialists, halfway house staff, and DPS community supervision officers who informally help clients find beds. All of them share the same three blockers. His use case makes FABT's value proposition legible to the NC Department of Adult Correction, Trillium Health Resources, and the state's Reentry 2030 initiative.
+
+---
+
 ### 🌐 Reverend Alicia Monroe — Faith Community Shelter Operator
 
 **Real role:** `COORDINATOR` (volunteer-run, seasonal shelter)
@@ -544,6 +611,92 @@ is disclosed to an abuser." That drives the threat model priority.
 Run OWASP ZAP in active scan mode against the demo URL. Every finding
 in that report will appear in the city IT officer's own scan. Better to
 see it first.
+
+---
+
+### 🗄️ Elena Vasquez — Senior PostgreSQL DBA / Database Reliability Engineer
+
+**Real role:** External advisor — database architecture, RLS design, performance
+**Background:** 14 years PostgreSQL administration, 4 years at Crunchy Data,
+currently principal DBRE at a multi-tenant SaaS company (5,000+ tenants on
+PostgreSQL with RLS-based isolation)
+**Certifications:** EDB PostgreSQL Professional, AWS Database Specialty
+**Community:** Speaks at PGConf US annually, maintains a popular blog on
+PostgreSQL RLS patterns, contributor to pgaudit extension
+
+**Who she is:**
+Elena has seen every way PostgreSQL RLS can silently fail. She has debugged
+cross-tenant data leaks at 3am, traced "zero rows returned" bugs to
+connection pool session variable leakage, and written the incident reports
+that changed how her company deploys RLS. She is methodical, precise, and
+allergic to guessing. Her first response to any database issue is "show me
+the actual state" — she trusts `pg_policies`, `pg_stat_activity`, and
+`EXPLAIN ANALYZE` over hypotheses.
+
+**What she reviews:**
+- RLS policy design: USING vs WITH CHECK semantics, permissive vs restrictive
+  policy composition, table owner bypass behavior
+- Connection pool interaction: `set_config` scoping (transaction-local vs
+  session-level), HikariCP connection lifecycle, state leakage between requests
+- Spring Data JDBC + PostgreSQL: how `@Query`, `CrudRepository.save()`, and
+  `INSERT RETURNING` interact with RLS policies
+- Migration safety: Flyway + PostgreSQL transactional DDL, `ALTER DEFAULT
+  PRIVILEGES` inheritance rules, `CREATE INDEX CONCURRENTLY` outside transactions
+- Performance under RLS: LEAKPROOF function requirements, index usage through
+  policy predicates, cascading subquery cost in policy USING clauses
+
+**Her diagnostic approach (always in this order):**
+1. **Reproduce, don't theorize.** Connect to the actual database. Never guess
+   what the state is — query it.
+2. **Check `pg_policies`** — are the policies what you think they are?
+3. **Check grants** — does the role have the privilege? `ALTER DEFAULT PRIVILEGES`
+   has subtle rules about which creating role triggers the default.
+4. **Check `current_user`, `current_setting()`** — is the session state what you
+   expect? Connection pooling can surprise you.
+5. **Check `EXPLAIN`** — is the RLS predicate being applied? Is it using an index
+   or forcing a sequential scan?
+6. **Check the JDBC driver behavior** — Spring Data JDBC's `INSERT RETURNING *`
+   triggers SELECT policy evaluation. This is documented PostgreSQL behavior but
+   surprises every application developer the first time.
+
+**Her current findings (static review):**
+1. **`INSERT RETURNING *` triggers SELECT RLS** — Spring Data JDBC's
+   `CrudRepository.save()` always uses `INSERT ... RETURNING *`. PostgreSQL
+   evaluates the SELECT policy on the RETURNING clause. If `current_user_id`
+   doesn't match the inserted row's `recipient_id`, the RETURNING is blocked
+   and the JDBC driver reports it as an RLS violation. Fix: set `current_user_id`
+   to the recipient's UUID (transaction-local) before INSERT.
+2. **`set_config(name, value, true)` is transaction-local** — safe with connection
+   pooling. `set_config(name, value, false)` is session-level — leaks across
+   requests via HikariCP. The codebase correctly uses `false` at connection init
+   (overwritten on every checkout) and `true` for mid-transaction overrides.
+3. **`@Modifying @Query` DELETE without RETURNING** — should not trigger SELECT
+   policy. If a DELETE appears to not work, check whether the `@Transactional`
+   context is actually committing, and whether the cutoff parameter is binding
+   correctly (Spring Data JDBC handles `Instant` → `TIMESTAMPTZ` via registered
+   converters, but raw `JdbcTemplate` does not — use `Timestamp.from()`).
+4. **`ALTER DEFAULT PRIVILEGES` only applies to the creating role** — if Flyway
+   runs as `fabt_test` and sets defaults for `fabt_test`, then tables created by
+   `fabt_test` get the grants. But if `SET ROLE` changes the creating role before
+   the CREATE TABLE, the defaults don't apply. Verify with `\dp` or `relacl`.
+
+**Her key positions:**
+- Never guess database state. Query it. `pg_policies`, `pg_stat_activity`,
+  `information_schema.table_privileges` — trust the catalog, not the code.
+- RLS failures are silent by design (zero rows, not errors). This is a feature
+  for security but a nightmare for debugging. Add explicit diagnostic queries
+  in tests when RLS is involved.
+- `EXPLAIN ANALYZE` is non-negotiable for any query that touches RLS-protected
+  tables at scale. RLS predicates that prevent index usage will not show up
+  until you have 10,000+ rows.
+- Connection pool + RLS is the most common source of multi-tenant data bugs.
+  Every connection checkout must explicitly set the session state. Never rely
+  on leftover state from a previous request.
+
+**Her lens for every RLS issue:**
+"Show me the pg_policies output, the current_setting values, and the EXPLAIN
+plan. I'll tell you in 30 seconds whether it's a policy issue, a grant issue,
+or a session state issue."
 
 ---
 
@@ -1065,6 +1218,52 @@ gate is personal — it's not a nice-to-have.
 
 ---
 
+### ♿ Tomás Herrera — Accessibility Engineer
+
+**Background:** 8 years doing accessibility engineering in government and civic
+tech. IAAP CPACC-certified. Former accessibility lead at GSA 18F, where he
+shipped WCAG 2.1 AA remediation for several federal benefits portals under
+Section 508 audit pressure. Runs NVDA and VoiceOver daily as part of his testing
+practice, not as an afterthought. Co-authored internal guidance used by two
+state Medicaid agencies.
+
+**Lens:** "Every violation has a name — somebody who hits a wall the moment
+we ship it." The ADA Title II April 24, 2026 deadline for large government
+entities is a non-negotiable gate for any city adoption conversation — Teresa
+Nguyen's procurement path runs directly through his approval. Cares equally
+about the reader using NVDA in a hospital discharge office, the coordinator
+with presbyopia zooming to 200%, and the outreach worker using voice control
+while driving. Accessibility is a release gate, a peer to QA and performance,
+not a polish pass.
+
+**Key positions:**
+- WCAG 2.1 AA is the baseline, not the ceiling — the project should target AA
+  and spot-check AAA on critical flows (bed search, hold, DV referral)
+- Every color token in `global.css` must ship with a contrast annotation
+  (`/* on X bg = Y:Z ✓ */`) — unannotated tokens are how dark-mode contrast
+  bugs ship. The `--color-error-mid` regression on 2026-04-12 is the
+  reference incident.
+- `aria-hidden="true"` does not excuse insufficient contrast on visible
+  decoration — users who zoom to 400% or use Windows High Contrast still
+  see the element, and axe-core correctly flags it
+- axe-core must run on every persona-critical page in CI, not just the
+  home page — the color-system spec is the pattern to copy
+- Keyboard-only traversal of every core flow must be part of the Playwright
+  regression suite, not a manual QA checklist item
+- NVDA + VoiceOver spot-check before every tagged release — 20 minutes of
+  screen reader time catches things axe cannot
+- Focus indicators must be visible in both light and dark modes (dark mode
+  is where focus rings quietly disappear into the background)
+- Error messages live in Keisha's lane as much as his — plain English, no
+  jargon, dignity-preserving. A technically-accessible error that shames
+  the user is still an accessibility failure.
+- Skip links, landmark regions, and heading hierarchy are load-bearing for
+  screen reader users — treat them like API contracts, not decoration
+- Motion-reduced media query respected everywhere: any animation longer
+  than 200ms needs a `prefers-reduced-motion` guard
+
+---
+
 ### ⚡ Sam Okafor — Senior Performance Engineer
 
 **Lens:** SLO compliance, cache behavior under load, concurrency safety, CI
@@ -1110,7 +1309,18 @@ what is true and name what is planned — the honesty itself builds credibility.
 This is not a style preference. It is a non-negotiable principle that every
 persona depends on. Apply to every document, page, pitch, and commit message.
 
-**For accessibility auditing:**
+**For accessibility engineering (WCAG conformance and assistive tech):**
+Ask: "Would Tomás sign off on this before ship?" Specifically: does every color
+token in `global.css` carry a contrast annotation? Does the Playwright suite
+include an axe-core run on this page? Is the keyboard-only path tested through
+nginx, not just via click selectors? Has NVDA been run over the flow within
+the last tagged release? Before any ADA Title II-sensitive conversation with
+Teresa or a city IT team, run the checklist: color-system spec green, keyboard
+traversal green, focus rings visible in dark mode, motion-reduced guards on
+animations, skip links present. `aria-hidden` never excuses insufficient
+contrast — zoom and Windows High Contrast still see it.
+
+**For accessibility auditing (user-experience lens):**
 Ask: "Can Darius accomplish this task on a mid-range Android with one hand and
 bad signal? Can Sandra complete this in under 30 seconds while being interrupted?"
 
@@ -1188,6 +1398,9 @@ using only what we've given them? Before any pilot onboarding conversation,
 share the demo URL with Devon for a gap analysis of in-app help text,
 empty states, and error messages.
 
+**For reentry housing navigation:**
+Ask: "Does Demetrius know before he calls whether this shelter will accept his client's charge? Can he filter by supervision-approved county? Will the hold still be active when the transport arrives?" Apply to every change touching shelter search filters, hold duration configuration, and shelter eligibility fields. His three blockers are non-negotiable for any reentry deployment: criminal record policy visibility, supervision geography filtering, and hold duration long enough for release-day transport. The third-party navigator model also applies — hold attribution must support placing a bed for a client who is not a platform user and may not have a phone.
+
 **For hospital / institutional user scenarios:**
 Ask: "Does this work in locked-down hospital Chrome with no app install?
 Is the hold duration sufficient for discharge workflows?"
@@ -1204,10 +1417,12 @@ Is the hold duration sufficient for discharge workflows?"
 | 🏛️ Teresa Nguyen | City Official | WCAG, data sovereignty, security audit, support model |
 | 💰 Priya Anand | Funder | Theory of change, sustainability, named pilot partner |
 | 🏥 Dr. James Whitfield | Hospital SW | Hold duration, hospital PWA, zero-PII statement |
+| 🔓 Demetrius Holloway | Reentry Navigator | Criminal record policy filter, supervision geography, hold duration for release day |
 | 🌐 Rev. Alicia Monroe | Faith Shelter | Zero training, partial participation, plain-language cost |
 | 📊 Dr. Kenji Watanabe | Policy Researcher | HMIS compliance, SPM alignment, small-cell suppression |
 | 🙋 Keisha Thompson | Lived Experience | Dignity, person-centered language, human impact |
 | 🔒 Marcus Webb | Pen Tester / AppSec | Auth surface, multi-tenant isolation, security headers |
+| 🗄️ Elena Vasquez | PostgreSQL DBA / DBRE | RLS policy design, connection pool state, JDBC+PG interaction |
 | 📣 Simone Okafor | Brand & Communications | Naming, messaging, audience-specific materials, copy review |
 | 📋 Devon Kessler | Instructional Designer | Job aids, coordinator quick-start card, onboarding formats |
 | 🔍 Nadia Petrova | SEO Strategist | Crawlability, structured data, local SEO, new domain authority |
@@ -1217,6 +1432,7 @@ Is the hold duration sufficient for discharge workflows?"
 | 🤝 Maria Torres | Product Manager | User outcomes, adoption sequencing, outreach strategy |
 | 🔧 Jordan Reyes | SRE | Deployment, security posture, CI integrity |
 | 🧪 Riley Cho | QA Engineer | Test coverage, invariant enforcement, DV canary |
+| ♿ Tomás Herrera | Accessibility Engineer | WCAG 2.1 AA, ADA Title II, color contrast, screen reader, keyboard |
 | ⚡ Sam Okafor | Performance | SLO compliance, cache behavior, load testing |
 | ⚖️ Casey Drummond | Attorney | Legal compliance, data governance, procurement path |
 
@@ -1225,4 +1441,4 @@ Is the hold duration sufficient for discharge workflows?"
 *Finding A Bed Tonight — Personas Reference*
 *Used by: Claude Code (CLAUDE-CODE-BRIEF.md), design reviews, accessibility audits,
 QA planning, demo preparation, funding conversations, pilot design*
-*Last updated: April 8, 2026 — v20 personas*
+*Last updated: April 23, 2026 — v22 (added Demetrius Holloway, reentry housing navigator)*

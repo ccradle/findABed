@@ -183,8 +183,17 @@ material needed. Here's the mapping:
 | v0.10.1 | DV Address Redaction | dv-address-redaction | Configurable tenant visibility policy |
 | v0.11.0 | HMIS Bridge | hmis-bridge | Async HMIS push, DV aggregation |
 
-**Suggested next tag:** `v0.12.0` — CoC Analytics + WCAG + Hold Duration Config
-(these three shipped together in the week of March 24-27)
+**Historical note:** This document was originally written before
+v0.12.0 shipped. The "Suggested next tag" line below is preserved
+for chronology but is no longer current — the codebase is at
+**v0.52.0 live** with **v0.53.0 in PR review** (PR #164, Phase G-4
+platform admin split). Each release v0.16+ has its own
+`docs/oracle-update-notes-v0.X.Y.md` runbook in the code repo;
+the strategy described in this doc has held throughout.
+
+> *Original suggestion (v0.12.0 — CoC Analytics + WCAG + Hold
+> Duration Config — these three shipped together in the week of
+> March 24-27 2026.)*
 
 ---
 

@@ -232,13 +232,12 @@ broader adoption or replication.
 
 ### OUTREACH / RELATIONSHIPS
 
-- [ ] **Oracle demo environment live**
-  The deployment runbook is complete (`oracle-demo-runbook.md`). Pending:
-  Srinivasan Nallagounder review (weekends only), domain registration,
-  and VM provisioning. Can proceed in parallel with Tier 1 items.
-  **Owner:** Jordan Reyes (runbook) / Corey Cradle (execution) /
-  Srinivasan Nallagounder (Oracle review)
-  **Source:** Jordan Reyes, Maria Torres
+- [x] **Oracle demo environment live** (resolved — live at findabed.org
+  since v0.45). Each release ships its own deploy runbook at
+  `finding-a-bed-tonight/docs/oracle-update-notes-vX.Y.Z.md`; the older
+  one-shot `oracle-demo-runbook.md` is obsolete and queued for archival
+  along with the v0.14.1 / v0.21.0 historical copies in the docs-repo
+  root. Current live version: v0.52.0; v0.53.0 in PR review (PR #164).
 
 - [ ] **Contact Open Referral re: HSDS extension**
   After the Raleigh pilot produces 3 months of real data, contact Greg Bloom
