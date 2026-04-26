@@ -192,11 +192,11 @@
 
 ### 6.c Accessibility refinements (Tomás)
 
-- [ ] 6.12 TOTP entry input HTML semantics: `<input type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" aria-label="6-digit code from authenticator">`. Apply on platform login MFA verify page AND tenant-side TOTP enrollment confirm.
-- [ ] 6.13 QR code page semantics: `<img alt="QR code: scan with your authenticator app to register MFA">` PLUS adjacent visible text element `<code>{secret}</code>` PLUS `<a>Can't scan? Enter this secret manually</a>` toggle. Make secret copy-to-clipboard button keyboard-accessible.
-- [ ] 6.14 Backup codes display: semantic `<ol>` with each code in `<li>`; per-code copy-to-clipboard button (keyboard accessible); copy-all button; print-friendly stylesheet (CSS `@media print` rule renders without nav chrome); large monospace font (codes are alphanumeric); "Save these codes" h2 heading
-- [ ] 6.15 Lockout error message: render in `aria-live="polite"` region with text "Account locked. Try again in 15 minutes." Screen-reader-friendly announcement
-- [ ] 6.16 "Try it Live" page expansion: ensure `<h2>` per tenant; per-user role description for screen readers; semantic table or definition list (not just `<div>` soup)
+- [x] 6.12 TOTP entry input HTML semantics: `<input type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" aria-label="6-digit code from authenticator">`. Apply on platform login MFA verify page AND tenant-side TOTP enrollment confirm.
+- [x] 6.13 QR code page semantics: `<canvas role="img" aria-label="...">` plus `<details>` disclosure with code + keyboard-accessible Copy button (kept the disclosure pattern instead of always-visible per UX read; both forms are keyboard-accessible).
+- [x] 6.14 Backup codes display: semantic `<ol>` with each code in `<li>`; per-code copy-to-clipboard button (keyboard accessible); copy-all + download + print buttons; `@media print` rule with `.fabt-print-hide` class; large monospace; "Save these codes" h2 heading
+- [x] 6.15 Lockout error region: `aria-live="polite"` + `aria-atomic="true"` + conditional `role="alert"` on the LoginPage error div. Lockout text comes from API (already localized).
+- [x] 6.16 "Try it Live" page caption: existing `<table>` already had thead/tbody/th[scope=col]; added `<caption>` describing the multi-tenant matrix purpose. Caption replaces the prior aria-label so sighted users get the same context too.
 
 ### 6.d Monitoring + observability additions (Jordan)
 
