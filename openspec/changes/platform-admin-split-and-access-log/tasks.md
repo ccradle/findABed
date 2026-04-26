@@ -200,13 +200,13 @@
 
 ### 6.d Monitoring + observability additions (Jordan)
 
-- [ ] 6.17 Add Prometheus alert rules in `deploy/prometheus/phase-g-platform-admin.rules.yml`:
-  - `FabtPlatformLoginFailureBurst` — `rate(fabt_platform_login_failures_total[5m]) > 5` sustained 2 min → page operator
-  - `FabtPlatformActionWithoutJustification` — should never fire if AOP works; defense in depth alert (counter increments only on aspect-bug condition)
-  - `FabtPlatformUserDelayedActivation` — `time_since(fabt_platform_user_created_seconds) > 86400 AND fabt_platform_user_mfa_enabled == 0` (operator forgot to activate)
-  - `FabtPlatformUserLockedOut` — INFO-level alert when any platform_user enters lockout state
-- [ ] 6.18 Add MDC marker `platform_action: true` to all PlatformAdminLogger aspect log statements (Jordan's SOC filtering)
-- [ ] 6.19 Document Grafana dashboard panel ideas in `docs/observability/platform-admin-monitoring.md` (panels can be built Phase H+; documented now for continuity)
+- [x] 6.17 Add Prometheus alert rules in `deploy/prometheus/phase-g-platform-admin.rules.yml`:
+  - [x] `FabtPlatformLoginFailureBurst` — backed by `fabt.platform.login.failures{reason}` counter (4 reasons: bad_email/locked/bad_password/mfa_disabled)
+  - [x] `FabtPlatformActionWithoutJustification` — backed by `fabt.platform.action.without_justification{action}` counter; aspect-side defense-in-depth check that throws AccessDeniedException if X-Platform-Justification missing
+  - [ ] `FabtPlatformUserDelayedActivation` — DEFERRED to F28 (needs V94 SECURITY DEFINER function + scheduled gauge; operational gap covered by isLoginAllowed() + §5.10 runbook)
+  - [x] `FabtPlatformUserLockedOut` — backed by `fabt.platform.user.locked_out` counter; fires only on the lockout TRANSITION
+- [x] 6.18 MDC marker `platform_action: true` — already applied at PlatformAdminLogger aspect entry from G-4.4 (line 124-125); added explicit set+remove in PlatformAdminAccessLogger.logLockout error path so SOC filters catch service-internal lockout audit failures too.
+- [x] 6.19 `docs/observability/platform-admin-monitoring.md` — what v0.53 emits (counters + MDC + audit_events surfaces), 3 active alert rules + 1 deferred (F28), 6 Grafana panel sketches for Phase H+, dashboard JSON skeleton.
 
 ### 6.e Verification
 
