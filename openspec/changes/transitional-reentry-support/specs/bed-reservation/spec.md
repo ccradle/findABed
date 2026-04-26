@@ -5,12 +5,12 @@ The system SHALL support third-party navigator hold attribution on reservation r
 
 **API / domain layer:** callers (and the `Reservation` Java entity) see plaintext — `heldForClientName` String, `heldForClientDob` LocalDate, `holdNotes` String.
 
-**Storage (Option A — issue #152):** the database persists these fields as `held_for_client_name_encrypted TEXT`, `held_for_client_dob_encrypted TEXT`, `hold_notes_encrypted TEXT` — all nullable, all storing the base64 v1 `EncryptionEnvelope` produced by `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)`. The V87 migration bundles the `tenant_dek.purpose` CHECK-constraint update to add `RESERVATION_PII` to the allowed set.
+**Storage (Option A — issue #152):** the database persists these fields as `held_for_client_name_encrypted TEXT`, `held_for_client_dob_encrypted TEXT`, `hold_notes_encrypted TEXT` — all nullable, all storing the base64 v1 `EncryptionEnvelope` produced by `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)`. The V92 migration bundles the `tenant_dek.purpose` CHECK-constraint update to add `RESERVATION_PII` to the allowed set.
 
 **Two-layer PII posture (defense in depth):**
 
 1. **At-rest ciphertext via `tenant_dek`.** A `pg_dump` captured at any time exports ciphertext that is unreadable without both the master KEK and the tenant's `tenant_dek` row. Inherits the crypto-shred property from Phase F-6: `TenantLifecycleService.hardDelete(tenantId)` CASCADE-destroys the tenant's wrapped DEKs, rendering any surviving ciphertext unrecoverable.
-2. **24h post-resolution purge via Spring Batch.** All three `_encrypted` fields SHALL be nulled 24 hours after the reservation's resolution time (expiry, confirmation, or cancellation). The purge applies to the ciphertext columns; the plaintext was never persisted. `hold_notes_encrypted` is explicitly in scope for the purge — hold notes may contain names and contact information of supervision officers. The cleanup job is a scope extension of the existing DV referral token purge job; it must be null-safe on pre-V87 databases.
+2. **24h post-resolution purge via Spring Batch.** All three `_encrypted` fields SHALL be nulled 24 hours after the reservation's resolution time (expiry, confirmation, or cancellation). The purge applies to the ciphertext columns; the plaintext was never persisted. `hold_notes_encrypted` is explicitly in scope for the purge — hold notes may contain names and contact information of supervision officers. The cleanup job is a scope extension of the existing DV referral token purge job; it must be null-safe on pre-V92 databases.
 
 **UI labeling (dignity-centered, per Keisha Thompson warroom):**
 - `heldForClientName` → field label: "Who is this hold for?" / sub-label: "Name (for shelter check-in)"
@@ -43,8 +43,8 @@ The system SHALL support third-party navigator hold attribution on reservation r
 - **AND** the cleanup job performs NO decryption — it nulls ciphertext columns directly
 - **AND** the reservation record and its other fields (status, expiresAt, shelterId, etc.) are preserved
 
-#### Scenario: PII cleanup job is null-safe pre-V87
-- **WHEN** the Spring Batch cleanup job runs on a database before V87 migration is applied
+#### Scenario: PII cleanup job is null-safe pre-V92
+- **WHEN** the Spring Batch cleanup job runs on a database before V92 migration is applied
 - **THEN** the job completes without error (null-safe logic; the `_encrypted` columns do not exist yet)
 
 #### Scenario: heldForClientDob validation rejects implausible dates (plaintext-layer validation)

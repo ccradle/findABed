@@ -1,32 +1,32 @@
 ## 0. Scaffolding status
 
 - [x] 0.1 Feature branch `feature/transitional-reentry-support` created in code repo (2026-04-24 post-v0.51.0)
-- [x] 0.2 Migration numbering renumbered V79–V82 → V85–V88 (Phase F consumed V79–V84) — **SUPERSEDED 2026-04-26**: Phase G has since taken V85, V87, V88, V89; renumber to V90–V93 before implementation. Tracked in task 0.8 + memory `project_reentry_spec_renumber.md`.
+- [x] 0.2 Migration numbering renumbered twice: V79–V82 → V85–V88 (post-v0.51.0 Phase F) → **V90–V93** (2026-04-26, Phase G consumed V85/V87/V88/V89). Final slot assignments live in §2 below; design.md migration plan + every spec/* reference matches.
 - [x] 0.3 Design open questions #1 + #2 resolved (500-char UI / 1000-char server hold note; county detail-card only)
-- [x] 0.4 Design open question #4 resolved (features.reentryMode scoped into V85)
-- [x] 0.5 Design open question #5 resolved to **Option A** (tenant_dek-wrapped ciphertext) via issue #152, closed 2026-04-24. V87 bundles tenant_dek.purpose CHECK update + reservation column adds. See §2.3 for shape.
+- [x] 0.4 Design open question #4 resolved (features.reentryMode scoped into V90)
+- [x] 0.5 Design open question #5 resolved to **Option A** (tenant_dek-wrapped ciphertext) via issue #152, closed 2026-04-24. V92 bundles tenant_dek.purpose CHECK update + reservation column adds. See §2.3 for shape.
 - [ ] 0.6 Book Casey Drummond i18n legal-review window for EN+ES disclaimer strings BEFORE implementation starts (not at task 15.6).
 - [x] 0.7 ~~Clarify Asheville stakeholder messaging posture~~ — **N/A per Corey 2026-04-26**: there is no Asheville implementation; this comms-posture concern doesn't apply. Item dropped.
-- [ ] 0.8 Re-verify Flyway HWM after Phase G tags — **CONFIRMED 2026-04-26**: Phase G has taken V85/V87/V88/V89. Renumber V85–V88 → **V90–V93** before implementation begins. Reference: `project_reentry_spec_renumber.md`.
+- [x] 0.8 Re-verify Flyway HWM after Phase G tags — **DONE 2026-04-26**: Phase G claimed V85/V87/V88/V89; reentry migrations renumbered to **V90 / V91 / V92 / V93**. All references in proposal.md, design.md, tasks.md §2, and specs/* updated in the same commit. Reference: memory `project_reentry_spec_renumber.md`.
 
 ## 1. Pre-flight
 
 - [ ] 1.1 **SCAFFOLDED** — feature branch `feature/transitional-reentry-support` already created (2026-04-24); confirm still exists and pull latest main before resuming active work.
-- [ ] 1.2 Verify actual Flyway HWM: `SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1` — post-v0.51 is V84; post-Phase-G will shift. Adjust migration numbers in tasks 2.x if HWM has advanced beyond V84.
-- [ ] 1.3 Re-confirm design open question #5 resolution = **Option A** (tenant_dek-wrapped). Write V87 per §2.3 below.
+- [ ] 1.2 Verify actual Flyway HWM: `SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1` — expected to be **V89** post-Phase-G (v0.53.0). If any further pre-reentry slice has shipped between v0.53 and reentry-implementation start (e.g. a backlog item from design.md F1/F5/F6/F7/F9/F13), bump tasks 2.x slots to land above the new HWM.
+- [ ] 1.3 Re-confirm design open question #5 resolution = **Option A** (tenant_dek-wrapped). Write V92 per §2.3 below.
 
 ## 2. Database Migrations
 
-- [ ] 2.1 Write V85: add `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY' to `shelter`; add indexed `county` VARCHAR(100) nullable to `shelter`; UPDATE backfill `dvShelter=true` rows to `shelter_type='DV'`; add check constraint `CHECK (dvShelter = FALSE OR shelter_type = 'DV')`; add `features.reentryMode` key to tenant.config default shape (per open question #4 resolution)
-- [ ] 2.2 Write V86: add `eligibility_criteria` JSONB nullable to `shelter_constraints`; add GIN index `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)` — use `mixed=true` migration or separate non-transactional step (CONCURRENTLY cannot run inside a transaction block)
-- [ ] 2.3 Write V87 **(Option A per issue #152)** — two coupled steps in one migration:
+- [ ] 2.1 Write V90: add `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY' to `shelter`; add indexed `county` VARCHAR(100) nullable to `shelter`; UPDATE backfill `dvShelter=true` rows to `shelter_type='DV'`; add check constraint `CHECK (dvShelter = FALSE OR shelter_type = 'DV')`; add `features.reentryMode` key to tenant.config default shape (per open question #4 resolution)
+- [ ] 2.2 Write V91: add `eligibility_criteria` JSONB nullable to `shelter_constraints`; add GIN index `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)` — use `mixed=true` migration or separate non-transactional step (CONCURRENTLY cannot run inside a transaction block)
+- [ ] 2.3 Write V92 **(Option A per issue #152)** — two coupled steps in one migration:
   - (a) **ALTER `tenant_dek.purpose` CHECK constraint** to add `RESERVATION_PII` to the allowed set. V82 currently pins `CHECK (purpose IN ('TOTP', 'WEBHOOK_SECRET', 'OAUTH2_CLIENT_SECRET', 'HMIS_API_KEY'))`. Use the DROP/ADD CONSTRAINT pattern from V82 (not a plpgsql function rewrite).
   - (b) **ALTER `reservation`** to add `held_for_client_name_encrypted TEXT`, `held_for_client_dob_encrypted TEXT`, `hold_notes_encrypted TEXT` — all nullable, all storing base64 v1 `EncryptionEnvelope`.
   - Migration is Flyway-SQL (not Java) because neither step needs JCE; both are DDL.
 
 - [ ] 2.3a Add `KeyPurpose.RESERVATION_PII` enum value to `org.fabt.shared.security.KeyPurpose`. No associated `KeyDerivationService.deriveXxxKey` method needed — this purpose uses the random-DEK path exclusively (the deprecated HKDF derive methods are for the legacy backward-compat shim only).
-- [ ] 2.4 Write V88: add `requires_verification_call` BOOLEAN DEFAULT FALSE to `shelter`
-- [ ] 2.5 Verify V85 migration backfill: integration test confirms `dvShelter=true` rows all have `shelter_type='DV'` and check constraint is active post-migration
+- [ ] 2.4 Write V93: add `requires_verification_call` BOOLEAN DEFAULT FALSE to `shelter`
+- [ ] 2.5 Verify V90 migration backfill: integration test confirms `dvShelter=true` rows all have `shelter_type='DV'` and check constraint is active post-migration
 
 ## 3. Backend: Domain Model
 
@@ -43,7 +43,7 @@
 - [ ] 4.3 `ShelterService`/`ShelterRepository`: persist `shelterType`, `county`, `eligibilityCriteria`, `requiresVerificationCall` on PUT/PATCH; validate `shelterType` against enum; validate `county` against `tenant.config.active_counties` if configured; enforce `dvShelter=true` implies `shelterType=DV` at application layer
 - [ ] 4.4 `ReservationService`: persist `heldForClientName`, `heldForClientDob`, `holdNotes` from hold creation request via `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)`. Store the resulting v1 envelope in the `_encrypted` columns. Validate `heldForClientDob` is before today and after 1900-01-01 BEFORE encryption (plaintext validation only). `dob` is serialized to ISO-8601 string before encryption (`LocalDate.toString()` round-trips cleanly).
 - [ ] 4.5 Add `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration` endpoint: accepts `holdDurationMinutes` integer (30–480), updates `tenant.config.holdDurationMinutes`, requires COC_ADMIN role; hold duration change applies to new holds only
-- [ ] 4.6 Extend Spring Batch cleanup job: null `held_for_client_name_encrypted`, `held_for_client_dob_encrypted`, `hold_notes_encrypted` on reservation records where resolution time + 24h has passed. The job nulls the **ciphertext** columns (it has no key material and no need for it — NULL is NULL regardless of what was encrypted). Logic must be null-safe on pre-V87 databases (no-op if columns not present).
+- [ ] 4.6 Extend Spring Batch cleanup job: null `held_for_client_name_encrypted`, `held_for_client_dob_encrypted`, `hold_notes_encrypted` on reservation records where resolution time + 24h has passed. The job nulls the **ciphertext** columns (it has no key material and no need for it — NULL is NULL regardless of what was encrypted). Logic must be null-safe on pre-V92 databases (no-op if columns not present).
 
 ## 5. Backend: API Layer and DTOs
 
