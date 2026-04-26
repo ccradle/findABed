@@ -184,11 +184,11 @@
 
 ### 6.b DV-defense package (6 items)
 
-- [ ] 6.7 Add bucket4j filter entry: per-IP rate limit on `POST /api/v1/dv-referrals` at 5/hour
-- [ ] 6.8 Add Prometheus metric `fabt_dv_referrals_created_total` labeled by source_ip; add alert rule `FabtDvReferralBurstFromSingleIp` in `deploy/prometheus/dv-defenses.rules.yml` (rate > 10/min sustained 2 min)
-- [ ] 6.9 Create `docs/security/dv-incident-response.md` with documented psql queries for identifying suspicious DV access patterns; tabletop with persona
-- [ ] 6.10 Implement `dvReferralDemoCleanup` batch job (cron: every 6 hours): DELETE PENDING DV referrals from demo tenants older than 48 hours; emits `DV_REFERRAL_DEMO_CLEANUP` audit event under affected tenant chain
-- [ ] 6.11 Add Sec-Fetch-Site header check on `POST /api/v1/dv-referrals`: reject 403 if header present and value is `cross-site`; allow if header is `same-origin`/`same-site`/`none` or absent. Document in spec that this is "raise abuse cost slightly" not "block abuse" (Marcus's accuracy note).
+- [x] 6.7 Add bucket4j filter entry: per-IP rate limit on `POST /api/v1/dv-referrals` at 5/hour
+- [x] 6.8 Add Prometheus metric `fabt_dv_referrals_created_total` labeled by source_ip; add alert rule `FabtDvReferralBurstFromSingleIp` in `deploy/prometheus/dv-defenses.rules.yml` (rate > 10/min sustained 2 min) — cardinality nuance captured as F22 in design.md
+- [x] 6.9 Create `docs/security/dv-incident-response.md` with documented psql queries for identifying suspicious DV access patterns; tabletop with persona
+- [x] 6.10 Implement `dvReferralDemoCleanup` batch job (cron: every 6 hours): DELETE PENDING DV referrals from demo tenants older than 48 hours; emits `DV_REFERRAL_DEMO_CLEANUP` audit event under affected tenant chain — gated by `@Profile("demo")` + `slug LIKE 'dev-%'` (belt + suspenders)
+- [x] 6.11 Add Sec-Fetch-Site header check on `POST /api/v1/dv-referrals`: reject 403 if header present and value is `cross-site`; allow if header is `same-origin`/`same-site`/`none` or absent. Document in spec that this is "raise abuse cost slightly" not "block abuse" (Marcus's accuracy note).
 
 ### 6.c Accessibility refinements (Tomás)
 
