@@ -38,7 +38,7 @@ Marcus clicks Edit on Sunrise Family Center, updates the phone to the real numbe
 
 ## Act 3: Protect — Safety isn't a setting, it's a commitment
 
-**Who:** Platform Administrator (dvAccess required)
+**Who:** CoC Administrator (dvAccess required)
 **What:** Enable DV safeguards on Safe Passage House
 
 Safe Passage House in Durham serves domestic violence survivors. The 211 import brought it in as a regular shelter — addresses visible, no special protections. That needs to change before anyone searches.
