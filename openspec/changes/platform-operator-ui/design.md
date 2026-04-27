@@ -147,6 +147,14 @@ backend/src/main/java/org/fabt/auth/platform/
 - **F44 (NEW):** Print-utilization signal is intentionally absent (Marcus condition #3 forbids client-side telemetry on print). Operator interview at v0.55 to confirm whether print is the chosen offline-recovery path or copy-to-password-manager dominates. If print is rare, the print button can be removed in v0.56.
 - **F45 (NEW):** Sole-operator MFA reset path is currently DB-only (direct psql UPDATE on Oracle VM). v0.55 should add a documented `mvn` Java tool similar to `org.fabt.tooling.HashPasswordCli` that performs the bootstrap-equivalent reset (`password_hash = NULL, mfa_enabled = false, mfa_secret = NULL, account_locked = true`) with safety guards (refuses to run when >1 active platform_user exists, requires explicit confirmation flag).
 
+## NITs (deferred to opportunistic sweep)
+
+These are minor refinements surfaced during warroom round 2 review. None block `/opsx:apply`; address during implementation when convenient or sweep in a future micro-change.
+
+- **N1 (Alex):** Banner countdown tick cadence — `tasks.md` 4.10 says "updates every second." For idle dashboards, this is wasted re-renders for 13 of the 15 minutes. Optimize: tick every 30s while `remaining > 2 min`; tick every 1s when `remaining <= 2 min`. Same UX, ~28x fewer re-renders.
+- **N2 (Jordan):** "Current sessions estimate" Grafana panel description (`tasks.md` 5.2) is fuzzy. With 15-min hard expiry and no refresh tokens, "JWT issuances per 15min" is an exact count of unique sessions, not an estimate. Reword the panel title and tooltip.
+- **N3 (housekeeping):** Once `/opsx:apply` is well underway, consider sweeping the 6 NITs from the warroom-round-2 transcript that were already addressed (S2-S4 from verify report) to confirm they don't re-emerge during code review.
+
 ## Migration / rollout
 
 1. Build with `VITE_PLATFORM_UI_ENABLED=false` in initial deploy → routes 404 even though code is shipped. Smoke test the rest of v0.54.

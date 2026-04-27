@@ -55,6 +55,7 @@ This change ships the SPA layer that turns the validated v0.53 backend flow into
 - `backend/src/main/java/org/fabt/auth/platform/dto/` (new `PlatformOperatorMeDto.java`)
 
 **Out of scope (deferred to v0.55+):**
+- Multi-language UI — English only for v0.54; i18n is a v0.55+ follow-up if a non-English-speaking operator joins
 - Regenerate-backup-codes flow (needs sensitive-action re-MFA ladder; separate OpenSpec)
 - Operator-creates-second-operator UI (needs own threat model + backend endpoint; operator #2 in v0.54 still uses curl bootstrap)
 - Refresh-token / silent renewal (needs explicit threat-model review)
