@@ -245,7 +245,7 @@ The `/platform/dashboard` route SHALL fetch `GET /api/v1/auth/platform/me` on mo
 #### Scenario: Dashboard fetches metadata on mount
 - **WHEN** the dashboard route loads
 - **THEN** the SPA fetches `GET /api/v1/auth/platform/me` with the platform JWT
-- **AND** displays the returned email, lastLoginAt, mfaEnabledAt, backupCodesRemaining
+- **AND** displays the returned email, lastLoginAt, mfaEnrolledAt, backupCodesRemaining
 
 #### Scenario: Backup-codes badge color thresholds
 - **WHEN** `backupCodesRemaining > 3`

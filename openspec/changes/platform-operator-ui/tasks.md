@@ -8,7 +8,7 @@
 ## 2. Backend additions (narrow un-freeze)
 
 - [x] 2.1 Created `PlatformOperatorMeDto` record. Implementation revealed need for V90 Flyway migration `platform_user_get_me()` SECURITY DEFINER function (existing `platform_user_lookup_by_id` returns only credential-shaped fields). V90 collision with reentry-spec resolved by renumbering reentry V90-V93 → V91-V94 (33 references across 4 files).
-- [x] 2.2 Added `GET /me` — returns DTO with id/email/mfaEnabled/lastLoginAt/mfaEnabledAt/backupCodesRemaining. Wrong-scope tokens get 403 via new `PlatformScopeMismatchException` (not 401, per Marcus's defense-in-depth split: "auth fine but not for here"). Tenant JWT rejected at validateToken → 401 (existing pattern).
+- [x] 2.2 Added `GET /me` — returns DTO with id/email/mfaEnabled/lastLoginAt/mfaEnrolledAt/backupCodesRemaining. Wrong-scope tokens get 403 via new `PlatformScopeMismatchException` (not 401, per Marcus's defense-in-depth split: "auth fine but not for here"). Tenant JWT rejected at validateToken → 401 (existing pattern).
 - [x] 2.3 Added `POST /logout` — server-side no-op (returns 204). Verified by IT that `last_login_at` does NOT mutate.
 - [x] 2.4 `PlatformAuthControllerMeTest` (4 tests): all-fields happy path + secrets-not-leaked assertion, missing-token → 401, mfa-setup-token → 403, garbage-token → 401. **GREEN**.
 - [x] 2.5 `PlatformAuthControllerLogoutTest` (3 tests): 204 + no DB mutation, missing-token → 401, mfa-setup-token → 403. **GREEN**.

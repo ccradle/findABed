@@ -15,7 +15,7 @@ This change ships the SPA layer that turns the validated v0.53 backend flow into
 - `/platform/dashboard` — operator metadata + 7 lifecycle action cards (rendered disabled with tooltip when `fabt.tenant.lifecycle.enabled=false`) + backup-codes-remaining badge
 
 **Two small backend endpoints (un-freezing the backend for this slice only):**
-- `GET /api/v1/auth/platform/me` — returns `{email, mfaEnabled, lastLoginAt, mfaEnabledAt, backupCodesRemaining}`. Required so the dashboard can display operator metadata + backup-codes urgency. Last-login-IP deferred to v0.55.
+- `GET /api/v1/auth/platform/me` — returns `{email, mfaEnabled, lastLoginAt, mfaEnrolledAt, backupCodesRemaining}`. Required so the dashboard can display operator metadata + backup-codes urgency. Last-login-IP deferred to v0.55.
 - `POST /api/v1/auth/platform/logout` — server-side no-op (returns 204). Gives the SPA a clean affordance and a future hook for token revocation in Phase H+.
 
 **Anti-confusion safeguards:**

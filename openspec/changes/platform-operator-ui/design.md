@@ -50,7 +50,7 @@ The change is constrained by:
 
 ### Decision D5 — Add `GET /me` and `POST /logout` to backend (un-freezing v0.53 scope, narrowly)
 **What:**
-- `GET /api/v1/auth/platform/me` returns `{email, mfaEnabled, lastLoginAt, mfaEnabledAt, backupCodesRemaining}`. No last-login-IP (deferred to v0.55).
+- `GET /api/v1/auth/platform/me` returns `{email, mfaEnabled, lastLoginAt, mfaEnrolledAt, backupCodesRemaining}`. No last-login-IP (deferred to v0.55).
 - `POST /api/v1/auth/platform/logout` returns 204. Server-side no-op for v0.54; future hook for token revocation when Phase H+ adds the `token_invalidation_at` column.
 **Why:** Without `/me`, the dashboard renders "—" placeholders for everything except email (decoded from JWT `sub` client-side). Backup-codes-remaining is the urgency-driver Sam + Jordan called out — without it, operators don't know they're 1 backup code from a Sev-1.
 **Tradeoff:** ~3 backend tasks added. Justified.
