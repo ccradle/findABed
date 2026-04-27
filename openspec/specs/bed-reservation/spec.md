@@ -5,7 +5,7 @@ Soft-hold bed reservation lifecycle. Prevents double-booking during outreach tra
 ## Requirements
 
 ### Requirement: reservation-lifecycle
-The system SHALL allow outreach workers to create, confirm, and cancel soft-hold bed reservations. A reservation temporarily claims one bed for a specific population type at a shelter. The reservation lifecycle is: HELD → CONFIRMED (client arrived), CANCELLED (worker released), EXPIRED (timed out), or CANCELLED_SHELTER_DEACTIVATED (shelter deactivated by admin). Creating a reservation increments `beds_on_hold` via a new availability snapshot. Confirming converts to `beds_occupied`. Cancelling, expiring, or shelter-deactivation-cancelling decrements `beds_on_hold`. Only the reservation creator (or COC_ADMIN/PLATFORM_ADMIN) can confirm or cancel. Hold duration is configurable per tenant (default 90 minutes).
+The system SHALL allow outreach workers to create, confirm, and cancel soft-hold bed reservations. A reservation temporarily claims one bed for a specific population type at a shelter. The reservation lifecycle is: HELD → CONFIRMED (client arrived), CANCELLED (worker released), EXPIRED (timed out), or CANCELLED_SHELTER_DEACTIVATED (shelter deactivated by admin). Creating a reservation increments `beds_on_hold` via a new availability snapshot. Confirming converts to `beds_occupied`. Cancelling, expiring, or shelter-deactivation-cancelling decrements `beds_on_hold`. Only the reservation creator (or `COC_ADMIN`) can confirm or cancel. (Previously: `COC_ADMIN/PLATFORM_ADMIN`. PLATFORM_ADMIN is deprecated; backward-compat via V87 backfill.) Hold duration is configurable per tenant (default 90 minutes).
 
 #### Scenario: Create a reservation
 - **WHEN** an outreach worker sends POST `/api/v1/reservations` with `{"shelterId": "<uuid>", "populationType": "SINGLE_ADULT", "notes": "Family en route, ETA 20 min"}`
@@ -44,7 +44,7 @@ The system SHALL allow outreach workers to create, confirm, and cancel soft-hold
 #### Scenario: Only reservation creator can confirm or cancel
 - **WHEN** a different outreach worker sends PATCH `/api/v1/reservations/{id}/confirm` for a reservation they did not create
 - **THEN** the system returns 403 Forbidden
-- **AND** COC_ADMIN and PLATFORM_ADMIN can confirm or cancel any reservation in their tenant
+- **AND** `COC_ADMIN` can confirm or cancel any reservation in their tenant
 
 #### Scenario: Holds cancelled when shelter is deactivated
 - **WHEN** an admin deactivates a shelter that has active HELD reservations
