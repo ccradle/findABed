@@ -62,14 +62,14 @@ National context (research-grounded): CSG 2023 found <5% of DOCs use dedicated t
 
 **Alternatives considered:** Top-level columns for each policy field — rejected: each new offense category or program requirement type would require a migration. Current pattern scales without schema changes.
 
-**Warroom input (Alex Chen):** `requires_verification_call` remains a top-level column on `shelter` (V93), not in the JSONB. The sentinel must be queryable without JSONB extraction for the search UI "call to verify" indicator.
+**Warroom input (Alex Chen):** `requires_verification_call` remains a top-level column on `shelter` (V94), not in the JSONB. The sentinel must be queryable without JSONB extraction for the search UI "call to verify" indicator.
 
 ### D2 — Shelter Type Taxonomy
 
 **Decision:** Controlled enum for `shelter_type` VARCHAR(50) with values:
 `EMERGENCY`, `DV`, `TRANSITIONAL`, `SUBSTANCE_USE_TREATMENT`, `MENTAL_HEALTH_TREATMENT`, `REENTRY_TRANSITIONAL`, `PERMANENT_SUPPORTIVE`, `RAPID_REHOUSING`
 
-V90 migration: DEFAULT `'EMERGENCY'`; backfill `dvShelter = true` rows to `shelter_type = 'DV'`. DB check constraint: `CHECK (dvShelter = FALSE OR shelter_type = 'DV')` — enforces at the database layer that these two representations of DV status cannot diverge. *(Alex Chen warroom — critical)*
+V91 migration: DEFAULT `'EMERGENCY'`; backfill `dvShelter = true` rows to `shelter_type = 'DV'`. DB check constraint: `CHECK (dvShelter = FALSE OR shelter_type = 'DV')` — enforces at the database layer that these two representations of DV status cannot diverge. *(Alex Chen warroom — critical)*
 
 **Rationale:** `dvShelter` boolean is retained as-is; it is load-bearing for RLS policies (V68) and DV access control. `shelter_type` is a display/filter taxonomy. These serve different purposes and must not be conflated. The check constraint is the last line of defense against divergence.
 
@@ -87,7 +87,7 @@ V90 migration: DEFAULT `'EMERGENCY'`; backfill `dvShelter = true` rows to `shelt
 
 ### D4 — Third-Party Hold Attribution PII Lifecycle
 
-**Decision (revised 2026-04-24 — warroom pass-2 Marcus):** `held_for_client_name_encrypted` TEXT, `held_for_client_dob_encrypted` TEXT, `hold_notes_encrypted` TEXT — all nullable, all storing the v1 `EncryptionEnvelope` as base64. Fields are encrypted via `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)` on write and decrypted on read. The V92 migration bundles the `tenant_dek.purpose` CHECK-constraint update (add `RESERVATION_PII` to the allowed set) alongside the `ALTER TABLE reservation` column adds. See design Open Question #5 resolution + issue #152.
+**Decision (revised 2026-04-24 — warroom pass-2 Marcus):** `held_for_client_name_encrypted` TEXT, `held_for_client_dob_encrypted` TEXT, `hold_notes_encrypted` TEXT — all nullable, all storing the v1 `EncryptionEnvelope` as base64. Fields are encrypted via `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)` on write and decrypted on read. The V93 migration bundles the `tenant_dek.purpose` CHECK-constraint update (add `RESERVATION_PII` to the allowed set) alongside the `ALTER TABLE reservation` column adds. See design Open Question #5 resolution + issue #152.
 
 **Two-layer posture (defense in depth):**
 1. **At-rest ciphertext via `tenant_dek`.** A pg_dump captured at any time exports ciphertext unreadable without master_KEK + the `tenant_dek` row. Survives backup-retention windows; inherits crypto-shred via tenant CASCADE on hardDelete.
@@ -97,7 +97,7 @@ V90 migration: DEFAULT `'EMERGENCY'`; backfill `dvShelter = true` rows to `shelt
 
 **UI labeling:** Fields must use purpose-clear, dignity-centered labels. `held_for_client_name` → "Who is this hold for?" with sub-label "Name (for shelter check-in)". `held_for_client_dob` → "Date of birth (for shelter to confirm arrival)". `hold_notes` → "Note for shelter coordinator". Labels reviewed against dignity-centered language standards. *(Keisha Thompson warroom)*
 
-**Deployment order:** Spring Batch job extension must be deployed in the same release as V92 migration or later — never before. The job code must be null-safe on pre-V92 databases.
+**Deployment order:** Spring Batch job extension must be deployed in the same release as V93 migration or later — never before. The job code must be null-safe on pre-V93 databases.
 
 ### D5 — Hold Duration Configuration Semantics
 
@@ -129,7 +129,7 @@ i18n key `shelter.criminalRecordPolicyDisclaimer` in both EN and ES locales. Whe
 
 ### D9 — GIN Index on `eligibility_criteria` JSONB
 
-**Decision:** V91 migration includes `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)`. *(Elena Vasquez warroom — critical for query performance at pilot scale.)*
+**Decision:** V92 migration includes `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)`. *(Elena Vasquez warroom — critical for query performance at pilot scale.)*
 
 **Flyway note:** `CREATE INDEX CONCURRENTLY` must run outside an explicit transaction block in Flyway. Use `mixed = true` or a separate non-transactional migration step. This is documented precedent in this codebase — follow existing concurrent index migration pattern.
 
@@ -137,7 +137,7 @@ i18n key `shelter.criminalRecordPolicyDisclaimer` in both EN and ES locales. Whe
 
 ### D10 — `dvShelter` / `shelter_type` Sync
 
-**Decision:** DB-level check constraint (`CHECK (dvShelter = FALSE OR shelter_type = 'DV')`) added in V90 migration. Application layer also enforces: any PUT/PATCH that sets `dvShelter = true` must set `shelter_type = 'DV'`; any that sets `shelter_type = 'DV'` must ensure `dvShelter = true`. *(Alex Chen warroom — "the database constraint is the last line of defense.")*
+**Decision:** DB-level check constraint (`CHECK (dvShelter = FALSE OR shelter_type = 'DV')`) added in V91 migration. Application layer also enforces: any PUT/PATCH that sets `dvShelter = true` must set `shelter_type = 'DV'`; any that sets `shelter_type = 'DV'` must ensure `dvShelter = true`. *(Alex Chen warroom — "the database constraint is the last line of defense.")*
 
 **Not a trigger:** A trigger that auto-syncs the two fields was considered and rejected. An auto-sync masks a programming error; a constraint surfaces it loudly.
 
@@ -168,9 +168,9 @@ The optional `/navigator` desktop route (call-center-optimized layout) expands t
 
 **[Data quality risk: criminal record policy fields will be empty for most shelters at launch]** → Mitigation: `requires_verification_call = true` is the default sentinel for any shelter where criminal record policy JSONB is not populated. Navigators see "call to verify" rather than silence. Documentation and training materials emphasize that the platform reduces calls, it does not replace verification.
 
-**[JSONB filtering performance at scale]** → Mitigation: GIN index in V91 (D9). At demo scale, risk is zero. At deployment scale with the index, acceptable.
+**[JSONB filtering performance at scale]** → Mitigation: GIN index in V92 (D9). At demo scale, risk is zero. At deployment scale with the index, acceptable.
 
-**[`dvShelter` / `shelter_type` divergence if migration backfill is wrong]** → Mitigation: DB check constraint (D10) will reject any row that diverges. Test V90 migration backfill explicitly: verify `dvShelter = true` rows all have `shelter_type = 'DV'` post-migration.
+**[`dvShelter` / `shelter_type` divergence if migration backfill is wrong]** → Mitigation: DB check constraint (D10) will reject any row that diverges. Test V91 migration backfill explicitly: verify `dvShelter = true` rows all have `shelter_type = 'DV'` post-migration.
 
 **[PII in hold notes purged before shelter coordinator records arrival]** → Trade-off accepted. The 24h window is the same as DV referral tokens. Shelters with longer intake processes should use their own intake system for records; the hold note is a transient coordination artifact, not a permanent record.
 
@@ -178,18 +178,18 @@ The optional `/navigator` desktop route (call-center-optimized layout) expands t
 
 **[Federal policy on criminal record screening is in active flux]** → Platform neutrality: FABT represents actual shelter-reported policies. The 2024 HUD proposed rule (lookback period limits, individualized assessment requirements) was withdrawn January 16, 2025. Current direction emphasizes owner discretion. Platform stance: accurate representation of what programs do, with appropriate disclaimers; no compliance claims.
 
-**[Spring Batch job extension deployed before V92 migration]** → Mitigation: Job code must be null-safe; deploy as part of or after the V92 migration release, never before.
+**[Spring Batch job extension deployed before V93 migration]** → Mitigation: Job code must be null-safe; deploy as part of or after the V93 migration release, never before.
 
 ## Migration Plan
 
-**Migrations finalized at V90–V93** after a two-step renumber: V79–V82 → V85–V88 post-v0.51.0 Phase F (which consumed V79–V84), then V85–V88 → V90–V93 (2026-04-26) after Phase G claimed V85/V87/V88/V89. Phase G ships at HWM V89; reentry-spec slots V90–V93 follow. **Re-verify HWM before writing any migration file** in case any further pre-reentry slice has claimed additional slots. Query: `SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1`.
+**Migrations finalized at V91–V94** after a two-step renumber: V79–V82 → V85–V88 post-v0.51.0 Phase F (which consumed V79–V84), then V85–V88 → V91–V94 (2026-04-26) after Phase G claimed V85/V87/V88/V89. Phase G ships at HWM V89; reentry-spec slots V91–V94 follow. **Re-verify HWM before writing any migration file** in case any further pre-reentry slice has claimed additional slots. Query: `SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1`.
 
 | Migration | Content | Notes |
 |---|---|---|
-| V90 | `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY'; `county` VARCHAR(100) indexed; backfill `dvShelter=true` → `shelter_type='DV'`; check constraint `dvShelter=false OR shelter_type='DV'` | Non-breaking; all existing shelters remain 'EMERGENCY' except DV shelters |
-| V91 | `eligibility_criteria` JSONB nullable on `shelter_constraints`; GIN index (CONCURRENTLY, outside transaction) | Flyway `mixed=true` or separate migration step for CONCURRENTLY |
-| V92 | (1) ALTER `tenant_dek.purpose` CHECK constraint to add `RESERVATION_PII` to allowed set (Phase F follow-up piece); (2) `held_for_client_name_encrypted` TEXT, `held_for_client_dob_encrypted` TEXT, `hold_notes_encrypted` TEXT on `reservation` — all nullable, all storing base64 v1 envelope from `SecretEncryptionService.encryptForTenant(..., KeyPurpose.RESERVATION_PII, ...)`. | Behavior unchanged until columns populated. Option A per issue #152 |
-| V93 | `requires_verification_call` BOOLEAN DEFAULT FALSE on `shelter` | Non-breaking; existing shelters default to false |
+| V91 | `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY'; `county` VARCHAR(100) indexed; backfill `dvShelter=true` → `shelter_type='DV'`; check constraint `dvShelter=false OR shelter_type='DV'` | Non-breaking; all existing shelters remain 'EMERGENCY' except DV shelters |
+| V92 | `eligibility_criteria` JSONB nullable on `shelter_constraints`; GIN index (CONCURRENTLY, outside transaction) | Flyway `mixed=true` or separate migration step for CONCURRENTLY |
+| V93 | (1) ALTER `tenant_dek.purpose` CHECK constraint to add `RESERVATION_PII` to allowed set (Phase F follow-up piece); (2) `held_for_client_name_encrypted` TEXT, `held_for_client_dob_encrypted` TEXT, `hold_notes_encrypted` TEXT on `reservation` — all nullable, all storing base64 v1 envelope from `SecretEncryptionService.encryptForTenant(..., KeyPurpose.RESERVATION_PII, ...)`. | Behavior unchanged until columns populated. Option A per issue #152 |
+| V94 | `requires_verification_call` BOOLEAN DEFAULT FALSE on `shelter` | Non-breaking; existing shelters default to false |
 
 **Rollback:** All new columns are nullable or have safe defaults. If any migration must be rolled back, the application code must not reference the missing columns — Spring Boot startup will fail if entities reference non-existent columns. Standard rollback posture: retag previous backend image, force-recreate backend only. Flyway migrations are immutable after apply; rollback requires a new forward migration if needed.
 
@@ -203,9 +203,9 @@ The optional `/navigator` desktop route (call-center-optimized layout) expands t
 
 3. **`active_counties` tenant config key — who sets it?** *[BLOCKED on issue #141 resolution]* — recommendation (PLATFORM_ADMIN sets at tenant creation, not COC_ADMIN) depends on whether the split into TENANT_ADMIN + PLATFORM_OPERATOR changes who holds "deployment-scope configuration" authority. Resolves inside Phase G.
 
-4. **Reentry deployment identifier (`features.reentryMode` flag):** Decision — **scope in at V90 design time**. Adding the flag with V90 (shelter schema) is cheap; retrofitting later requires touching the shelter edit form + search UI in a second pass. Warroom 2026-04-24 pass-2 recommendation: include as a tenant-level config flag driven by admin panel; PLATFORM_ADMIN-level setting (same authority as `active_counties`).
+4. **Reentry deployment identifier (`features.reentryMode` flag):** Decision — **scope in at V91 design time**. Adding the flag with V91 (shelter schema) is cheap; retrofitting later requires touching the shelter edit form + search UI in a second pass. Warroom 2026-04-24 pass-2 recommendation: include as a tenant-level config flag driven by admin panel; PLATFORM_ADMIN-level setting (same authority as `active_counties`).
 
-5. **[NEW] `held_for_client_*` PII encryption posture (V92 design blocker):** *[RESOLVED 2026-04-24 — Option A: ride `tenant_dek`]* — `heldForClientName`, `heldForClientDob`, `holdNotes` ship as `tenant_dek`-wrapped ciphertext (v0.51.0 Phase F-6 infrastructure) from V92 forward. New `KeyPurpose.RESERVATION_PII` enum value; V92 migration bundles the `tenant_dek.purpose` CHECK-constraint update alongside the `ALTER TABLE reservation` column adds. Columns are `TEXT` (base64 v1 envelope), not `VARCHAR`/`DATE`/`TEXT`. Spring Batch 24h purge retained as defense in depth. Closed via **[issue #152](https://github.com/ccradle/finding-a-bed-tonight/issues/152)**. Rationale: no regression against v0.51.0 security posture, inherits crypto-shred via tenant CASCADE, backup-at-rest stronger (pg_dump in the 24h window exports ciphertext not plaintext), infrastructure is the use case Phase F-6 was designed for.
+5. **[NEW] `held_for_client_*` PII encryption posture (V93 design blocker):** *[RESOLVED 2026-04-24 — Option A: ride `tenant_dek`]* — `heldForClientName`, `heldForClientDob`, `holdNotes` ship as `tenant_dek`-wrapped ciphertext (v0.51.0 Phase F-6 infrastructure) from V93 forward. New `KeyPurpose.RESERVATION_PII` enum value; V93 migration bundles the `tenant_dek.purpose` CHECK-constraint update alongside the `ALTER TABLE reservation` column adds. Columns are `TEXT` (base64 v1 envelope), not `VARCHAR`/`DATE`/`TEXT`. Spring Batch 24h purge retained as defense in depth. Closed via **[issue #152](https://github.com/ccradle/finding-a-bed-tonight/issues/152)**. Rationale: no regression against v0.51.0 security posture, inherits crypto-shred via tenant CASCADE, backup-at-rest stronger (pg_dump in the 24h window exports ciphertext not plaintext), infrastructure is the use case Phase F-6 was designed for.
 
 6. **[NEW] Asheville stakeholder messaging:** *[OPEN — coordination item]* — should this capability be described as "coming next release" in City of Asheville materials, or held back until tagged? County filter directly enables Buncombe County deployment scope. Recommend holding back until Phase G tags and transitional-reentry branch begins active development, but flag now for awareness.
 

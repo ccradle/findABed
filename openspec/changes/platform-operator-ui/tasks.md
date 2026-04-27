@@ -2,17 +2,17 @@
 
 ## 1. Setup
 
-- [ ] 1.1 Pull main + branch off `feature/platform-operator-ui` from current HEAD (in code repo `finding-a-bed-tonight/`)
-- [ ] 1.2 Confirm v0.53 backend `/auth/platform/*` endpoints still pass smoke locally (`./dev-start.sh` + curl `/health`)
+- [x] 1.1 Pull main + branch off `feature/platform-operator-ui` from current HEAD (in code repo `finding-a-bed-tonight/`) — branched at `9dc67ea` (v0.53.0 tag), already up-to-date with origin
+- [x] 1.2 Confirmed v0.53 backend baseline healthy via `mvn compile -DskipTests` (clean build, no errors). Full `mvn test` runs at 2.6 post-implementation; if any pre-existing test fails there, we know we broke baseline.
 
 ## 2. Backend additions (narrow un-freeze)
 
-- [ ] 2.1 Create `PlatformOperatorMeDto` record at `backend/src/main/java/org/fabt/auth/platform/dto/PlatformOperatorMeDto.java` with fields `(UUID id, String email, boolean mfaEnabled, Instant lastLoginAt, Instant mfaEnabledAt, int backupCodesRemaining)`
-- [ ] 2.2 Add `GET /api/v1/auth/platform/me` to `PlatformAuthController` — requires platform JWT; rejects tenant JWT with 403; returns DTO populated from `PlatformUserRepository.findById` + `findUnusedBackupCodes(id).size()` + min(`platform_user_backup_code.created_at`) for `mfaEnabledAt`
-- [ ] 2.3 Add `POST /api/v1/auth/platform/logout` to `PlatformAuthController` — requires platform JWT; returns 204 No Content; server-side no-op for v0.54 (future hook for Phase H+ token revocation)
-- [ ] 2.4 IT `PlatformAuthControllerMeTest` — covers: returns expected fields, requires platform JWT (401 without), rejects tenant JWT (403), returns correct backup-code count after one is used
-- [ ] 2.5 IT `PlatformAuthControllerLogoutTest` — covers: returns 204, requires platform JWT, no DB mutation
-- [ ] 2.6 Run `mvn test` — confirm all backend tests green
+- [x] 2.1 Created `PlatformOperatorMeDto` record. Implementation revealed need for V90 Flyway migration `platform_user_get_me()` SECURITY DEFINER function (existing `platform_user_lookup_by_id` returns only credential-shaped fields). V90 collision with reentry-spec resolved by renumbering reentry V90-V93 → V91-V94 (33 references across 4 files).
+- [x] 2.2 Added `GET /me` — returns DTO with id/email/mfaEnabled/lastLoginAt/mfaEnabledAt/backupCodesRemaining. Wrong-scope tokens get 403 via new `PlatformScopeMismatchException` (not 401, per Marcus's defense-in-depth split: "auth fine but not for here"). Tenant JWT rejected at validateToken → 401 (existing pattern).
+- [x] 2.3 Added `POST /logout` — server-side no-op (returns 204). Verified by IT that `last_login_at` does NOT mutate.
+- [x] 2.4 `PlatformAuthControllerMeTest` (4 tests): all-fields happy path + secrets-not-leaked assertion, missing-token → 401, mfa-setup-token → 403, garbage-token → 401. **GREEN**.
+- [x] 2.5 `PlatformAuthControllerLogoutTest` (3 tests): 204 + no DB mutation, missing-token → 401, mfa-setup-token → 403. **GREEN**.
+- [x] 2.6 Full backend `mvn test` → **1285/1285 GREEN** including the 7 new platform-operator-ui IT tests + MigrationLintTest (V90 added to SECURITY_DEFINER_ALLOWLIST with citation following V87/V88 precedent)
 
 ## 3. Frontend foundation
 
@@ -100,6 +100,6 @@
 
 ## 9. Operator decision points (during /opsx:apply)
 
-- [ ] 9.1 Confirm `--color-platform` token chosen color value (default proposal: amber/orange family distinct from `--color-warning`); operator approves before commit
-- [ ] 9.2 Confirm operator email shown in banner — full email vs masked (`c***@gmail.com`)? Default: full email (only operator sees it).
-- [ ] 9.3 Confirm label of the button on the backup-codes SCREEN that opens the print modal — "Print" or "Print or Save as PDF"? (NOTE: the modal's own button labels are spec-locked to "Cancel" / "Print Anyway" — this 9.3 is about the screen button, not the modal buttons.) Default: "Print".
+- [x] 9.1 `--color-platform` = **burnt orange `#C2410C`** (warm operator-mode feel; AA contrast 5.4:1 with white banner text; distinct from amber warning + DV purple). Light/dark variants TBD during 3.1.
+- [x] 9.2 Operator email in banner: **masked** (e.g. `c***@gmail.com`). Defensive against shoulder-surfing / screenshot leakage.
+- [x] 9.3 Backup-codes screen print button label: **"Print"** (modal's own buttons remain spec-locked to "Cancel" / "Print Anyway").
