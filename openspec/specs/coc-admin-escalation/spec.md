@@ -203,8 +203,19 @@ The system SHALL store escalation thresholds in a per-tenant append-only version
 - **AND** SHALL NOT insert any row
 
 #### Scenario: Validation rejects invalid roles in recipients
-- **WHEN** the PATCH body contains a recipient role not in `{COORDINATOR, COC_ADMIN, OUTREACH_WORKER, PLATFORM_ADMIN}`
+- **WHEN** the PATCH body contains a recipient role not in `{COORDINATOR, COC_ADMIN, OUTREACH_WORKER}`
 - **THEN** the system SHALL return `400 Bad Request`
+- **AND** the error body includes `{"error":"validation_failed","field":"recipients[*].role","rejected_value":"<role>"}`
+
+#### Scenario: Validation rejects PLATFORM_ADMIN as recipient
+- **WHEN** the PATCH body contains `recipients[*].role = "PLATFORM_ADMIN"`
+- **THEN** the system SHALL return `400 Bad Request`
+- **AND** the error message includes "PLATFORM_ADMIN is deprecated; escalation policies cannot route to platform operators"
+
+#### Scenario: Validation rejects PLATFORM_OPERATOR as recipient
+- **WHEN** the PATCH body contains `recipients[*].role = "PLATFORM_OPERATOR"`
+- **THEN** the system SHALL return `400 Bad Request`
+- **AND** the error message includes "Escalation policies are tenant-scoped; platform operators are not in tenant escalation chains"
 
 #### Scenario: Validation rejects invalid severity
 - **WHEN** the PATCH body contains a severity not in `{INFO, ACTION_REQUIRED, CRITICAL}`

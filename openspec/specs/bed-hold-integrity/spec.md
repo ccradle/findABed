@@ -84,7 +84,7 @@ The system SHALL provide a `POST /api/v1/shelters/{shelterId}/manual-hold` endpo
 #### Scenario: SecurityConfig filter chain admits COORDINATOR to the path
 - **GIVEN** a POST request to `/api/v1/shelters/{id}/manual-hold` bearing a coordinator's JWT
 - **WHEN** Spring Security's filter chain evaluates the request
-- **THEN** the request SHALL match the explicit matcher `POST /api/v1/shelters/*/manual-hold` admitting roles `COORDINATOR`, `COC_ADMIN`, `PLATFORM_ADMIN`
+- **THEN** the request SHALL match the explicit matcher `POST /api/v1/shelters/*/manual-hold` admitting roles `COORDINATOR`, `COC_ADMIN` (PLATFORM_ADMIN deprecated; backward-compat via COC_ADMIN backfill in V87)
 - **AND** the request SHALL reach the controller's `isAssigned` check (filter-level admission, not filter-level rejection)
 - **AND** this matcher MUST precede any broader `POST /api/v1/shelters/**` rule in the filter chain (Spring matchers are first-match-wins)
 
