@@ -188,7 +188,7 @@ The SPA SHALL display backup codes exactly once after MFA confirmation. The Cont
 #### Scenario: Backup codes not re-fetchable via back-button
 - **WHEN** an operator clicks Continue, navigates away, and presses the browser back-button
 - **THEN** the backup-codes view does NOT re-render the codes
-- **AND** the backend `/auth/platform/mfa-confirm` response that delivered the codes carried headers `Cache-Control: no-store, no-cache, must-revalidate` and `Pragma: no-cache`
+- **AND** the backend `/auth/platform/mfa-setup` response that delivered the codes carried headers `Cache-Control: no-store, no-cache, must-revalidate, private`, `Pragma: no-cache`, and `Expires: 0` (the codes ship in the `/mfa-setup` response, NOT `/mfa-confirm`)
 
 #### Scenario: Codes rendered as text nodes only (XSS defense)
 - **WHEN** the BackupCodesDisplay component renders the 10 codes
@@ -287,13 +287,32 @@ The dashboard SHALL render action cards grouped by category (Tenant Lifecycle, O
 ### Requirement: Destructive action confirmation with typed slug
 Suspend, unsuspend, and (when shipped) hard-delete actions SHALL require typed-confirmation of the target tenant slug before the action POSTs.
 
-#### Scenario: Suspend action requires typed confirmation
+> **v0.54 scope caveat (round-9 #2 / round-11 N6).** v0.54 ships every
+> destructive action *flag-gated to disabled* (`fabt.tenant.lifecycle.enabled=false`
+> in prod per design D3) — so the typed-confirm flow does not fire in
+> v0.54. The `ConfirmActionModal` component IS implemented (variants
+> `print` / `copy` / `destructive`) and the destructive variant
+> enforces the typed-slug match contract; the dashboard simply does
+> not mount it for any reachable card. The Slice E follow-up
+> re-enables the cards and wires the in-page POST handler. The
+> `X-Platform-Justification` header field referenced in the
+> Suspend scenario below is also Slice-E scope (it is the existing
+> backend `JustificationValidationFilter` requirement on
+> `@PlatformAdminOnly` endpoints — round 9 review confirmed the
+> modal does not expose the field in v0.54). The `List Tenants`
+> action is likewise flag-gated in v0.54 (`/api/v1/tenants` requires
+> PLATFORM_OPERATOR auth that `window.open` cannot supply — round 7
+> HIGH #3). The two enabled cards in v0.54 are System Health
+> (`/actuator/health`) and Platform Version (`/api/v1/version`),
+> both `permitAll`, both open in a new tab.
+
+#### Scenario: Suspend action requires typed confirmation (Slice E)
 - **WHEN** an operator clicks Suspend Tenant for `dev-coc`
 - **THEN** a modal opens asking the operator to type `dev-coc` to confirm
 - **AND** the Suspend button in the modal is disabled until the typed text matches exactly
 - **AND** the modal also requires the X-Platform-Justification text (min 10 chars)
 
-#### Scenario: List/read actions skip the typed confirmation
+#### Scenario: List/read actions skip the typed confirmation (Slice E)
 - **WHEN** an operator clicks a List Tenants or Show Status card
 - **THEN** the request POSTs immediately without a typed-confirmation modal
 
@@ -308,8 +327,10 @@ Every interactive element on `/platform/*` routes SHALL have a `data-testid` att
 
 #### Scenario: Dashboard action cards have testids
 - **WHEN** Playwright queries the dashboard
-- **THEN** each action card has `data-testid="platform-dashboard-{action-id}"`
-- **AND** confirmation modal inputs have `data-testid="platform-confirm-{slug-input,justification-input,confirm-button}"`
+- **THEN** each action card wrapper has `data-testid="platform-action-{action-id}"`
+- **AND** each action button has `data-testid="platform-action-{action-id}-button"`
+- **AND** the confirmation modal exposes `data-testid="platform-confirm-modal"` (root), `platform-confirm-slug-input` (typed-slug field), `platform-confirm-cancel` (cancel button), and `platform-confirm-action` (action button)
+- **AND** the `justification-input` testid is reserved for the Slice E follow-up that ships the X-Platform-Justification field
 
 ### Requirement: MFA verify error states
 The `/platform/mfa-verify` route SHALL render distinct error states for invalid TOTP codes, account lockout, and network failure.
