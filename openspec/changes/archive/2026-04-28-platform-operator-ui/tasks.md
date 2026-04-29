@@ -79,10 +79,10 @@
 
 ## 8. Pre-merge
 
-- [ ] 8.1 Warroom review of the implemented PR (security spot-check on JWT handling + Marcus's 5 print conditions verified in code)
-- [ ] 8.2 Open PR against main; link this OpenSpec change; reviewer-approve required
-- [ ] 8.3 Verify CI scans pass (CodeQL, npm audit, dependency-check)
-- [ ] 8.4 Squash-merge to main; tag is deferred to v0.54 deploy day
+- [x] 8.1 Warroom review — 7 rounds (rounds 7-13) executed during implementation; security spot-check on JWT handling + Marcus's 5 print conditions verified in code; runbook also reviewed in 3 dedicated rounds against live VM ground-truth.
+- [x] 8.2 PR #166 opened against main, linked this OpenSpec change. Squash-merge to main as 6c3ee93 on 2026-04-28.
+- [x] 8.3 CI scans green: post-merge run 25080386326 (DV Canary, Performance Gatling, E2E Playwright + Karate) all passed. Release-prep commit 12d10ab CI also green.
+- [x] 8.4 Squash-merged as 6c3ee93. Tag v0.54.0 created 2026-04-28 ~19:01 UTC at release-prep commit 12d10ab; GitHub release published. Two-stage Stage A + Stage B deploy to findabed.org completed 2026-04-28 ~23:20 UTC.
 
 ## 9. Operator decision points (during /opsx:apply)
 
