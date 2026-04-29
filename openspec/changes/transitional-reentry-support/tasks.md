@@ -55,12 +55,12 @@
 
 ## 6. Frontend: i18n Keys
 
-- [ ] 6.1 Add shelter type keys to `en.json` and `es.json`: `shelter.type.EMERGENCY`, `shelter.type.DV`, `shelter.type.TRANSITIONAL`, `shelter.type.SUBSTANCE_USE_TREATMENT`, `shelter.type.MENTAL_HEALTH_TREATMENT`, `shelter.type.REENTRY_TRANSITIONAL`, `shelter.type.PERMANENT_SUPPORTIVE`, `shelter.type.RAPID_REHOUSING`
-- [ ] 6.2 Add criminal record policy keys: `shelter.acceptsFelonies`, `shelter.excludedOffenseTypes`, `shelter.requiresVerificationCall`, `shelter.county`, `shelter.criminalRecordPolicyDisclaimer`, `shelter.vawaNoteDisclaimer`, `shelter.vawaProtectionsApplyNote` — EN and ES; labels use dignity-centered language ("Accepts individuals with felony convictions", not "accepts felons"); flag for Casey Drummond legal review before merge; `shelter.vawaProtectionsApplyNote` is the form-level contextual note shown when the admin enables the VAWA protections checkbox (distinct from `shelter.vawaNoteDisclaimer` shown to search users)
-- [ ] 6.3 Add offense type vocabulary keys: `offenseType.SEX_OFFENSE`, `offenseType.ARSON`, `offenseType.DRUG_MANUFACTURING`, `offenseType.VIOLENT_FELONY`, `offenseType.PENDING_CHARGES`, `offenseType.OPEN_WARRANTS` — EN and ES display labels
-- [ ] 6.4 Add hold attribution keys: `hold.heldForClientName`, `hold.heldForClientNameSublabel`, `hold.heldForClientDob`, `hold.heldForClientDobSublabel`, `hold.notes`, `hold.clientAttributionPrivacyNote` — EN and ES; use dignity-centered framing per D4; `hold.clientAttributionPrivacyNote` must state 24h post-resolution PII purge in plain language
-- [ ] 6.5 Add admin keys: `admin.holdDurationMinutes`, `admin.eligibilityCriteria`, `admin.requiresVerificationCall`, `search.filterByCounty`, `search.filterByShelterType`, `search.acceptsFelonies`, `search.advancedFilters` — EN and ES
-- [ ] 6.6 Run `npm run build` to verify no missing i18n keys cause build failures before proceeding
+- [x] 6.1 **DONE 2026-04-29 (slice 3)** — 8 ShelterType keys landed in en.json + es.json; build passes.
+- [x] 6.2 **DONE 2026-04-29 (slice 3)** — `shelter.criminalRecordPolicyDisclaimer`, `shelter.vawaNoteDisclaimer`, `shelter.vawaProtectionsApplyNote` use Casey-reviewed strings VERBATIM per `i18n-legal-review-strings.md` (2026-04-28 review). Form/display labels also added: `shelter.acceptsFelonies` (dignity-centered "Accepts individuals with felony convictions"), `shelter.county`, `shelter.requiresVerificationCall`, `shelter.excludedOffenseTypes`. Task 15.6 still gates final pre-merge sign-off if any string drifts.
+- [x] 6.3 **DONE 2026-04-29 (slice 3)** — 6 `offenseType.*` display labels (SEX_OFFENSE, ARSON, DRUG_MANUFACTURING, VIOLENT_FELONY, PENDING_CHARGES, OPEN_WARRANTS) in EN + ES.
+- [x] 6.4 **DONE 2026-04-29 (slice 3)** — `hold.heldForClientName/Dob` with sublabels per D4; `hold.notes`; `hold.clientAttributionPrivacyNote` (Casey-reviewed verbatim — states 24h post-resolution purge in plain language with the explicit "Use these fields only for shelter check-in coordination" load-bearing line).
+- [x] 6.5 **DONE 2026-04-29 (slice 3)** — `admin.holdDurationMinutes`, `admin.eligibilityCriteria`, `admin.requiresVerificationCall`, `search.filterByCounty`, `search.filterByShelterType`, `search.acceptsFelonies`, `search.advancedFilters` in EN + ES.
+- [x] 6.6 **DONE 2026-04-29 (slice 3)** — `npm run build` (tsc + vite) passes; JSON validates; EN+ES key parity asserted (708 keys each).
 
 ## 7. Frontend: CriminalRecordPolicyDisclaimer Component
 
