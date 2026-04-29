@@ -102,9 +102,9 @@
 
 ## 12. Frontend: Admin ReservationSettings Panel
 
-- [ ] 12.1 Wire `ReservationSettings` admin component (stub exists) to `GET /api/v1/admin/tenants/{tenantId}` hold duration config and `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration`
-- [ ] 12.2 Range: 30–480 minutes; validation error message: "Hold duration must be between 30 and 480 minutes"
-- [ ] 12.3 Confirmation on save; success toast shows new duration; no page reload required
+- [x] 12.1 **DONE 2026-04-29 (slice 4 §12)** — Switched the admin hold-duration save from `PUT /api/v1/tenants/{id}/config` (full-blob update of tenant.config JSONB) to the dedicated `PATCH /api/v1/admin/tenants/{id}/hold-duration` per slice 2C/2D design. Dedicated endpoint Bean-validates the 30–480 range, emits `TENANT_CONFIG_UPDATED` audit (slice 2D warroom B1), and enforces tenant scoping (slice 2D verify-round-2 C1). GET path still reads `tenant.config` JSONB for the current value (snake_case `hold_duration_minutes` per V76/V77 seed convention); PATCH body uses camelCase `holdDurationMinutes` per `HoldDurationRequest` Java record. Split intentional and documented on the backend record.
+- [x] 12.2 **DONE 2026-04-29 (slice 4 §12)** — HTML5 `min={30}` (was 5) matches `HoldDurationRequest @Min(30)`. JS guard in `handleSave` surfaces the localized `admin.holdDuration.rangeError` ("Hold duration must be between 30 and 480 minutes") before the network call. The onChange clamp keeps out-of-range typed values from rendering, so the JS guard is defense-in-depth.
+- [x] 12.3 **DONE 2026-04-29 (slice 4 §12)** — Success toast renders saved minutes via `admin.holdDuration.savedWithValue` ("Hold duration saved: 180 minutes") — operator confirms the value actually landed, not just a generic "Saved". Toast auto-dismisses after 4s via setTimeout; errors stay until next save attempt for visibility. No page reload (state stays in component memory). `data-testid="hold-duration-success"` / `hold-duration-error` for §14 Playwright reach.
 
 ## 13. Backend Integration Tests
 
