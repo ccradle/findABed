@@ -142,14 +142,14 @@
 
 ## 15. Build and Release Verification
 
-- [ ] 15.1 `npm run build` (tsc + vite) passes with no errors before any commit (per `feedback_build_before_commit.md`)
-- [ ] 15.2 CI guard job for disclaimer co-rendering passes on PR (task 7.3)
-- [ ] 15.3 Update `CHANGELOG.md` with feature summary
-- [ ] 15.4 Bump `backend/pom.xml` version for release (confirm version number at tag time)
-- [ ] 15.5 Update DBML and AsyncAPI/OpenAPI docs for all new fields (per `feedback_update_docs_with_code.md`)
-- [ ] 15.6 Casey Drummond legal review: final EN and ES i18n strings for `shelter.criminalRecordPolicyDisclaimer` and `shelter.vawaNoteDisclaimer` signed off before merge
+- [x] 15.1 **DONE 2026-04-29** — `npm run build` (tsc + vite) verified clean before each commit throughout slice 4. Final v0.55.0 build run on the JsonString stringify fix commit cleanly produced production assets.
+- [x] 15.2 **DONE 2026-04-29** — CI guard job (`scripts/ci/check-criminal-record-disclaimer-co-rendering.sh`) runs in `.github/workflows/ci.yml`; latest PR #167 run shows the criminal-record-disclaimer co-rendering check 71/71 GREEN.
+- [x] 15.3 **DONE 2026-04-29** — `CHANGELOG.md` updated with v0.55.0 — UNRELEASED section: V90 -> V94 Flyway HWM, Added (shelter type taxonomy, county metadata, eligibility criteria, search filters, hold dialog, hold-list, PII purge, hold duration admin), Fixed (G-4.4 SecurityConfig gap + JsonString wire-format), Tests (1399 backend, 11 Playwright, 71 disclaimer guard).
+- [x] 15.4 **DONE 2026-04-29** — `backend/pom.xml` bumped 0.54.0 -> 0.55.0 in commit 524fff7. Final tag at deploy time.
+- [x] 15.5 **DONE 2026-04-29 (slice 4 prereq + warroom-3)** — DBML refreshed for V91-V94 (shelter columns + eligibility_criteria + reservation _encrypted columns); ERD regenerated via `@softwaretechnik/dbml-renderer`; AsyncAPI updated for new endpoints. Captured in commit fcb175a.
+- [ ] 15.6 Casey final legal review on EN + ES i18n strings (`shelter.criminalRecordPolicyDisclaimer`, `shelter.vawaNoteDisclaimer`, plus `search.acceptsFeloniesEmptyHint` flagged for re-review at §8/§9). Manual sign-off required pre-merge — strings shipped verbatim from initial Casey review; this is a final-pass recheck. Track in `i18n-legal-review-strings.md`.
 - [ ] 15.7 `make rehearse-deploy` PASS before tagging release. Note: rehearsal harness has known lingering containers (mailpit, prometheus, alertmanager) per `feedback_deploy_rehearsal_lessons.md` — manual `docker stop && docker rm` post-run is expected; not a regression.
-- [ ] 15.8 (M3 warroom 2026-04-28) Author `docs/operations/reentry-mode-user-guide.md` covering: (a) how to enable `features.reentryMode` for a tenant (PLATFORM_OPERATOR action via lifecycle endpoints); (b) how PLATFORM_OPERATOR seeds / overrides `tenant.config.active_counties`; (c) how COC_ADMIN populates `eligibility_criteria` JSONB via the guided form; (d) how outreach workers / navigators use the new advanced filters + hold-with-attribution flow; (e) the 24h PII purge promise (when, what, how to verify in logs); (f) what `requires_verification_call=true` means for navigators and how it interacts with the `acceptsFelonies` filter. Pattern: same shape as `docs/operations/platform-operator-user-guide.md` shipped in F11.
+- [x] 15.8 **DONE 2026-04-29 (slice 4 §15.8)** — `docs/operations/reentry-mode-user-guide.md` shipped (512 lines, commit 7902ab0). Six sections matching task scope: (a) enable features.reentryMode (PUT-config-blob get-merge-put — there is no PATCH endpoint), (b) curate active_counties, (c) populate eligibility_criteria via guided form, (d) outreach worker filters + hold-with-attribution flow, (e) 24h PII purge promise (honest framing: no per-row audit event currently emitted; documented as future enhancement, not current behavior claim), (f) requires_verification_call semantics. Style mirrors `platform-operator-user-guide.md`. Legal-scan clean.
 
 ## 16. Slice-1 warroom (2026-04-28) deferred follow-ups
 
