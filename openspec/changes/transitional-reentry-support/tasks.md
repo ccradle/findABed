@@ -160,3 +160,41 @@ Items raised in the slice-1 warroom that landed in slice 1 ARE flipped above; it
 - [ ] 16.N2 (slice 2 unit test) — `tenant.config` JSONB array compatibility is unverified for `active_counties`. Existing JSONB column accepts `'[]'::jsonb` in principle but no test confirms. Slice 2 task 4.5 (admin endpoint) is a natural place to lock this in.
 - [ ] 16.N3 (slice 2 spec note) — `V91MigrationVerificationTest` documents that V91 partial county index `idx_shelter_tenant_county` uses `(tenant_id, county)` ordering. Single-tenant queries that filter by county-only (no tenant filter) won't hit the index. RLS + service-layer always include tenant filter, so this is correct — but worth noting in `BedSearchService` design comments.
 - M4 (NOT a real concern; left here for warroom traceability) — slice-1 warroom flagged "behavior of `shelterType` on entities loaded BEFORE my Java changes shipped." Investigation showed this is a non-issue: when slice 1 deploys, the JVM restarts with the new entity definition; first read post-restart goes through the new mapper correctly.
+
+## 17. Slice-2 warroom (2026-04-29) deferred follow-ups
+
+Items raised in the slice-2 warroom (post-implementation review of slice 2A entity additions + slice 2B-partial BedSearchService filters + ShelterService persistence). B1, B2, H4 landed in slice 2; the rest are documented here so a future warroom round can reopen them by name.
+
+### Resolved in slice 2 (already landed)
+
+- [x] 17.B1 — **DONE 2026-04-29**: `ReservationRepository.encryptIfPresent` no longer silently no-ops on null tenantId; throws `IllegalStateException` instead so a missing-tenantId programming error surfaces at the encryption boundary rather than as silent NULL data loss.
+- [x] 17.B2 — **DONE 2026-04-29**: replaced unbounded per-shelter `log.warn` in `BedSearchService.readAcceptsFeloniesFromConstraints` with `ObservabilityMetrics.eligibilityCriteriaParseFailureCounter()` (Micrometer counter, tenant-tagged, no shelter_id per cardinality precedent). `log.warn` downgraded to `log.debug` for operator-driven investigation. Fail-open behavior (parse failure → null → routes to (c) any-null branch) is now a documented decision in the inline comment, not a coincidence of code structure.
+- [x] 17.H4 — **DONE 2026-04-29**: V92 header comment updated with explicit "currently un-consumed" note. Documents the slice-5 SQL-refactor activation path + the canonical `@>` containment query + why we keep the index now (cheap insurance vs. CONCURRENTLY-on-populated-data risk later).
+
+### Slice 2C / 2D (load-bearing — block slice-2 merge)
+
+- [ ] 17.H1 (slice 2D §13) — **No targeted tests for new BedSearchService filter behavior**. The 1320-green test count proves NO REGRESSION (no existing test uses these filters because they didn't exist), NOT correctness. Slice 2D §13.1-13.4 must add 5+ dedicated tests covering: shelterType exact match, county case-insensitive match, acceptsFelonies branch (a) explicit-false-excludes, branch (b) explicit-true-includes, branch (c) null-with-sentinel-includes-vs-null-without-sentinel-excludes. Cannot merge slice 2 to main without these.
+
+- [ ] 17.H2 (slice 2D refactor) — **Three-way `acceptsFelonies` logic data dependency spans two tables (`shelter_constraints.eligibility_criteria` + `shelter.requires_verification_call`); no class captures the contract**. Extract a small `AcceptsFeloniesEvaluator` that takes `(ShelterConstraints, Shelter)` → `Decision { INCLUDE, EXCLUDE }`. JavaDoc references design D1 H1 + commented decision tree (a/b/c). Slice 2D unit tests against this evaluator directly. Bonus: when slice 5 adds the SQL filter path, both code paths can produce the same Decision for the same input (testable equivalence).
+
+- [ ] 17.H3 (slice 2D unit test) — **No targeted tests for `ShelterService.isValidCounty` 4-branch state machine**: (1) county null → true; (2) tenant config has `active_counties = []` → true; (3) `active_counties = [...list]` → match-or-miss; (4) `active_counties` key absent → fall back to `NcCountyDefaults`. Add focused unit test exercising all 4 branches; include boundary cases (county NOT in NC defaults but config explicitly empty → accept; county IN NC defaults but config explicitly excludes → reject).
+
+### Slice 4 / 5 (UX + ops)
+
+- [ ] 17.M1 (slice 4 frontend) — **`acceptsFelonies` "0 results at launch" UX landmine**. At launch most shelters have null `eligibility_criteria` AND `requires_verification_call=false`; a coordinator filtering `acceptsFelonies=true` sees an empty result set and can reasonably misread it as "no shelters in our area accept people with felonies" — which is FALSE; the actual interpretation is "we don't have data for most shelters." Slice 4 frontend should surface a banner when filter yields 0 results: "Filtering by 'accepts felonies' may exclude shelters with incomplete eligibility data. Set 'requires verification call' = true on shelters with unknown policy to surface them with a 'call to verify' badge."
+
+- [ ] 17.M2 (slice 4 i18n + backend exception refactor) — **Backend "Invalid county" error is operator-cryptic**. `ShelterService.create/update` throws `IllegalArgumentException("Invalid county 'X' for tenant; not in active_counties")` reaching the user as 400 Bad Request body. A COC_ADMIN doesn't know what `active_counties` is or how to fix it. Slice 4: introduce `CountyNotConfiguredException` → global handler maps to i18n key `error.shelter.county_not_configured` ("County '{0}' is not configured for your CoC. Contact your platform operator to add it.").
+
+- [ ] 17.M3 (slice 4 backlog OR slice-2 carryover) — **`UpdateShelterRequest` cannot CLEAR fields**. PATCH semantics: null = "leave unchanged." A COC_ADMIN wanting to remove a previously-set county has no path through this DTO. Documented limitation. Slice 4 may need a sentinel pattern (`""` empty string = clear) OR a separate explicit clear-field endpoint. Worth a Marcus-Webb / Casey-Drummond pass before deciding the shape.
+
+- [ ] 17.M4 (slice 5 perf) — **`tenantService.findById` fires per shelter create/update**. Bulk operations (211 imports, future bulk-edit features) cause N redundant tenant config reads. Add request-scoped caching (e.g., `@RequestScope` parsed-tenant-config bean). Don't optimize until pilot-scale measurement justifies it.
+
+- [ ] 17.M5 (slice 2D test design) — **`BedSearchService` constructor now has 7 parameters**. Future per-method unit tests need to mock all 7 (including `ObjectMapper`). When slice 2D adds focused filter tests, see 17.H2 — the extracted `AcceptsFeloniesEvaluator` is a cheap test target without the full BedSearchService graph.
+
+### NITs (track but don't gate)
+
+- [ ] 17.N1 (codebase-wide policy decision) — **Reservation entity holds plaintext while User entity holds encrypted**. Documented in JavaDoc as intentional but it's a cross-codebase inconsistency. Future warroom round: pick one direction and standardize.
+
+- [ ] 17.N2 (deferred ergonomics) — **5 callsites of `BedSearchRequest` manually null-padded for the new fields**. Records are explicit (good for compile-time safety) but each new field forces N callsite updates. Builder pattern would be more forward-compatible. Don't refactor now.
+
+- [ ] 17.N3 (deferred refactor) — **`BedSearchService.doSearch` is now ~60 lines of filter logic**. Approaching the threshold where extracting `ShelterFilter` strategy classes pays off. Don't refactor now; revisit if more filters arrive.
