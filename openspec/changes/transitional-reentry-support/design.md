@@ -64,6 +64,14 @@ National context (research-grounded): CSG 2023 found <5% of DOCs use dedicated t
 
 **Warroom input (Alex Chen):** `requires_verification_call` remains a top-level column on `shelter` (V94), not in the JSONB. The sentinel must be queryable without JSONB extraction for the search UI "call to verify" indicator.
 
+**`acceptsFelonies` filter behavior with the `requires_verification_call` sentinel (H1 warroom 2026-04-28):** A naïve "exclude null-eligibility shelters" rule for `acceptsFelonies=true` defeats the design's mitigation strategy (line 169 risk: most shelters launch with null eligibility; sentinel keeps them visible to navigators). The actual filter semantics:
+
+- `eligibility_criteria.criminal_record_policy.accepts_felonies = false` (explicit) → **EXCLUDE** from `acceptsFelonies=true` results.
+- `eligibility_criteria.criminal_record_policy.accepts_felonies = true` (explicit) → **INCLUDE**.
+- `eligibility_criteria` is null OR `criminal_record_policy` is null OR `accepts_felonies` is null → **INCLUDE if `requires_verification_call = true` on the shelter** (annotated with the "call to verify" badge in the UI); **EXCLUDE otherwise** (no policy data and no sentinel = treated as unknown-and-not-flagged).
+
+This three-way logic is what task 4.2 must implement (and tasks/spec test 13.4 must cover all three branches). Backend SQL pattern: `(eligibility_criteria->'criminal_record_policy'->>'accepts_felonies')::boolean = TRUE OR (eligibility_criteria IS NULL AND requires_verification_call = TRUE)`.
+
 ### D2 — Shelter Type Taxonomy
 
 **Decision:** Controlled enum for `shelter_type` VARCHAR(50) with values:
@@ -79,11 +87,15 @@ V91 migration: DEFAULT `'EMERGENCY'`; backfill `dvShelter = true` rows to `shelt
 
 ### D3 — County Field Approach
 
-**Decision:** Controlled list, scoped to NC counties for the initial pilot. A FABT-wide enum of all 100 NC counties is acceptable. Deployment-configurable via `tenant.config.active_counties: string[]` — platform admins configure which counties are surfaced in their deployment's search UI.
+**Decision (revised 2026-04-28 — H2 warroom):** Store county as `VARCHAR(100)` on `shelter`, indexed. Validate values against `tenant.config.active_counties: string[]` at the application layer; do **NOT** create a DB-level enum or check constraint listing specific counties. The NC 100-county list is seeded as the *default* `active_counties` config row at tenant creation time, but lives entirely in `tenant.config` JSONB — not in DDL. Deployments outside NC override the seed by setting their own `active_counties` list.
 
 **Supervision geography is jurisdictional, not distance-based.** *(Research finding, warroom:* Demetrius Holloway*.)* The question a reentry navigator needs answered is: "Does this shelter fall within the supervision district where this person's supervising officer has jurisdiction?" A shelter 2 miles away in the wrong county is a supervision violation; a shelter 40 miles away in the right county is valid. The county field implements the jurisdictional boundary check, not geographic proximity.
 
-**Rationale:** Free text was considered and rejected — "Johnston County" vs "johnston county" vs "Johnston" creates unmatchable data. Controlled list enables reliable filtering. National expansion would require tenant configuration of county lists; NC pilot uses the NC 100-county enum.
+**Rationale:** Free text was considered and rejected — "Johnston County" vs "johnston county" vs "Johnston" creates unmatchable data. Application-layer validation against the per-tenant config list gives the same data-quality guarantee as a DB enum without forcing future migrations when a non-NC tenant onboards. The earlier draft of D3 ("FABT-wide NC 100-county enum is acceptable") was contradictory ("FABT-wide" vs single-state) and would have required a schema-touch migration to add a state.
+
+**Who sets `tenant.config.active_counties`? (B3 warroom 2026-04-28 — Phase G now shipped, Open Question #3 resolved):** **PLATFORM_OPERATOR** sets it at tenant creation time, via the platform-operator UI lifecycle endpoints (Phase G G-4.6 + F11). It is deployment-scope configuration — analogous to how `tenant.dvAccess` and other deployment-shaped settings flow from PLATFORM_OPERATOR authority. COC_ADMIN can READ the list (to populate the county dropdown in their shelter edit form) but cannot mutate it. Rationale: changing the active counties list mid-tenant invalidates existing shelter county values; this is a platform-operator-grade decision, not in-tenant operational configuration. Confirmed via Phase G role split shipped in v0.53.
+
+**Default seed:** at tenant creation, `tenant.config.active_counties` defaults to the NC 100-county list (constant in `org.fabt.shelter.county.NcCountyDefaults`). PLATFORM_OPERATOR can override pre- or post-creation. If the operator explicitly sets `active_counties = []`, county validation is disabled (free-text accepted) — useful for non-pilot deployments still gathering their canonical list.
 
 ### D4 — Third-Party Hold Attribution PII Lifecycle
 
@@ -107,13 +119,20 @@ Admin panel range: 30–480 minutes. Default: 90 minutes. Reentry deployments co
 
 `ReservationSettings` admin panel component already exists as a stub (`admin/components/ReservationSettings`). Wire to `tenant.config.holdDurationMinutes`. Endpoint: `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration`, COC_ADMIN+ role.
 
+**Endpoint security posture (M2 + H4 warroom 2026-04-28):**
+
+- **Role**: COC_ADMIN (in-tenant operational config) — NOT `@PlatformAdminOnly`. Therefore the Phase G `JustificationValidationFilter` (which gates `@PlatformAdminOnly` endpoints behind `X-Platform-Justification` header) does **NOT** apply. Audit logging follows the standard `AuditEventType.TENANT_CONFIG_UPDATED` path, not the per-action `PlatformAdminAccessLog` chain.
+- **Demo-mode behavior**: `DemoGuardFilter.ALLOWED_MUTATIONS` (Spring backend filter, `@Profile("demo")`) does NOT include this endpoint, by design. In the demo, attempts return 403 with body `{"error":"demo_restricted",...}`. A dedicated branch in `DemoGuardFilter.getBlockMessage()` MUST be added matching the `/api/v1/admin/tenants/*/hold-duration` path: `"Hold duration changes are disabled in the demo environment — would affect other visitors' reservation flow."` Without the dedicated branch, the operator hits the generic `/api/v1/tenants/...` block message ("Tenant management is disabled..."), which is misleading because this is reservation config, not tenant lifecycle.
+
 ### D6 — Criminal Record Policy Disclaimer
 
 **Decision:** `CriminalRecordPolicyDisclaimer` React component. Non-dismissable. Rendered adjacent to any display of `criminal_record_policy` fields (search results, shelter detail, shelter edit form).
 
 ARIA: `role="note"`. Visible at all zoom levels including 400%. Visible in dark mode with passing contrast. Included in screen reader reading order immediately after the data it annotates. *(Tomás Herrera warroom)*
 
-i18n key `shelter.criminalRecordPolicyDisclaimer` in both EN and ES locales. When `vawa_protections_apply = true` on the shelter, the disclaimer additionally reads the `shelter.vawa_protections_apply_note` key. *(Casey Drummond warroom: final i18n strings require legal review before merge.)*
+i18n key `shelter.criminalRecordPolicyDisclaimer` in both EN and ES locales. When `vawa_protections_apply = true` on the shelter, the disclaimer additionally reads the `shelter.vawaNoteDisclaimer` key (NB: name corrected from earlier draft `vawa_protections_apply_note` — that is the form-level admin-facing key per i18n-legal-review-strings.md). *(Casey Drummond warroom: legal-reviewed strings landed pre-implementation 2026-04-28 — see `i18n-legal-review-strings.md` in this change directory. Task 15.6 retained as final pre-merge sign-off.)*
+
+**VAWA + categorical-exclusion interaction (H5 warroom 2026-04-28):** A shelter with `excluded_offense_types = ['VIOLENT_FELONY']` AND `vawa_protections_apply = true` is making a legally complex statement. The disclaimer text MUST flag this nuance to navigators — VAWA protections may override categorical exclusions for survivors whose record relates to the violence they experienced. The Casey-reviewed `shelter.vawaNoteDisclaimer` string covers this requirement; do not paraphrase "may apply" to "applies" or "do apply" when implementing.
 
 **Platform neutrality:** FABT represents what shelter programs actually do, not what they should do. The 2024 HUD proposed rule limiting criminal record screening was withdrawn January 2025; the current federal policy direction emphasizes owner discretion. The platform neither endorses nor normalizes any particular exclusion policy — it makes existing policies transparent to navigators who need the information.
 
@@ -163,6 +182,34 @@ i18n key `shelter.criminalRecordPolicyDisclaimer` in both EN and ES locales. Whe
 **Decision:** `shelter_type`, `county`, and `accepts_felonies` filters are placed in a collapsible "Advanced Filters" section on `OutreachSearch.tsx`. On desktop: expanded by default. On mobile: collapsed by default. *(Tomás Herrera warroom: three new optional filters must not complicate the primary mobile bed-search flow for outreach workers like Darius.)*
 
 The optional `/navigator` desktop route (call-center-optimized layout) expands these filters prominently and adds inline eligibility detail cards. Stretch goal for initial phase.
+
+### D13 — `features.reentryMode` Tenant Flag Semantics (B5 warroom 2026-04-28)
+
+**Decision:** `features.reentryMode` is a boolean key under `tenant.config.features` JSONB, default `false`. The flag gates **frontend visibility** of the new reentry surface; backend behavior is uniform across tenants.
+
+**What the flag DOES:**
+
+- Hides the `OutreachSearch.tsx` "Advanced Filters" section's three new filters (`shelterType`, `county`, `acceptsFelonies`) for tenants where `reentryMode = false`. Outreach workers in non-reentry tenants see no UI change vs v0.54.
+- Hides the "Eligibility Criteria" section in the admin shelter edit form (per task 10.1) for tenants where `reentryMode = false`. The `requires_verification_call` toggle is also hidden.
+- Hides the "Add client details (optional)" expansion in the hold creation dialog for tenants where `reentryMode = false`. The base hold dialog is unchanged.
+
+**What the flag DOES NOT do:**
+
+- Backend always accepts and persists the new fields regardless of the flag. Reasoning: a tenant flipping the flag from `false → true` should immediately see any eligibility data already entered by other-tenant admins or imported from external sources; a tenant flipping `true → false` should not silently drop data.
+- Backend search filter parameters (`shelterType`, `county`, `acceptsFelonies`) are always honored. A non-reentry-mode tenant's API consumer sending `?acceptsFelonies=true` gets a correct response. Frontend is responsible for not surfacing the parameters in the UI.
+- The `dvShelter` ↔ `shelter_type='DV'` constraint is uniform across all tenants (it's a DB-level check constraint per D10).
+
+**Who sets the flag:** PLATFORM_OPERATOR, via the lifecycle endpoints shipped in Phase G G-4.6. Same authority as `tenant.config.active_counties` per D3.
+
+**Rationale:** A flag-gated UI surface lets the reentry capability ship to all tenants in one release without forcing the rollout. Reentry tenants enable the flag; non-reentry tenants are unaffected. A backend-side flag would have introduced cross-tenant inconsistency in API behavior that's harder to reason about and test.
+
+**What reads the flag:**
+
+- `frontend/src/pages/OutreachSearch.tsx` — wraps the new advanced-filters section in `{tenantConfig.features?.reentryMode && (...)}`.
+- `frontend/src/pages/admin/ShelterEditPage.tsx` — wraps the new eligibility-criteria section + `requires_verification_call` toggle in the same condition.
+- `frontend/src/components/HoldCreationDialog.tsx` — wraps the "Add client details" expansion in the same condition.
+
+The `tenantConfig.features` shape is fetched via the existing `useTenantConfig()` hook (Phase D ships this); no new endpoint required.
 
 ## Risks / Trade-offs
 

@@ -5,7 +5,7 @@
 - [x] 0.3 Design open questions #1 + #2 resolved (500-char UI / 1000-char server hold note; county detail-card only)
 - [x] 0.4 Design open question #4 resolved (features.reentryMode scoped into V91)
 - [x] 0.5 Design open question #5 resolved to **Option A** (tenant_dek-wrapped ciphertext) via issue #152, closed 2026-04-24. V93 bundles tenant_dek.purpose CHECK update + reservation column adds. See §2.3 for shape.
-- [ ] 0.6 Book Casey Drummond i18n legal-review window for EN+ES disclaimer strings BEFORE implementation starts (not at task 15.6).
+- [x] 0.6 Casey Drummond i18n legal review of EN+ES disclaimer strings: **DONE 2026-04-28** — reviewed strings captured at `i18n-legal-review-strings.md` in this change directory. Implementor MUST use those strings verbatim for `shelter.criminalRecordPolicyDisclaimer`, `shelter.vawaNoteDisclaimer`, `shelter.vawaProtectionsApplyNote`, `hold.clientAttributionPrivacyNote`. Task 15.6 retained as final pre-merge sign-off (any string drift during implementation triggers re-review).
 - [x] 0.7 ~~Clarify Asheville stakeholder messaging posture~~ — **N/A per Corey 2026-04-26**: there is no Asheville implementation; this comms-posture concern doesn't apply. Item dropped.
 - [x] 0.8 Re-verify Flyway HWM after Phase G tags — **DONE 2026-04-26**: Phase G claimed V85/V87/V88/V89; reentry migrations renumbered to **V91 / V92 / V93 / V94**. All references in proposal.md, design.md, tasks.md §2, and specs/* updated in the same commit. Reference: memory `project_reentry_spec_renumber.md`.
 
@@ -17,15 +17,16 @@
 
 ## 2. Database Migrations
 
-- [ ] 2.1 Write V91: add `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY' to `shelter`; add indexed `county` VARCHAR(100) nullable to `shelter`; UPDATE backfill `dvShelter=true` rows to `shelter_type='DV'`; add check constraint `CHECK (dvShelter = FALSE OR shelter_type = 'DV')`; add `features.reentryMode` key to tenant.config default shape (per open question #4 resolution)
-- [ ] 2.2 Write V92: add `eligibility_criteria` JSONB nullable to `shelter_constraints`; add GIN index `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)` — use `mixed=true` migration or separate non-transactional step (CONCURRENTLY cannot run inside a transaction block)
-- [ ] 2.3 Write V93 **(Option A per issue #152)** — two coupled steps in one migration:
+- [ ] 2.1 Write `V91__shelter_type_county_and_reentry_flag.sql`: add `shelter_type` VARCHAR(50) DEFAULT 'EMERGENCY' to `shelter`; add indexed `county` VARCHAR(100) nullable to `shelter` (no DB enum — validate against `tenant.config.active_counties` at app layer per design D3 H2 revision); UPDATE backfill `dvShelter=true` rows to `shelter_type='DV'`; add check constraint `CHECK (dvShelter = FALSE OR shelter_type = 'DV')`; add `features.reentryMode` key (default `false`) to tenant.config default shape per design D13.
+- [ ] 2.2 Write `V92__eligibility_criteria_jsonb.sql`: add `eligibility_criteria` JSONB nullable to `shelter_constraints`; add GIN index `CREATE INDEX CONCURRENTLY idx_shelter_constraints_eligibility ON shelter_constraints USING GIN (eligibility_criteria)` — use `mixed=true` migration or separate non-transactional step (CONCURRENTLY cannot run inside a transaction block)
+- [ ] 2.3 Write `V93__reservation_pii_encrypted.sql` **(Option A per issue #152)** — two coupled steps in one migration:
   - (a) **ALTER `tenant_dek.purpose` CHECK constraint** to add `RESERVATION_PII` to the allowed set. V82 currently pins `CHECK (purpose IN ('TOTP', 'WEBHOOK_SECRET', 'OAUTH2_CLIENT_SECRET', 'HMIS_API_KEY'))`. Use the DROP/ADD CONSTRAINT pattern from V82 (not a plpgsql function rewrite).
   - (b) **ALTER `reservation`** to add `held_for_client_name_encrypted TEXT`, `held_for_client_dob_encrypted TEXT`, `hold_notes_encrypted TEXT` — all nullable, all storing base64 v1 `EncryptionEnvelope`.
   - Migration is Flyway-SQL (not Java) because neither step needs JCE; both are DDL.
 
 - [ ] 2.3a Add `KeyPurpose.RESERVATION_PII` enum value to `org.fabt.shared.security.KeyPurpose`. No associated `KeyDerivationService.deriveXxxKey` method needed — this purpose uses the random-DEK path exclusively (the deprecated HKDF derive methods are for the legacy backward-compat shim only).
-- [ ] 2.4 Write V94: add `requires_verification_call` BOOLEAN DEFAULT FALSE to `shelter`
+- [ ] 2.3b Add `org.fabt.shelter.county.NcCountyDefaults` constant (immutable List<String> of the 100 NC county names) used by the tenant-creation seeder to populate `tenant.config.active_counties` default per design D3.
+- [ ] 2.4 Write `V94__shelter_requires_verification_call.sql`: add `requires_verification_call` BOOLEAN DEFAULT FALSE to `shelter`
 - [ ] 2.5 Verify V91 migration backfill: integration test confirms `dvShelter=true` rows all have `shelter_type='DV'` and check constraint is active post-migration
 
 ## 3. Backend: Domain Model
@@ -39,11 +40,12 @@
 ## 4. Backend: Service and Repository Layer
 
 - [ ] 4.1 `BedSearchService`: add `shelterType` filter (enum, optional, multi-value); add `county` filter (string, case-insensitive, optional); add `acceptsFelonies` filter (boolean, optional — queries `eligibility_criteria->'criminal_record_policy'->>'accepts_felonies'`); update `BedSearchParams` record
-- [ ] 4.2 `BedSearchService`: when `acceptsFelonies=true`, shelters with null `eligibility_criteria` are excluded (unknown policy)
+- [ ] 4.2 `BedSearchService`: implement the **three-way `acceptsFelonies=true` filter logic** per design D1 H1 revision: (a) explicit `eligibility_criteria.criminal_record_policy.accepts_felonies = false` → EXCLUDE; (b) explicit `accepts_felonies = true` → INCLUDE; (c) eligibility_criteria/criminal_record_policy/accepts_felonies any-null → INCLUDE if `requires_verification_call = true` on the shelter (UI annotates with "call to verify" badge), else EXCLUDE. SQL pattern: `(eligibility_criteria->'criminal_record_policy'->>'accepts_felonies')::boolean = TRUE OR (eligibility_criteria IS NULL AND requires_verification_call = TRUE)`. Test 13.4 must cover all three branches.
 - [ ] 4.3 `ShelterService`/`ShelterRepository`: persist `shelterType`, `county`, `eligibilityCriteria`, `requiresVerificationCall` on PUT/PATCH; validate `shelterType` against enum; validate `county` against `tenant.config.active_counties` if configured; enforce `dvShelter=true` implies `shelterType=DV` at application layer
 - [ ] 4.4 `ReservationService`: persist `heldForClientName`, `heldForClientDob`, `holdNotes` from hold creation request via `SecretEncryptionService.encryptForTenant(tenantId, KeyPurpose.RESERVATION_PII, plaintext)`. Store the resulting v1 envelope in the `_encrypted` columns. Validate `heldForClientDob` is before today and after 1900-01-01 BEFORE encryption (plaintext validation only). `dob` is serialized to ISO-8601 string before encryption (`LocalDate.toString()` round-trips cleanly).
-- [ ] 4.5 Add `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration` endpoint: accepts `holdDurationMinutes` integer (30–480), updates `tenant.config.holdDurationMinutes`, requires COC_ADMIN role; hold duration change applies to new holds only
-- [ ] 4.6 Extend Spring Batch cleanup job: null `held_for_client_name_encrypted`, `held_for_client_dob_encrypted`, `hold_notes_encrypted` on reservation records where resolution time + 24h has passed. The job nulls the **ciphertext** columns (it has no key material and no need for it — NULL is NULL regardless of what was encrypted). Logic must be null-safe on pre-V93 databases (no-op if columns not present).
+- [ ] 4.5 Add `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration` endpoint: accepts `holdDurationMinutes` integer (30–480), updates `tenant.config.holdDurationMinutes`, requires COC_ADMIN role; hold duration change applies to new holds only. **NOT** annotated `@PlatformAdminOnly` — therefore Phase G's `JustificationValidationFilter` does NOT apply (no `X-Platform-Justification` header required). Audit via standard `AuditEventType.TENANT_CONFIG_UPDATED`.
+- [ ] 4.5a Add a `DemoGuardFilter.getBlockMessage()` branch matching `/api/v1/admin/tenants/[^/]+/hold-duration`: return "Hold duration changes are disabled in the demo environment — would affect other visitors' reservation flow." Without this branch the operator hits the generic `/api/v1/tenants/...` block message ("Tenant management is disabled..."), which is misleading because this is reservation config, not tenant lifecycle. Endpoint is intentionally NOT added to `ALLOWED_MUTATIONS` per design D5 H4 revision.
+- [ ] 4.6 Extend the existing `org.fabt.referral.service.ReferralTokenPurgeService` (verified live 2026-04-28: runs hourly via `@Scheduled(fixedRate = 3_600_000)`) to also null `held_for_client_name_encrypted`, `held_for_client_dob_encrypted`, `hold_notes_encrypted` on reservation records where resolution time + 24h has passed. The job nulls the **ciphertext** columns (it has no key material and no need for it — NULL is NULL regardless of what was encrypted). Logic must be null-safe on pre-V93 databases (no-op if columns not present). **TenantContext binding**: existing service binds with `dvAccess=true` for the DV referral path; reservation PII purge needs the standard tenant-data binding pattern (NOT `dvAccess=true`). Add a separate `@Scheduled` method or branch within the existing class — do NOT spin up a new `@Service` (operational simplicity: one purge surface, one log line per run).
 
 ## 5. Backend: API Layer and DTOs
 
@@ -68,7 +70,7 @@
 
 - [ ] 7.1 Create `CriminalRecordPolicyDisclaimer` React component: renders `shelter.criminalRecordPolicyDisclaimer` i18n text; `role="note"` ARIA attribute; non-dismissable (no close button); accessible at 400% zoom and in dark mode with passing contrast
 - [ ] 7.2 Add conditional VAWA note: when `vawa_protections_apply = true` prop is passed, additionally render `shelter.vawaNoteDisclaimer`
-- [ ] 7.3 Write CI guard job (grep-based, similar to existing `phase-b-rls-test-discipline` pattern): any JSX/TSX file containing a prop reference to `criminal_record_policy`, `accepts_felonies`, or `excluded_offense_types` that does NOT also contain `<CriminalRecordPolicyDisclaimer` in the same file fails CI; match on exact string tokens to avoid false positives from comments
+- [ ] 7.3 Write CI guard job at `scripts/ci/check-criminal-record-disclaimer-co-rendering.sh` modeled on existing `scripts/ci/check-flyway-migration-versions.sh` + `phase-b-rls-test-discipline` pattern. Logic: any `.tsx`/`.jsx` file under `frontend/src/` containing a non-comment-line match for `criminal_record_policy`, `accepts_felonies`, or `excluded_offense_types` MUST also contain a non-comment-line match for `<CriminalRecordPolicyDisclaimer`. False-positive guard: use `grep -vE '^\s*(\*|//|/\*)'` to filter out comment lines BEFORE matching. Test coverage: write a fixture spec under `scripts/ci/fixtures/` exercising (a) raw-prop-no-disclaimer (FAIL expected), (b) raw-prop-with-disclaimer (PASS expected), (c) comment-only-mention (PASS expected — the script must not flag JSDoc / inline comments containing the token names).
 - [ ] 7.4 NVDA/VoiceOver spot-check: disclaimer is announced after the criminal record policy data it annotates; screen reader does not skip it
 
 ## 8. Frontend: Shelter Type Taxonomy UI
@@ -118,12 +120,12 @@
 - [ ] 13.7 Hold duration change via admin endpoint: in-flight holds retain original `expires_at`; new holds created after the change use new duration
 - [ ] 13.8 Hold duration endpoint: OUTREACH_WORKER and COORDINATOR receive 403; COC_ADMIN succeeds
 - [ ] 13.9 Spring Batch cleanup: after simulated 24h post-expiry, `heldForClientName`, `heldForClientDob`, `holdNotes` are null; other reservation fields preserved
-- [ ] 13.10 V79 migration backfill: all `dvShelter=true` rows have `shelter_type='DV'`; DB constraint rejects diverged updates
+- [ ] 13.10 V91 migration backfill: all `dvShelter=true` rows have `shelter_type='DV'`; DB constraint rejects diverged updates
 - [ ] 13.11 Cross-tenant isolation: `eligibility_criteria` on Shelter from Tenant A not returned in Tenant B queries
 - [ ] 13.12 Cross-tenant isolation: `heldForClientName` on Reservation from Tenant A not accessible from Tenant B session
 
-- [ ] 13.13 **[Option A encryption invariants]** Round-trip integration test: Tenant A encrypt `heldForClientName` = "Probe-<UUID>", read back via the row mapper's `decryptForTenant` path, assert plaintext matches. Bypass the service: load ciphertext directly from DB, assert it does NOT equal plaintext (proves at-rest ciphertext). Attempt `decryptForTenant` with Tenant B context on Tenant A's ciphertext: assert `CrossTenantCiphertextException` (inherits Phase F-6 kid-check). This exercises the exact invariant pass-2 Marcus required.
-- [ ] 13.13 `shelterType=DV` filter combined with `dvShelter=false` never returns a DV shelter (DV access control unaffected by new filter)
+- [ ] 13.13 **[Option A encryption invariants]** Round-trip integration test: Tenant A encrypt `heldForClientName` = "Probe-<UUID>", read back via the row mapper's `decryptForTenant` path, assert plaintext matches. Bypass the service: load ciphertext directly from DB, assert it does NOT equal plaintext (proves at-rest ciphertext). Attempt `decryptForTenant` with Tenant B context on Tenant A's ciphertext: assert `CrossTenantCiphertextException` (inherits Phase F-6 kid-check at `backend/src/main/java/org/fabt/shared/security/CrossTenantCiphertextException.java`, verified live 2026-04-28). This exercises the exact invariant pass-2 Marcus required.
+- [ ] 13.14 `shelterType=DV` filter combined with `dvShelter=false` never returns a DV shelter (DV access control unaffected by new filter)
 
 ## 14. Playwright E2E Tests
 
@@ -139,6 +141,7 @@
 - [ ] 14.10 VAWA note renders alongside base disclaimer when `vawa_protections_apply = true`
 - [ ] 14.11 All new Playwright tests create their own data (no dependency on seed state, per `feedback_isolated_test_data.md`)
 - [ ] 14.12 Integrated navigator end-to-end (Demetrius scenario): (1) outreach worker applies county=Johnston + shelterType=REENTRY_TRANSITIONAL + acceptsFelonies=true filters and confirms matching shelter appears in results; (2) opens hold dialog, expands "Add client details (optional)", verifies `hold.clientAttributionPrivacyNote` is visible, enters name/DOB/notes; (3) submits hold; (4) signs in as shelter coordinator and verifies dashboard shows client name alongside the hold; completes the full three-filter → hold-with-attribution → coordinator-view chain
+- [ ] 14.12a (M4 warroom 2026-04-28) Extend `infra/scripts/seed-data.sql` with the 14.12 fixture: (a) one shelter row in dev-coc tenant with `county='Johnston'`, `shelter_type='REENTRY_TRANSITIONAL'`, `requires_verification_call=false`, and `eligibility_criteria.criminal_record_policy.accepts_felonies=true`; (b) ensure `dev-coc.tenant.config.active_counties` includes `'Johnston'` (otherwise the county filter validation in task 4.3 rejects it). Tag the rows with a SQL comment `-- TEST FIXTURE: do not remove without updating tasks.md §14.12`.
 
 ## 15. Build and Release Verification
 
@@ -148,4 +151,5 @@
 - [ ] 15.4 Bump `backend/pom.xml` version for release (confirm version number at tag time)
 - [ ] 15.5 Update DBML and AsyncAPI/OpenAPI docs for all new fields (per `feedback_update_docs_with_code.md`)
 - [ ] 15.6 Casey Drummond legal review: final EN and ES i18n strings for `shelter.criminalRecordPolicyDisclaimer` and `shelter.vawaNoteDisclaimer` signed off before merge
-- [ ] 15.7 `make rehearse-deploy` PASS before tagging release
+- [ ] 15.7 `make rehearse-deploy` PASS before tagging release. Note: rehearsal harness has known lingering containers (mailpit, prometheus, alertmanager) per `feedback_deploy_rehearsal_lessons.md` — manual `docker stop && docker rm` post-run is expected; not a regression.
+- [ ] 15.8 (M3 warroom 2026-04-28) Author `docs/operations/reentry-mode-user-guide.md` covering: (a) how to enable `features.reentryMode` for a tenant (PLATFORM_OPERATOR action via lifecycle endpoints); (b) how PLATFORM_OPERATOR seeds / overrides `tenant.config.active_counties`; (c) how COC_ADMIN populates `eligibility_criteria` JSONB via the guided form; (d) how outreach workers / navigators use the new advanced filters + hold-with-attribution flow; (e) the 24h PII purge promise (when, what, how to verify in logs); (f) what `requires_verification_call=true` means for navigators and how it interacts with the `acceptsFelonies` filter. Pattern: same shape as `docs/operations/platform-operator-user-guide.md` shipped in F11.

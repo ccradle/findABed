@@ -5,7 +5,7 @@ The system SHALL store a `shelter_type` classification on each shelter record us
 
 Accepted values: `EMERGENCY`, `DV`, `TRANSITIONAL`, `SUBSTANCE_USE_TREATMENT`, `MENTAL_HEALTH_TREATMENT`, `REENTRY_TRANSITIONAL`, `PERMANENT_SUPPORTIVE`, `RAPID_REHOUSING`.
 
-Default for all existing shelters: `EMERGENCY`. Shelters where `dvShelter = true` are backfilled to `DV` during the V79 migration.
+Default for all existing shelters: `EMERGENCY`. Shelters where `dvShelter = true` are backfilled to `DV` during the V91 migration.
 
 `shelter_type` carries no implied compliance status. It is a self-reported classification for search filtering and display only.
 
@@ -28,8 +28,8 @@ Default for all existing shelters: `EMERGENCY`. Shelters where `dvShelter = true
 - **THEN** each shelter in the response includes a `shelterType` field with the current value
 - **AND** the field is present on all shelters, not only those with non-EMERGENCY types
 
-#### Scenario: V79 migration backfill is correct
-- **WHEN** the V79 migration is applied to a database with existing shelter records
+#### Scenario: V91 migration backfill is correct
+- **WHEN** the V91 migration is applied to a database with existing shelter records
 - **THEN** all shelters where `dvShelter = true` have `shelter_type = 'DV'`
 - **AND** all shelters where `dvShelter = false` have `shelter_type = 'EMERGENCY'`
 - **AND** the check constraint is active and enforced after migration completes

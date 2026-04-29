@@ -17,25 +17,25 @@ Emergency shelter bed availability alone is insufficient for two practitioner ca
 
 ### New Capabilities
 
-- `shelter-type-taxonomy`: Controlled vocabulary for shelter classification. New `shelter_type` column on `shelter` table with enum values and V79 migration. Existing `dvShelter` boolean retained for RLS (load-bearing); `shelter_type` is a display/filter layer. DB constraint enforces that `dvShelter = true` implies `shelter_type = 'DV'`.
-- `extended-eligibility-criteria`: JSONB eligibility schema on `shelter_constraints` (V80 migration) with GIN index. Schema covers `criminal_record_policy` (object with controlled `excluded_offense_types` enum, `accepts_felonies` boolean, `vawa_protections_apply` boolean, notes), `program_requirements` (string[]), `documentation_required` (string[]), `intake_hours` (string), `custom_tags` (string[]). Guided form editor in admin UI — never raw JSON input. `CriminalRecordPolicyDisclaimer` component rendered wherever criminal record fields are visible; non-dismissable; ARIA `role="note"`; i18n in both locales.
-- `supervision-county-filter`: Indexed `county` VARCHAR column on `shelter` table (V79 migration). County filter on bed search endpoint. Controlled list of NC counties for pilot; configurable via `tenant.config.active_counties[]`. Supervision geography is jurisdictional (county/district authority), not distance-based.
+- `shelter-type-taxonomy`: Controlled vocabulary for shelter classification. New `shelter_type` column on `shelter` table with enum values and V91 migration. Existing `dvShelter` boolean retained for RLS (load-bearing); `shelter_type` is a display/filter layer. DB constraint enforces that `dvShelter = true` implies `shelter_type = 'DV'`.
+- `extended-eligibility-criteria`: JSONB eligibility schema on `shelter_constraints` (V92 migration) with GIN index. Schema covers `criminal_record_policy` (object with controlled `excluded_offense_types` enum, `accepts_felonies` boolean, `vawa_protections_apply` boolean, notes), `program_requirements` (string[]), `documentation_required` (string[]), `intake_hours` (string), `custom_tags` (string[]). Guided form editor in admin UI — never raw JSON input. `CriminalRecordPolicyDisclaimer` component rendered wherever criminal record fields are visible; non-dismissable; ARIA `role="note"`; i18n in both locales.
+- `supervision-county-filter`: Indexed `county` VARCHAR(100) column on `shelter` table (V91 migration). County filter on bed search endpoint. County values are validated against `tenant.config.active_counties` (no DB-level enum — see design D3); deployments seed the NC 100-county list as the default `active_counties` config row. Supervision geography is jurisdictional (county/district authority), not distance-based.
 
 ### Modified Capabilities
 
 - `bed-reservation`: Reservation record gains `held_for_client_name` VARCHAR(100), `held_for_client_dob` DATE, `hold_notes` TEXT (V81 migration, all nullable). Spring Batch cleanup job extended to null these fields 24h after hold expiry/completion. Hold dialog UI gains optional client attribution fields with purpose-clear labels.
-- `shelter-edit`: Admin shelter form gains shelter_type selector, county selector, eligibility_criteria guided section editor, requires_verification_call toggle (V82: `requires_verification_call` BOOLEAN DEFAULT FALSE on shelter table). Field labels use dignity-centered language throughout.
+- `shelter-edit`: Admin shelter form gains shelter_type selector, county selector, eligibility_criteria guided section editor, requires_verification_call toggle (V94: `requires_verification_call` BOOLEAN DEFAULT FALSE on shelter table). Field labels use dignity-centered language throughout.
 - `reservation-hold-duration-config`: ReservationSettings admin panel component (stub exists) wired to expose `holdDurationMinutes` from tenant.config JSONB. Range 30–480 min. COC_ADMIN role required. Hold duration change applies to new holds only; in-flight holds retain creation-time duration.
 
 ## Impact
 
-- **Database**: 4 migrations (V79–V82); GIN index on eligibility_criteria JSONB; indexed county column; DB constraint on dvShelter/shelter_type sync
+- **Database**: 4 migrations (V91–V94); GIN index on eligibility_criteria JSONB; indexed county column; DB constraint on dvShelter/shelter_type sync
 - **Backend**: `BedSearchService` gains three new filter parameters; `ReservationService` gains navigator attribution fields; Spring Batch cleanup job scope extended; new `PATCH /api/v1/admin/tenants/{tenantId}/hold-duration` endpoint
 - **Frontend**: `OutreachSearch.tsx` (new filters, advanced-filters collapsed on mobile), `ShelterEditPage.tsx` (new field sections), hold dialog (client attribution), `ReservationSettings` admin panel component (wired from stub)
 - **i18n**: ~13 new key groups in both EN and ES locales; all criminal record policy labels reviewed against dignity-centered language standards (per Keisha Thompson warroom)
 - **Testing**: Cross-tenant isolation test for new PII fields; `accepts_felonies + requires_verification_call` AND-condition test; hold duration mid-session semantics test; PII cleanup job integration test
 - **No breaking changes**: All new fields nullable; existing reservation and shelter behavior unchanged; `dvShelter` boolean retained
-- **Flyway HWM**: V89 → V94 (4 migrations: V91 / V91 / V93 / V94). Renumbered twice — V79–V82 → V85–V88 post-v0.51.0 Phase F, then V85–V88 → V91–V94 (2026-04-26) after Phase G claimed V85/V87/V88/V89. Verify actual HWM at implementation start in case any further pre-reentry slice claims additional slots.
+- **Flyway HWM**: V90 → V94 (4 migrations: V91 / V92 / V93 / V94). Renumbered twice — V79–V82 → V85–V88 post-v0.51.0 Phase F, then V85–V88 → V91–V94 (2026-04-26) after Phase G claimed V85/V87/V88/V89. **Phase G (v0.53) and F11 (v0.54) both shipped** — current live HWM is V90. Verify actual HWM at implementation start in case any further pre-reentry slice claims additional slots.
 
 ## Scheduling note (warroom 2026-04-24 pass-2)
 

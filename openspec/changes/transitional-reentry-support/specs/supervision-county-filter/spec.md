@@ -1,7 +1,9 @@
 ## ADDED Requirements
 
 ### Requirement: shelter-county-field
-The system SHALL store a `county` VARCHAR(100) field on shelter records. The field is indexed. For the NC pilot, values SHALL be drawn from the 100-county NC controlled list; additional controlled lists may be added for future deployments. The active county list for a deployment is configurable via `tenant.config.active_counties: string[]`. County is shelter-admin-entered and is not derived from geocoding. When `tenant.config.active_counties` is not configured, county validation defaults to the NC 100-county list.
+The system SHALL store a `county` VARCHAR(100) field on shelter records. The field is indexed. **No DB-level enum or check constraint** lists allowable counties (per design D3 H2 revision); validation is enforced at the application layer against `tenant.config.active_counties: string[]`. The default seed for `active_counties` at tenant creation is the NC 100-county list (constant `org.fabt.shelter.county.NcCountyDefaults`); PLATFORM_OPERATOR can override pre- or post-creation. If `active_counties` is explicitly set to `[]`, county validation is disabled (free-text accepted) — useful for non-pilot deployments still gathering their canonical list. County is shelter-admin-entered and is not derived from geocoding.
+
+**Authority:** PLATFORM_OPERATOR sets `active_counties` via the Phase G G-4.6 lifecycle endpoints (changing the list mid-tenant invalidates existing shelter county values, so this is a platform-operator-grade decision, not in-tenant operational config). COC_ADMIN can READ the list to populate the county dropdown but cannot mutate it.
 
 The county field serves a supervision geography compliance purpose: people on post-release supervision are restricted to an approved jurisdiction (county/district) by their supervision order. A bed in the wrong county triggers a supervision violation. **Supervision geography is jurisdictional, not distance-based** — the county boundary defines where a supervising officer has authority, not how far the shelter is from the client's last address.
 
@@ -20,13 +22,18 @@ The county field serves a supervision geography compliance purpose: people on po
 - **AND** the error message lists valid county values for this deployment
 
 #### Scenario: County validation defaults to NC 100-county list when active_counties not configured
-- **WHEN** a tenant has no `active_counties` configured
+- **WHEN** a tenant has no `active_counties` configured (the seeder did not run, or it was cleared back to null)
 - **AND** a COC_ADMIN sends PATCH `/api/v1/shelters/{id}` with `county: "NotACounty"`
-- **THEN** the response is 400 Bad Request (NC 100-county list is applied as the default)
+- **THEN** the response is 400 Bad Request (NC 100-county list is applied as the default fallback)
 - **AND** the error message lists valid NC county values
 
+#### Scenario: County validation disabled when active_counties is explicitly empty
+- **WHEN** a tenant has `active_counties = []` set explicitly by PLATFORM_OPERATOR
+- **AND** a COC_ADMIN sends PATCH `/api/v1/shelters/{id}` with `county: "AnyFreeTextValue"`
+- **THEN** the response is 200 OK (validation disabled — free-text accepted for deployments still gathering their canonical list)
+
 #### Scenario: County field is null-safe for existing shelters
-- **WHEN** the V79 migration is applied to a database with existing shelter records
+- **WHEN** the V91 migration is applied to a database with existing shelter records
 - **THEN** all existing shelters have `county = null`
 - **AND** existing search and hold workflows continue to function without error
 
