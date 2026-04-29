@@ -94,11 +94,11 @@
 
 ## 11. Frontend: Navigator Hold Dialog
 
-- [ ] 11.1 Add optional "For shelter coordination" section to hold creation dialog: "Who is this hold for?" name field, date of birth field, note for shelter coordinator text field
-- [ ] 11.2 Labels use dignity-centered framing per D4 (task 6.4 i18n keys)
-- [ ] 11.3 Client attribution section collapsed by default with "Add client details (optional)" toggle to keep the default flow uncluttered
-- [ ] 11.4 `heldForClientDob` date input: UI validation prevents future dates and dates before 1900-01-01
-- [ ] 11.5 Coordinator dashboard hold display: show client name alongside hold if `heldForClientName` is present; omit field entirely when null (not "N/A" or empty)
+- [x] 11.1 **DONE 2026-04-29 (slice 4 §11)** — `<HoldDialog>` component (`frontend/src/components/HoldDialog.tsx`). "Add client details (optional)" `<details>` houses three optional fields: `heldForClientName` (text, maxLength=100), `heldForClientDob` (date), `holdNotes` (textarea, maxLength=500). All three serialize into the `HoldAttribution` payload only when non-empty.
+- [x] 11.2 **DONE 2026-04-29 (slice 4 §11)** — Labels render Casey-reviewed i18n keys (`hold.heldForClientName`, `hold.heldForClientDob`, `hold.notes`, `hold.heldForClientNameSublabel`, `hold.heldForClientDobSublabel`, `hold.clientAttributionPrivacyNote`). Privacy note rendered INSIDE the open `<details>` per warroom M5 — operators see the privacy posture at the moment they decide whether to enter PII.
+- [x] 11.3 **DONE 2026-04-29 (slice 4 §11)** — `<details>` element collapsed by default; Confirm button `autoFocus` so a no-attribution flow remains 1 keystroke (Enter) per warroom H2/M1. Native `<details>`/`<summary>` is keyboard + screen-reader accessible without custom code.
+- [x] 11.4 **DONE 2026-04-29 (slice 4 §11)** — Layered validation (warroom H3): HTML5 `min="1900-01-01"` + `max={today}` on the date input; JS guard before submit returns early with localized `hold.dialog.dobInvalidFloor` / `hold.dialog.dobInvalidFuture`; try/catch around the parent's submit handler surfaces server `context.detail` from the backend 1900-floor 400.
+- [x] 11.5 **DONE 2026-04-29 (slice 4 §11)** — `CoordinatorDashboard` fetches `GET /api/v1/shelters/{id}/reservations` on shelter expand and renders per-hold rows with `data-testid="coordinator-hold-row-{reservationId}"` below the existing aggregated "Active Holds" chip block. Each row shows population label + remaining-minutes / `referral.expired` badge. The `<FormattedMessage id="coord.heldForClient" />` label + `heldForClientName` value render ONLY when name is present — when null the field is omitted entirely (not "N/A" or empty).
 
 ## 12. Frontend: Admin ReservationSettings Panel
 
