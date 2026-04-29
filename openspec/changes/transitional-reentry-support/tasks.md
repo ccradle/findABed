@@ -84,13 +84,13 @@
 
 ## 10. Frontend: Extended Eligibility Criteria UI
 
-- [ ] 10.1 Add "Eligibility Criteria" section to `ShelterEditPage.tsx` / admin shelter form — visible to COC_ADMIN and PLATFORM_ADMIN only; not visible to COORDINATOR
-- [ ] 10.2 Criminal record policy sub-section: `accepts_felonies` toggle (label: "Accepts individuals with felony convictions"), `excluded_offense_types` multi-select using controlled vocabulary with localized display labels, `individualized_assessment` toggle, `vawa_protections_apply` checkbox, notes text field
-- [ ] 10.3 Program requirements, documentation required, intake hours fields (tag editor for arrays, text field for hours)
-- [ ] 10.4 All eligibility criteria fields labeled "Optional"; empty state displays "Not specified" in read-only views
-- [ ] 10.5 `CriminalRecordPolicyDisclaimer` rendered within the eligibility criteria section
-- [ ] 10.6 `requires_verification_call` toggle in shelter edit form; "Requires verification call" badge rendered on shelter search result cards when true
-- [ ] 10.7 Eligibility criteria display in expanded shelter card in `OutreachSearch.tsx`: show `program_requirements`, `intake_hours`, criminal record policy summary
+- [x] 10.1 **DONE 2026-04-29 (slice 4 §10)** — `<EligibilityCriteriaSection>` component, role-gated via `visible` prop driven by `COC_ADMIN`/`PLATFORM_ADMIN` check in `ShelterForm`. Renders nothing when invisible. Placed in fieldset with legend.
+- [x] 10.2 **DONE 2026-04-29 (slice 4 §10)** — `accepts_felonies` as tri-state radio group (Yes/No/Not specified — preserves the H1 evaluator's distinction between explicit-false and absent-data); `excluded_offense_types` chip-group multi-select (6 controlled values via slice 3 §6.3 i18n with `aria-pressed`); `individualized_assessment` checkbox; `vawa_protections_apply` checkbox with conditional `shelter.vawaProtectionsApplyNote` form-level note (warroom M3 — distinct from search-side `vawaNoteDisclaimer`); `notes` textarea (max 500 chars).
+- [x] 10.3 **DONE 2026-04-29 (slice 4 §10)** — `program_requirements` + `documentation_required` use new reusable `<TagEditor>` component (input + add + chip list, dedup + trim, `aria-label` per chip remove button). `intake_hours` text input.
+- [x] 10.4 **DONE 2026-04-29 (slice 4 §10)** — every form field suffixed " (Optional)" via `common.optional` i18n key. Read-only display (`<EligibilityCriteriaDisplay>`) renders "Not specified" via `common.notSpecified` for null/empty fields.
+- [x] 10.5 **DONE 2026-04-29 (slice 4 §10)** — `<CriminalRecordPolicyDisclaimer>` rendered FIRST in DOM order in BOTH `<EligibilityCriteriaSection>` (form) AND `<EligibilityCriteriaDisplay>` (read-only). Casey-reviewed legal posture: disclaimer precedes the data it annotates. §7 CI guard satisfied per-file at every checkpoint during implementation.
+- [x] 10.6 **DONE 2026-04-29 (slice 4 §10)** — `requires_verification_call` checkbox toggle in `ShelterForm` (`requires-verification-call-toggle` testid). "📞 Requires verification call" badge in OutreachSearch result cards (`requires-verification-call-badge-{shelterId}` testid) using `color.warning`/`warningBg` for visual prominence.
+- [x] 10.7 **DONE 2026-04-29 (slice 4 §10)** — `<EligibilityCriteriaDisplay>` rendered in OutreachSearch expanded shelter modal as a "Eligibility Criteria" Section. Parses `JsonString` via `parseEligibilityCriteria`. Renders `program_requirements`, `intake_hours`, criminal record policy summary, AND the "Not specified" empty-state per §10.4. Disclaimer co-rendered at top.
 
 ## 11. Frontend: Navigator Hold Dialog
 
