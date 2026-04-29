@@ -43,9 +43,11 @@ The system SHALL support third-party navigator hold attribution on reservation r
 - **AND** the cleanup job performs NO decryption — it nulls ciphertext columns directly
 - **AND** the reservation record and its other fields (status, expiresAt, shelterId, etc.) are preserved
 
-#### Scenario: PII cleanup job is null-safe pre-V93
+#### Scenario: PII cleanup job fails fast on pre-V93 databases
+*(Revised 2026-04-29 verify-round-2 S1 — earlier draft asserted the job "completes without error / null-safe logic." Slice 2C ships SQL that references the `_encrypted` columns by name; on a pre-V93 DB the column does not exist and the SQL fails with a column-not-found error. This is the safer ops posture: a silent no-op would mask a deployment-order regression where a v0.55+ JAR is started against a pre-V93 schema. The loud failure surfaces the migration-order error in the operator's logs immediately.)*
 - **WHEN** the Spring Batch cleanup job runs on a database before V93 migration is applied
-- **THEN** the job completes without error (null-safe logic; the `_encrypted` columns do not exist yet)
+- **THEN** the job throws a `DataAccessException` (column-not-found) and the operator's monitoring sees a failed run
+- **AND** the deploy runbook for v0.55+ requires V91-V94 to ship in the same release as the slice-2C JAR (so this code path never legitimately fires in production)
 
 #### Scenario: heldForClientDob validation rejects implausible dates (plaintext-layer validation)
 - **WHEN** an outreach worker sends `heldForClientDob` with a date in the future or before 1900-01-01
