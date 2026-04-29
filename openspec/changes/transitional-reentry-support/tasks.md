@@ -72,15 +72,15 @@
 
 ## 8. Frontend: Shelter Type Taxonomy UI
 
-- [ ] 8.1 Add `shelterType` field display to shelter search result cards (summary view)
-- [ ] 8.2 Add `shelter_type` dropdown to admin shelter edit form; prevent selecting DV without `dvShelter=true` (tooltip: "Set the DV Shelter toggle to enable DV type")
-- [ ] 8.3 Add `shelterType` multi-select filter to `OutreachSearch.tsx` filter bar (desktop) and advanced filters section (mobile)
+- [x] 8.1 **DONE 2026-04-29 (slice 4 §8)** — shelterType chip on search-result cards (summary view) via `data-testid="shelter-type-display-{shelterId}"`. Renders only when present.
+- [x] 8.2 **DONE 2026-04-29 (slice 4 §8 + warroom M3)** — `shelter-type-dropdown` in `ShelterForm`. Bidirectional V91 lockstep: dvShelter=true forces DV (locked); dvShelter=false disables DV option with the tooltip. DV option hidden entirely for non-`dvAccess` users (matches §8.3 RLS-aware posture per warroom H1).
+- [x] 8.3 **DONE 2026-04-29 (slice 4 §8 + warroom H1+H2+M1)** — chip-group multi-select inside a `<details>` "Advanced filters" section. DV chip hidden for non-dvAccess users (warroom H1). Chip group preferred over native `<select multiple>` for mobile + a11y (warroom H2). `aria-pressed` + per-chip `data-testid`.
 
 ## 9. Frontend: Supervision County Filter UI
 
-- [ ] 9.1 Add `county` field to admin shelter edit form (dropdown filtered to `tenant.config.active_counties`; optional)
-- [ ] 9.2 Add `county` display to shelter search result cards (in expanded/detail view; not summary)
-- [ ] 9.3 Add `county` filter to `OutreachSearch.tsx` advanced filters section (collapsed by default on mobile, expanded on desktop); persistent `<label>` with `htmlFor` association
+- [x] 9.1 **DONE 2026-04-29 (slice 4 §9)** — `shelter-county-dropdown` in `ShelterForm`. Three render modes per design D3: loading (placeholder + disabled), empty-list (free-text input — explicit `active_counties=[]` validation-disabled mode), populated (`<select>` from `useActiveCounties` hook).
+- [x] 9.2 **DONE 2026-04-29 (slice 4 §9)** — county chip on search-result cards via `data-testid="county-display-{shelterId}"`. Adjacent to the §8.1 shelterType chip.
+- [x] 9.3 **DONE 2026-04-29 (slice 4 §9 + warroom M1+M4)** — county dropdown inside the same `<details>` advanced-filters section. `htmlFor` association on `<label>`. `<details open>` per warroom M4 — desktop sees filters open by default; mobile users tap to toggle.
 
 ## 10. Frontend: Extended Eligibility Criteria UI
 
@@ -182,7 +182,7 @@ Items raised in the slice-2 warroom (post-implementation review of slice 2A enti
 
 ### Slice 4 / 5 (UX + ops)
 
-- [ ] 17.M1 (slice 4 frontend) — **`acceptsFelonies` "0 results at launch" UX landmine**. At launch most shelters have null `eligibility_criteria` AND `requires_verification_call=false`; a coordinator filtering `acceptsFelonies=true` sees an empty result set and can reasonably misread it as "no shelters in our area accept people with felonies" — which is FALSE; the actual interpretation is "we don't have data for most shelters." Slice 4 frontend should surface a banner when filter yields 0 results: "Filtering by 'accepts felonies' may exclude shelters with incomplete eligibility data. Set 'requires verification call' = true on shelters with unknown policy to surface them with a 'call to verify' badge."
+- [x] 17.M1 **DONE 2026-04-29 (slice 4 §8/§9 + warroom H4)** — empty-state banner ships in `OutreachSearch.tsx` triggered by `acceptsFelonies && filtered.length === 0`. New i18n key `search.acceptsFeloniesEmptyHint` — Casey re-review pending, captured in `i18n-legal-review-strings.md` per its dedicated section. Also: the `acceptsFelonies` toggle itself ships in this same commit (spec gap close — no §8.x/§9.x task explicitly added the UI even though i18n key + backend field existed; warroom H3 captured the gap).
 
 - [ ] 17.M2 (slice 4 i18n + backend exception refactor) — **Backend "Invalid county" error is operator-cryptic**. `ShelterService.create/update` throws `IllegalArgumentException("Invalid county 'X' for tenant; not in active_counties")` reaching the user as 400 Bad Request body. A COC_ADMIN doesn't know what `active_counties` is or how to fix it. Slice 4: introduce `CountyNotConfiguredException` → global handler maps to i18n key `error.shelter.county_not_configured` ("County '{0}' is not configured for your CoC. Contact your platform operator to add it.").
 

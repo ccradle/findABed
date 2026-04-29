@@ -79,3 +79,29 @@ When task 6.2 (i18n keys for criminal-record disclaimer) and task 6.4 (i18n keys
 - Use these strings verbatim in `frontend/src/locales/en.json` and `frontend/src/locales/es.json`.
 - Reference this artifact in the i18n key JSDoc / comment block: `// Casey-reviewed 2026-04-28; see openspec/changes/transitional-reentry-support/i18n-legal-review-strings.md`.
 - Any change to these strings during implementation requires a Casey re-review (capture as a new section in this artifact).
+
+---
+
+## Pending Casey re-review (slice 4 §8/§9 warroom H4 — added 2026-04-29)
+
+Slice 4 §8/§9 surfaced a new user-facing string that was NOT in the original review batch but ships with the same legal-review posture. Captured here so a Casey re-review pass at v0.55 release prep (or sooner if Corey requests) covers it. Text below is the implementor's draft using Casey's documented principles (no certification language, active voice, ~9th grade, flag possibility not adjudicate, plain-language remediation).
+
+### `search.acceptsFeloniesEmptyHint`
+
+Shown when the bed-search results are empty AND the operator has the `acceptsFelonies` filter set to true. Per slice-2 warroom carryover §17.M1, the empty result is a UX landmine at launch: most shelters have null `eligibility_criteria`, so a coordinator filtering for "accepts felonies" sees zero results and misreads it as "no shelters accept" instead of "we have no data on most shelters." The banner has to explain WHY the filter excluded shelters and HOW to surface them.
+
+**EN (implementor draft, awaits Casey re-review):**
+> No matching shelters. The 'accepts felonies' filter excludes shelters with no eligibility data on file. Ask your CoC admin to set 'requires verification call' on shelters whose policy is unknown — those will appear with a 'call to verify' badge.
+
+**ES (implementor draft, awaits Casey re-review):**
+> No hay refugios coincidentes. El filtro 'acepta condenas por delitos graves' excluye los refugios sin datos de elegibilidad registrados. Pida a su administrador del CoC que active 'requiere llamada de verificación' en los refugios cuya política sea desconocida — aparecerán con una insignia 'llamar para verificar'.
+
+**Casey-principle self-check:**
+- ✓ Active voice ("Ask your CoC admin to set"; "those will appear")
+- ✓ Concrete remediation ("set 'requires verification call'")
+- ✓ No certification language
+- ✓ ~9th-grade reading level (verified: short sentences, common vocabulary)
+- ⚠ Mentions an internal mechanism ("eligibility data on file") — Casey may prefer a plainer phrase like "no information about their criminal record policy"; flagging.
+- ⚠ Spanish "registrados" is technical; Casey may prefer "que tengan información"; flagging.
+
+Track in §15.6 final pre-merge sign-off.
