@@ -34,9 +34,9 @@
 
 ## 5. Missing-but-cited doc
 
-- [ ] 5.1 **Verify** `docs/legal/right-to-be-forgotten.md` does not exist (already verified — confirm at edit time).
-- [ ] 5.2 **Author** `docs/legal/right-to-be-forgotten.md` (~400 words minimal version per design D5, Open Question 3). Sections: self-hosted-vs-SaaS scope; the 24h hold-attribution PII purge as automated retention; deferral statement directing data-subject access requests to the deployment owner; explicit "no GDPR/CCPA position taken at v0.55" sentence.
-- [ ] 5.3 **Update** `docs/security/compliance-posture-matrix.md:110` reference to confirm the now-existing file path.
+- [x] 5.1 **Verify** `docs/legal/right-to-be-forgotten.md` does not exist (already verified — confirm at edit time).
+- [x] 5.2 **Author** `docs/legal/right-to-be-forgotten.md` (~400 words minimal version per design D5, Open Question 3). Sections: self-hosted-vs-SaaS scope; the 24h hold-attribution PII purge as automated retention; deferral statement directing data-subject access requests to the deployment owner; explicit "no GDPR/CCPA position taken at v0.55" sentence.
+- [x] 5.3 **Update** `docs/security/compliance-posture-matrix.md:110` reference to confirm the now-existing file path.
 
 ## 6. Demo story page (`reentry-story.html`)
 
