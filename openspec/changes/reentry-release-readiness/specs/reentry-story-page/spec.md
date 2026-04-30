@@ -44,6 +44,20 @@ The root `index.html` "See It Work" grid SHALL include a fifth tile linking to `
 - **AND** the fifth tile's link target SHALL be `demo/reentry-story.html`
 - **AND** the fifth tile's headline SHALL describe reentry / release-day bed placement in non-clinical, non-system-jargon language
 
+### Requirement: Reentry story page carries reciprocal "see also" footer
+The new `demo/reentry-story.html` page SHALL include a footer block linking back to its sibling capability deep-dives and the audience-facing pages most relevant to a navigator arriving at this story (warroom Round 2 decision, `feedback_review_archived_specs_before_ui` analog for cross-page navigation).
+
+#### Scenario: Footer links present
+- **WHEN** the rendered HTML of `demo/reentry-story.html` is inspected
+- **THEN** a `<footer>` block SHALL contain links to AT LEAST these targets:
+  - `../index.html` (root front door)
+  - `dvindex.html` (DV referral capability deep-dive — reciprocal of the dvindex footer link added below)
+  - `for-coordinators.html` (audience page — relevant to the role distinction the page draws)
+
+#### Scenario: Footer matches the dvindex pattern
+- **WHEN** the footer markup is compared against `demo/dvindex.html`'s footer
+- **THEN** they SHALL share the same structural pattern (heading + `<ul>` of links) so cross-page navigation is consistent for the navigator
+
 ### Requirement: Cross-page links acknowledge the new story
 Each of `demo/for-coordinators.html`, `demo/for-cities.html`, `demo/for-funders.html`, and `demo/dvindex.html` SHALL be updated to acknowledge the reentry story page exists and link to it where relevant.
 
