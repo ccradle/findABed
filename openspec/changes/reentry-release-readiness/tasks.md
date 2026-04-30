@@ -18,11 +18,11 @@
 
 ## 3. Architectural doc sync
 
-- [ ] 3.1 **`docs/asyncapi.yaml` (code repo)** — audit all 12 sites of "ZERO client PII" (lines 152, 170, 184, 405, 659, 1092, 1093, 1103, 1139, 1223, 1430, 1461 — verify still current at edit time). DV-event sites stay verbatim. Reservation-event-related sites get an explicit note that hold-attribution PII is server-side-only and not emitted over AsyncAPI by design.
+- [x] 3.1 **`docs/asyncapi.yaml` (code repo)** — audit all 12 sites of "ZERO client PII" (lines 152, 170, 184, 405, 659, 1092, 1093, 1103, 1139, 1223, 1430, 1461 — verify still current at edit time). DV-event sites stay verbatim. Reservation-event-related sites get an explicit note that hold-attribution PII is server-side-only and not emitted over AsyncAPI by design.
 - [ ] 3.2 **`docs/schema.dbml` (code repo)** — regenerate from the live schema reflecting V91-V95 (shelter_type, county, requires_verification_call, eligibility_criteria GIN index, reservation `_encrypted` columns, tenant_dek.purpose extension). Add comment to the reservation entity noting the `_encrypted` columns are crypto-shred-managed.
 - [ ] 3.3 **`docs/erd.svg` (code repo)** — regenerate from the updated DBML (use `@softwaretechnik/dbml-renderer` per the convention from `feedback_update_docs_with_code`).
-- [ ] 3.4 **`docs/architecture.md` (code repo)** — add a `transitional-reentry-support` section parallel to the existing dv-opaque-referral section. ~200 words. Cover taxonomy, encrypted-reservation-pii sub-module, feature flag, purge job. Cite the OpenSpec change archive path.
-- [ ] 3.5 **`docs/architecture/tenancy-model.md` (code repo)** — add one paragraph (~50 words) on the new `tenant_dek.purpose='RESERVATION_PII'` tenant-scoped key.
+- [x] 3.4 **`docs/architecture.md` (code repo)** — add a `transitional-reentry-support` section parallel to the existing dv-opaque-referral section. ~200 words. Cover taxonomy, encrypted-reservation-pii sub-module, feature flag, purge job. Cite the OpenSpec change archive path.
+- [x] 3.5 **`docs/architecture/tenancy-model.md` (code repo)** — add one paragraph (~50 words) on the new `tenant_dek.purpose='RESERVATION_PII'` tenant-scoped key.
 
 ## 4. Operational claim → verifiable signal
 
