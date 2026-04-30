@@ -156,6 +156,14 @@
     <img loading="lazy" src="screenshots/26-coordinator-edit-form.png" alt="Coordinator shelter edit form showing operational fields editable">
   </div>
 
+  <!-- Shelter type taxonomy note -->
+  <div style="background: #1e293b; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; border: 1px solid #334155;">
+    <div style="font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 8px;">A note on shelter types (v0.55+)</div>
+    <div style="font-size: 13px; color: #94a3b8; line-height: 1.7;">
+      The shelter form supports five shelter types: <strong>EMERGENCY</strong> (the default), <strong>TRANSITIONAL</strong>, <strong>OVERFLOW</strong>, <strong>REENTRY_TRANSITIONAL</strong>, and the <strong>DV</strong> toggle (orthogonal to the type taxonomy &mdash; any non-DV shelter type can additionally be flagged DV). The 211 import maps to <code>EMERGENCY</code> by default; the CoC admin can change a shelter's type during the edit step shown above. <code>REENTRY_TRANSITIONAL</code>-typed shelters surface an eligibility-criteria editor for criminal-record policy and program requirements when the tenant <code>reentryMode</code> flag is enabled. See the <a href="reentry-story.html" style="color: #60a5fa;">reentry walkthrough</a> for the full operator flow.
+    </div>
+  </div>
+
   <!-- Summary -->
   <div style="background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid #334155;">
     <div style="font-size: 16px; font-weight: 700; color: #e2e8f0; margin-bottom: 12px;">The Complete Story</div>

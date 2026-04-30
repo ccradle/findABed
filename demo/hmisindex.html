@@ -53,6 +53,7 @@
   <div class="callout">
     <h2>No Client PII</h2>
     <p>FABT pushes <strong>project-level bed inventory</strong> (HMIS Element 2.07) — beds total, beds occupied, population type, utilization rate. This is project descriptor data, not client-level PII. <strong>No client consent is required.</strong> DV shelter data is aggregated across all DV shelters before push — individual DV shelter occupancy is never sent.</p>
+    <p style="margin-top: 12px;">Hold-attribution PII fields introduced in v0.55 (optional client name, date of birth, and notes on non-DV reentry holds) are <strong>never</strong> included in HMIS push payloads. Only project-level inventory data is exported.</p>
   </div>
 
   <div class="section-divider">Admin HMIS Export Tab</div>
