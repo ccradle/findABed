@@ -205,11 +205,11 @@
 
 ### 16.G — Verification + commit gate
 
-- [ ] 16.G.1 **`mvn test`** GREEN — all backend tests including §16.A.5 + §16.B.3.
-- [ ] 16.G.2 **`npm run build`** GREEN — frontend compiles; no missing types.
-- [ ] 16.G.3 **Live-stack manual verification** — login as outreach@dev.fabt.org → no reentry UI; login as outreach@blueridge.fabt.org (after §16.E.1 UPDATE) → reentry UI visible. Confirm advanced filters, eligibility section, HoldDialog PII fields, CoordinatorDashboard past-holds list ALL gated correctly.
-- [ ] 16.G.4 **API-gate verification** — direct REST call as outreach@dev.fabt.org against `GET /api/v1/shelters/{id}/reservations` → assert PII fields are null in response (defense-in-depth confirmed). Repeat as outreach@blueridge.fabt.org → assert PII present (when reentryMode=true).
-- [ ] 16.G.5 **Playwright matrix** (§16.D.1) GREEN.
+- [x] 16.G.1 **`mvn test`** GREEN — full backend suite 1431/1431 after the §16.A annotation fix (ff2db6c). Test breakdown: 8 new JwtServiceReentryModeClaimTest cases, 3 new PlatformJwtServiceTest pinning cases, 6 new ReservationResponseReentryGateTest cases, 18 unchanged HoldAttributionIntegrationTest cases (now opt-in via authHelper.enableReentryMode), 5 unchanged ShelterReservationsEndpointTest cases (also opt-in), 6 ArchUnit Family C cache-isolation guard cases (with new @TenantScopedByConstruction on reentryModeCache).
+- [x] 16.G.2 **`npm run build`** GREEN — Vite + tsc + service worker. Vitest 202/202 across 14 test files (was 13; +decodeJwtPayload.test.ts).
+- [ ] 16.G.3 **Live-stack manual verification** — REQUIRES OPERATOR: stop dev-start.sh backend, `mvn -DskipTests package`, restart, then login as outreach@dev.fabt.org → confirm reentry surfaces visible (since dev-coc now seeds with reentryMode=true). To exercise the negative path on the live stack: temporarily flip dev-coc reentryMode=false via `PUT /api/v1/tenants/{id}/config`, wait ≥60s for the reentryModeCache TTL, log out + log back in (forces fresh JWT issue), confirm surfaces hidden, restore.
+- [ ] 16.G.4 **API-gate verification** — REQUIRES OPERATOR: with the rebuilt backend running, login as the outreach user, hit `GET /api/v1/shelters/{id}/reservations` and confirm `heldForClientName/Dob/holdNotes` are populated when the JWT carries reentryMode=true. The negative-path-via-API curl matrix is fully covered by `ReservationResponseReentryGateTest` (6 cases) + `HoldAttributionIntegrationTest` integration suite, both passing in §16.G.1.
+- [ ] 16.G.5 **Playwright matrix** (§16.D.1) — REQUIRES OPERATOR: with the rebuilt backend + restarted frontend nginx, run `BASE_URL=http://localhost:8081 npx playwright test e2e/playwright/tests/reentry-mode-gate.spec.ts --config=deploy/playwright.config.ts` (or appropriate dev config). Spec is 3 positive tests on the gated path.
 
 ## 14. Archive and tag (the release gate)
 
