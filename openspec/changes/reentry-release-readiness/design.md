@@ -74,6 +74,27 @@ Stakeholders: project lead (release decision), the synthesized warroom personas 
 
 **Rationale:** Architecture docs already have a per-capability section pattern. Following the pattern is cheaper than restructuring. The DBML regeneration is a tooling step, not authorship. Per Alex A-2: this is the `feedback_update_docs_with_code` discipline catching up — not a new architectural design.
 
+### D14 — `features.reentryMode` UI gate (Path Y, warroom Round 5)
+**Decision:** The `features.reentryMode` tenant config flag — declared in V91 and intended by `transitional-reentry-support` design D13 to gate the new reentry UI surface — is wired in this change. Implementation has two layers (defense-in-depth):
+
+1. **API serialization gate (primary).** `ReservationResponse.from()` reads `tenant.config.features.reentryMode` from the request context. When false, the three PII fields (`heldForClientName`, `heldForClientDob`, `holdNotes`) are returned as null regardless of underlying ciphertext. This composes with the §13.D list-view-PII-drop work — same gate, broader scope. Per `feedback_contract_gap_in_parallel_paths` (Round 4 + Round 5 lessons): a future component rendering PII without the gate is still safe because the payload itself is empty.
+
+2. **Frontend conditional render (UX polish).** Four sites — `OutreachSearch.tsx` advanced filters, `ShelterForm.tsx` eligibility section + `requires_verification_call` toggle, `HoldDialog.tsx` PII fields, `CoordinatorDashboard.tsx` past-holds PII display. Use `{user?.reentryMode && (...)}` conditional render, not `display:none` or `aria-hidden` (per Tomás N1: keeps the tab order clean and prevents AT confusion).
+
+**Claim transport:** JWT claim, matching the `dvAccess` precedent in this codebase. JwtService injects `TenantService.getConfig(UUID)` and emits the boolean alongside `dvAccess` at token issuance. A 60s Caffeine cache keyed by tenant id avoids per-token DB roundtrips. Token TTL bounds flag-flip latency at 15 min.
+
+**Centralization (warroom B1 fix):** flag-load helper called from EVERY token-issuance site in JwtService (`generateAccessToken(User)`, `generateAccessToken(User, String)`, `generateAccessTokenWithPasswordChange(User)`). Refresh + TOTP-verify + OAuth2 paths all flow through these methods → no caller needs to know about the new claim. `PlatformJwtService` is a separate class for platform users (no tenant.config) and remains untouched; a no-op assertion test guards against future regression.
+
+**Fail-safe default:** missing `features` key, missing `reentryMode` key, non-boolean values, null tenant.config — all coerce to false. The default protects tenants not ready to handle PII.
+
+**Prod-tenant flip (warroom B3 fix):** v0.55 deploy runbook §7 adds a post-deploy step to flip `features.reentryMode=true` for the demo tenant(s) (`blueridge`, `mountain`) via UPDATE on `tenant.config`. Without it, the new `demo/reentry-story.html` deep-dive page would link to a "live demo" with the reentry UI hidden — appearing broken to public visitors.
+
+**Rationale:** discovered 2026-04-30 during seed-data verification for screenshot capture. The `transitional-reentry-support` slice shipped the UI but not the gate; this change ships the gate. The user's framing: "tenants that may not be ready to handle PII" should not see PII fields by default. Defense-in-depth (API + frontend) is the right architecture because parallel-path drift in render code (the Round 5 B2 finding — `CoordinatorDashboard.tsx` was a 4th unguarded surface) would otherwise re-emerge in any future component touching reservation data.
+
+**Alternative considered:** frontend-only gate — rejected per warroom Round 5 B2; eliminates parallel-path drift only if API enforces. PII in API response → present in browser dev tools → present in service-worker cache → renderable by any future component → leak surface that grows over time.
+
+**Alternative considered:** `/api/v1/me/features` endpoint + `useTenantFeatures` hook — rejected. Adds an HTTP roundtrip + loading state + risk of FOUC (flash of PII before flag evaluates). JWT-borne pattern matches `dvAccess` and is synchronous on render.
+
 ### D9 — Tooltip implementation uses always-visible help text + `aria-describedby`, not hover tooltips
 **Decision:** PII-field tooltips on `HoldDialog` and `EligibilityCriteriaSection` render as always-visible help text below each input (or inside the existing `<details>` disclosure where applicable), with `aria-describedby` linking the input to the help text. NO hover-only or `title`-attribute tooltips.
 

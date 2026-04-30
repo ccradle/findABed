@@ -154,6 +154,63 @@
 - [ ] 13.F.2 **`docs/security/compliance-posture-matrix.md` re-review** — confirm the now-existing audit events are documented in the matrix's audit-events section; the metric-gap row is preserved (the metric is still pending — only the audit emitter ships in v0.55).
 - [ ] 13.F.3 **Live-stack smoke** — local dev-start.sh, place a hold with attribution, decrypt-on-read via coordinator dashboard detail, force purge via the scheduled invocation; verify all three audit rows appear in `audit_events` with payloads matching §13.A contract.
 
+## 16. `features.reentryMode` UI gating (D13 implementation, Path Y per warroom Round 5)
+
+> Path-Y scope expansion landed via warroom Round 5 (Marcus Webb + Alex + Riley + Tomás + Casey + Maria, 2026-04-30). Three BLOCKERs raised vs initial plan: (B1) refresh path strips claim, (B2) `CoordinatorDashboard.tsx` was a 4th unguarded PII surface, (B3) prod demo tenants would show no reentry UI post-deploy. Revised approach: API-serialization gate (defense-in-depth) + frontend gates (UX polish) + post-deploy runbook step. See warroom output and `transitional-reentry-support/design.md` D13 for context.
+
+### 16.A — Backend: JwtService claim emission (BLOCKER B1)
+
+- [ ] 16.A.1 **Add `TenantService` dep to `JwtService`** — constructor injection. Use `tenantService.getConfig(UUID)` (line 166) which returns merged-with-defaults `Map<String, Object>` and centralises JSONB null-safety. Do NOT inject `TenantRepository` directly.
+- [ ] 16.A.2 **Private helper `loadReentryMode(UUID tenantId): boolean`** — reads `config.get("features")` cast safely as Map; reads `features.get("reentryMode")` and coerces to boolean (`Boolean.TRUE.equals(...)` so non-boolean values produce false; missing key produces false). Wrap in Caffeine cache, `expireAfterWrite=Duration.ofSeconds(60)`, `maximumSize=10_000`.
+- [ ] 16.A.3 **Centralise claim emission** — single private helper `addReentryModeClaim(Map<String,Object> payload, UUID tenantId)` called from EVERY token-issuance method: `generateAccessToken(User)` (line 176), `generateAccessToken(User, String)` (line 180), `generateAccessTokenWithPasswordChange(User)` (line 203), and any others discovered in code review. Refresh path in `AuthController:182` is covered because it calls one of the existing methods.
+- [ ] 16.A.4 **Verify `PlatformJwtService` is unaffected** — separate class; platform users have no tenant.config. Add a no-op assertion test asserting `PlatformJwtService.generateAccessToken(...)` does NOT emit `reentryMode` claim (regression guard per warroom N3).
+- [ ] 16.A.5 **Backend tests** for `JwtService` claim emission: (a) flag=true tenant → claim true; (b) flag=false tenant → claim false; (c) tenant.config={} → claim false (default); (d) tenant.config={"features":null} → false; (e) tenant.config={"features":{"reentryMode":"true"}} (string not bool) → false (per warroom H3).
+- [ ] 16.A.6 **OAuth2AccountLinkService** (`backend/src/main/java/org/fabt/auth/service/OAuth2AccountLinkService.java:55, :76`) — verify it still works (calls `jwtService.generateAccessToken(user)` so should pick up the helper change for free).
+
+### 16.B — Backend: API serialization gate (BLOCKER B2 — defense-in-depth)
+
+- [ ] 16.B.1 **`ReservationResponse.java` serialization** — modify `from(Reservation)` factory (or wherever PII fields are populated) to read `reentryMode` from request context (e.g., `TenantContext` or a new `ReservationResponseContext`). When false → `heldForClientName`, `heldForClientDob`, `holdNotes` SHALL be null in the response regardless of underlying ciphertext. The §13.D list-view-PII-drop work (already in spec) composes with this — same gate, broader scope.
+- [ ] 16.B.2 **Pass `reentryMode` to serialization** — likely simplest: a request-scoped Spring bean reads from JWT claims (already in `Authentication.principal`) and `ReservationResponse.from()` consults it. Alternative: add a parameter to `from(Reservation, boolean reentryMode)` and update all callers — preferred IF callers are localized.
+- [ ] 16.B.3 **Backend tests** — `ReservationResponseTest`: (a) reentryMode=true → PII fields populated from ciphertext; (b) reentryMode=false → PII fields null even if ciphertext present; (c) decrypt-on-read path still works for navigator detail-view IFF reentryMode=true.
+
+### 16.C — Frontend: AuthContext + four gating sites (BLOCKER B2 second half)
+
+- [ ] 16.C.1 **`frontend/src/auth/AuthContext.tsx`** — add `reentryMode: boolean` to `DecodedUser` interface (lines 3-11). Update `decodeJwtPayload` (line 32-56) to parse `payload.reentryMode === true` (default false on missing/non-bool).
+- [ ] 16.C.2 **`frontend/src/pages/OutreachSearch.tsx`** — wrap the advanced-filters section (county dropdown + shelter-type chips + accepts-felonies tri-state) in `{user?.reentryMode && (<section data-testid="reentry-advanced-filters">...</section>)}`. Confirm conditional-render pattern (NOT `display:none` / `aria-hidden` per warroom N1).
+- [ ] 16.C.3 **`frontend/src/pages/ShelterForm.tsx`** — wrap the `EligibilityCriteriaSection` invocation AND the `requires_verification_call` toggle in `{user?.reentryMode && (...)}`. Add `data-testid="reentry-eligibility-section"`.
+- [ ] 16.C.4 **`frontend/src/components/HoldDialog.tsx`** — wrap the `<details>` element containing the PII fields. Add `data-testid="reentry-pii-fields"`.
+- [ ] 16.C.5 **`frontend/src/pages/CoordinatorDashboard.tsx`** (lines 142, 1216, 1247-1252) — fourth gating site missed by initial plan, surfaced by warroom B2. Wrap `hold.heldForClientName` renders in `{user?.reentryMode && (...)}`. This is defense-in-depth — the API gate at §16.B is the primary control; this prevents the rendering layer from being a parallel-path leak surface.
+- [ ] 16.C.6 **Vitest tests** per gating site: render with mock context flag=true vs flag=false, assert presence/absence via `data-testid`.
+
+### 16.D — Playwright E2E matrix (HIGH H1)
+
+- [ ] 16.D.1 **New spec `e2e/playwright/tests/reentry-mode-gate.spec.ts`** — happy-path matrix. Test 1: login as outreach@blueridge.fabt.org (reentry tenant after seed flip in §16.E) → assert `[data-testid="reentry-advanced-filters"]` visible. Test 2: login as outreach@dev.fabt.org (non-reentry tenant) → assert same selector NOT visible. Test 3: login as cocadmin@blueridge.fabt.org → admin shelter-edit → assert eligibility section visible. Test 4: cocadmin@dev.fabt.org → eligibility section hidden.
+- [ ] 16.D.2 **Existing reentry-* Playwright specs** — review `reentry-search-filters.spec.ts`, `reentry-eligibility-display.spec.ts`, `reentry-hold-dialog.spec.ts`, `reentry-integrated-navigator.spec.ts`. Each may break post-gate if their seed user's tenant doesn't have reentryMode=true. Either update the auth fixture's seed setup OR have each spec call `PATCH /api/v1/admin/tenants/{id}/config` to flip the flag in `beforeAll`. Recommend the latter — per `feedback_isolated_test_data` tests should create their own state.
+
+### 16.E — Seed + tenant config (BLOCKER B3 — prod-tenant flip)
+
+- [ ] 16.E.1 **Local dev seed UPDATE** — `UPDATE tenant SET config = jsonb_set(config, '{features,reentryMode}', 'true'::jsonb) WHERE slug IN ('dev-coc-east','dev-coc-west');`. Apply to running DB; reentry UI surfaces for these two tenants. Also set `holdDurationMinutes=180` on dev-coc-east for shot 05.
+- [ ] 16.E.2 **`dev-coc` stays unset** — original demo tenant continues to behave as v0.54 did. This is intentional — demonstrates the gate works; ungated tenants are a known shape.
+- [ ] 16.E.3 **`docs/oracle-update-notes-v0.55.0.md` new §7 step (BLOCKER B3)** — add post-deploy task: identify which prod demo tenants should have reentryMode=true (likely `blueridge` and `mountain` per `project_live_demo_seed_inventory`); apply `UPDATE tenant SET config = jsonb_set(coalesce(config,'{}'::jsonb), '{features,reentryMode}', 'true'::jsonb) WHERE slug IN ('blueridge','mountain');`. Without this, the demo site will look broken (no reentry UI for any visitor). Alternative: a Flyway V96 conditional migration — deferred per "data, not schema" rationale.
+
+### 16.F — Spec + doc updates (HIGH H4)
+
+- [ ] 16.F.1 **`reentry-release-readiness/proposal.md`** — adjust scope statement: change is no longer doc-only; add a §G.X "v0.55 implementation hardening + UI gating" item summarizing §16.
+- [ ] 16.F.2 **`reentry-release-readiness/design.md`** — add D14 "reentryMode UI gate (Path Y, warroom Round 5)" citing the JWT-claim pattern matching `dvAccess`, the API-serialization defense-in-depth, fail-safe-default-off, 15-min token-TTL-bounded propagation, and prod-tenant flip in runbook §7.
+- [ ] 16.F.3 **`transitional-reentry-support/design.md` D13** — update with implementation status: was "design intent"; becomes "implemented at code:<sha> as part of reentry-release-readiness §16; JWT-claim + API-serialization-gate + frontend-conditional-render".
+- [ ] 16.F.4 **`docs/operations/reentry-mode-user-guide.md` §1** — rewrite to be ACCURATE post-implementation. Remove misleading "enables UI features" framing if any; describe the actual behavior: enabling the flag surfaces advanced filters, eligibility section, and PII fields; CoC-administrator-level decision; default off.
+- [ ] 16.F.5 **`docs/security/compliance-posture-matrix.md` Hold-attribution PII section** — add a row noting "Default tenant configuration does not surface PII fields; CoC administrator must affirmatively enable `features.reentryMode` to expose them."
+- [ ] 16.F.6 **`CHANGELOG.md` v0.55 Privacy/Security subsection** — add one sentence: "Reentry-specific UI (advanced filters, eligibility, hold-attribution PII fields) is now gated behind the `features.reentryMode` tenant configuration flag; default off."
+- [ ] 16.F.7 **`docs/government-adoption-guide.md`** — strengthen the "may optionally collect" wording to "PII fields are not surfaced in the UI unless the CoC administrator enables `features.reentryMode`."
+
+### 16.G — Verification + commit gate
+
+- [ ] 16.G.1 **`mvn test`** GREEN — all backend tests including §16.A.5 + §16.B.3.
+- [ ] 16.G.2 **`npm run build`** GREEN — frontend compiles; no missing types.
+- [ ] 16.G.3 **Live-stack manual verification** — login as outreach@dev.fabt.org → no reentry UI; login as outreach@blueridge.fabt.org (after §16.E.1 UPDATE) → reentry UI visible. Confirm advanced filters, eligibility section, HoldDialog PII fields, CoordinatorDashboard past-holds list ALL gated correctly.
+- [ ] 16.G.4 **API-gate verification** — direct REST call as outreach@dev.fabt.org against `GET /api/v1/shelters/{id}/reservations` → assert PII fields are null in response (defense-in-depth confirmed). Repeat as outreach@blueridge.fabt.org → assert PII present (when reentryMode=true).
+- [ ] 16.G.5 **Playwright matrix** (§16.D.1) GREEN.
+
 ## 14. Archive and tag (the release gate)
 
 - [ ] 14.1 **Open PR for `feature/reentry-release-readiness`** in BOTH repos (docs repo + code repo). Cross-link the two PRs in their descriptions. Reference both this OpenSpec change AND `transitional-reentry-support` in commit messages.

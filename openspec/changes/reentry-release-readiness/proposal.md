@@ -36,6 +36,18 @@ v0.55.0 (transitional-reentry-support) is on `main` at commit `6ad8ee6` but cann
 - `EligibilityCriteriaSection`: tooltip on the notes textarea advising operators that free-text may capture client-identifying detail and is therefore subject to the same advisory framing
 - New i18n keys for all tooltip strings (English + Spanish); npm build verifies no missing keys
 
+**H — `features.reentryMode` UI gate (Path Y scope expansion, warroom Round 5)**
+
+The `transitional-reentry-support` slice intended `features.reentryMode` to gate the new reentry UI (per design D13 of that change), but the gate was never wired — the entire reentry surface ships visible to every tenant. Discovered 2026-04-30 during seed-data verification for screenshot capture. Per `feedback_truthfulness_above_all` and the user's explicit reasoning ("tenants that may not be ready to handle PII"), the release should not ship without honoring the design intent.
+
+The gate is implemented in two layers (defense-in-depth):
+- **API serialization gate (primary)** — `ReservationResponse` strips hold-attribution PII fields from responses when the calling tenant has `features.reentryMode=false`. Eliminates the parallel-path drift problem (a future component rendering PII without checking the flag would still be safe because the payload itself is empty).
+- **Frontend conditional render (UX polish)** — four sites: `OutreachSearch.tsx` advanced filters, `ShelterForm.tsx` eligibility section + `requires_verification_call` toggle, `HoldDialog.tsx` PII fields, `CoordinatorDashboard.tsx` past-holds PII display.
+
+The flag is baked into JWT claims at token issuance (matches the proven `dvAccess` pattern in this codebase). Token TTL = 15 min, so a CoC admin disabling reentryMode mid-incident hides PII surfaces within 15 min. Fail-safe: missing/undefined flag → falsy → reentry surface hidden. Existing tenants on prod (`dev-coc`, `blueridge`, `mountain`) default to off; the v0.55 deploy runbook §7 includes a step to flip the flag for the demo tenant(s) so the public reentry-story.html deep-dive page actually shows reentry UI to visitors.
+
+Scope: see tasks.md §16 (~30 tasks across 7 sub-sections, ~5-6 hours of careful work).
+
 **G — v0.55 implementation hardening (Path A scope expansion, post-warroom)**
 
 After the 24-persona warroom round, three findings could not be closed by doc edits alone (audit events missing, DOB-in-logs, 24h ≠ 25h truthfulness). Five additional findings are best-effort during this implementation window. These land as code-side requirements under a new `reservation-pii-hardening` capability and a new tasks.md §15:
