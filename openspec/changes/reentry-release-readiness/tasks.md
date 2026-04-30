@@ -169,9 +169,9 @@
 
 ### 16.B — Backend: API serialization gate (BLOCKER B2 — defense-in-depth)
 
-- [ ] 16.B.1 **`ReservationResponse.java` serialization** — modify `from(Reservation)` factory (or wherever PII fields are populated) to read `reentryMode` from request context (e.g., `TenantContext` or a new `ReservationResponseContext`). When false → `heldForClientName`, `heldForClientDob`, `holdNotes` SHALL be null in the response regardless of underlying ciphertext. The §13.D list-view-PII-drop work (already in spec) composes with this — same gate, broader scope.
-- [ ] 16.B.2 **Pass `reentryMode` to serialization** — likely simplest: a request-scoped Spring bean reads from JWT claims (already in `Authentication.principal`) and `ReservationResponse.from()` consults it. Alternative: add a parameter to `from(Reservation, boolean reentryMode)` and update all callers — preferred IF callers are localized.
-- [ ] 16.B.3 **Backend tests** — `ReservationResponseTest`: (a) reentryMode=true → PII fields populated from ciphertext; (b) reentryMode=false → PII fields null even if ciphertext present; (c) decrypt-on-read path still works for navigator detail-view IFF reentryMode=true.
+- [x] 16.B.1 **`ReservationResponse.java` serialization** — `from(Reservation, ...)` factories now consult `TenantContext.getReentryMode()` and null out `heldForClientName`, `heldForClientDob`, `holdNotes` when the flag is false. Underlying Reservation entity is untouched (gate is response-only).
+- [x] 16.B.2 **Pass `reentryMode` to serialization** — JwtService.JwtClaims gains a `reentryMode` boolean field; JwtAuthenticationFilter binds `TenantContext.REENTRY_MODE` (separate ScopedValue from the main Context to avoid touching 60+ runWithContext callsites in batch/system contexts that all default-to-false). `TenantContext.callWithContext(..., reentryMode, ...)` overload added.
+- [x] 16.B.3 **Backend tests** — `ReservationResponseReentryGateTest` (6 cases): flag=true populates all 3 PII fields; flag=false strips all 3 (entity intact); unbound (batch/system) strips all 3; single-arg overload gates identically; null-PII entities stay null when flag=true; same entity flips per-scope. Two existing integration tests (`HoldAttributionIntegrationTest`, `ShelterReservationsEndpointTest`) adapted to opt-in via `authHelper.enableReentryMode(tenantId)`.
 
 ### 16.C — Frontend: AuthContext + four gating sites (BLOCKER B2 second half)
 
