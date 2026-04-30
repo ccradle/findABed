@@ -6,15 +6,15 @@
 
 ## 2. Live-site truthfulness (the "ever" cluster)
 
-- [ ] 2.1 **Root `index.html` (docs repo)** — scope the "no client name… ever" claim to the DV referral path only. One paragraph edit. Verify post-edit that no platform-wide zero-PII assertion remains.
-- [ ] 2.2 **`docs/government-adoption-guide.md` (code repo) :73** — rewrite the DV-zero-PII bullet to distinguish DV path (zero-PII opaque-token, 24h hard delete) from non-DV opt-in path (encrypted, scoped, 24h purge).
-- [ ] 2.3 **`docs/government-adoption-guide.md` (code repo) :117–130** — add scoping sentence to VAWA-protection section stating v0.55 hold-attribution PII is NOT used in the DV referral path; cite the V91 `shelter_dv_implies_dv_type` CHECK constraint by name.
-- [ ] 2.4 **`docs/government-adoption-guide.md` (code repo) :121** — rewrite the "Zero client PII" bullet as three explicit bullets: (a) DV path = zero PII, (b) non-DV opt-in path = encrypted, scoped, purged, (c) operator chooses.
-- [ ] 2.5 **`docs/hospital-privacy-summary.md` (code repo) lines 28–46** — rewrite the "What FABT Never Stores" table from one-column "Never" to two-column DV-path / navigator-hold-path. Hospital social worker is a navigator-role audience.
-- [ ] 2.6 **`docs/hospital-privacy-summary.md` (code repo) BAA section** — update to state: no BAA needed if hospital workflow does not use the optional fields; using them is a HIPAA conversation the hospital privacy officer must own.
-- [ ] 2.7 **`docs/FOR-COC-ADMINS.md` (code repo) :84, :108** — append one-sentence DV-scope addendum to each existing zero-PII claim.
-- [ ] 2.8 **`docs/FOR-CITIES.md` (code repo) :108** — append one-sentence DV-scope addendum.
-- [ ] 2.9 **`docs/FOR-DEVELOPERS.md` (code repo) :849** — append one-sentence DV-scope addendum after the "Zero client PII in the database" claim.
+- [x] 2.1 **Root `index.html` (docs repo)** — scope the "no client name… ever" claim to the DV referral path only. One paragraph edit. Verify post-edit that no platform-wide zero-PII assertion remains.
+- [x] 2.2 **`docs/government-adoption-guide.md` (code repo) :73** — rewrite the DV-zero-PII bullet to distinguish DV path (zero-PII opaque-token, 24h hard delete) from non-DV opt-in path (encrypted, scoped, 24h purge).
+- [x] 2.3 **`docs/government-adoption-guide.md` (code repo) :117–130** — add scoping sentence to VAWA-protection section stating v0.55 hold-attribution PII is NOT used in the DV referral path; cite the V91 `shelter_dv_implies_dv_type` CHECK constraint by name.
+- [x] 2.4 **`docs/government-adoption-guide.md` (code repo) :121** — rewrite the "Zero client PII" bullet as three explicit bullets: (a) DV path = zero PII, (b) non-DV opt-in path = encrypted, scoped, purged, (c) operator chooses.
+- [x] 2.5 **`docs/hospital-privacy-summary.md` (code repo) lines 28–46** — rewrite the "What FABT Never Stores" table from one-column "Never" to two-column DV-path / navigator-hold-path. Hospital social worker is a navigator-role audience.
+- [x] 2.6 **`docs/hospital-privacy-summary.md` (code repo) BAA section** — update to state: no BAA needed if hospital workflow does not use the optional fields; using them is a HIPAA conversation the hospital privacy officer must own.
+- [x] 2.7 **`docs/FOR-COC-ADMINS.md` (code repo) :84, :108** — append one-sentence DV-scope addendum to each existing zero-PII claim.
+- [x] 2.8 **`docs/FOR-CITIES.md` (code repo) :108** — append one-sentence DV-scope addendum.
+- [x] 2.9 **`docs/FOR-DEVELOPERS.md` (code repo) :849** — append one-sentence DV-scope addendum after the "Zero client PII in the database" claim.
 
 ## 3. Architectural doc sync
 
