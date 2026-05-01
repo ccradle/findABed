@@ -231,6 +231,25 @@
       beds are spoken for.
     </p>
 
+    <h2>About Reentry Holds and Navigators</h2>
+    <p>
+      Some bed holds on your shelter may come from <strong>navigators</strong> rather than
+      outreach workers. Both place holds the same way, but their workflows differ. Outreach
+      workers do front-door bed search for any population. Navigators are case workers
+      attached to a specific reentry program -- they coordinate placements for clients
+      leaving jail, prison, or other institutional settings, often days in advance of
+      release.
+    </p>
+    <p>
+      If your CoC has enabled reentry mode (a v0.55 opt-in tenant flag), you may see
+      optional client name and date of birth on holds placed for your shelter. These are
+      encrypted at rest, visible only to you and your CoC admin, and erased no later than
+      25 hours after the hold ends. Default is off -- when reentry mode is disabled, holds
+      carry no client identifiers at all. See the
+      <a href="reentry-story.html">reentry walkthrough</a> for the full operator-facing
+      flow.
+    </p>
+
     <h2>Can I Edit My Shelter's Details?</h2>
     <p>
       Yes. From your dashboard, expand your shelter card and tap <strong>Edit Details</strong>.
@@ -320,6 +339,7 @@
       <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a> &middot;
       No more midnight phone calls.
     </p>
+    <p style="margin-top: 8px; font-size: 12px;">This page is currently English-only. A Spanish version is planned for a future minor release. Most of the platform itself is bilingual today.</p>
   </footer>
 </body>
 </html>

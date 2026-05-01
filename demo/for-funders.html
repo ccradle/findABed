@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <meta name="description" content="Finding A Bed Tonight for funders: theory of change, sustainability model, DV protection, novel demand data, and measurable impact.">
   <meta property="og:title" content="Finding A Bed Tonight — For Funders">
-  <meta property="og:description" content="Every dollar builds permanent infrastructure. Open-source, zero-PII, measurable impact.">
+  <meta property="og:description" content="Every dollar builds permanent infrastructure. Open-source, opt-in privacy posture, measurable impact.">
   <meta property="og:image" content="https://findabed.org/demo/screenshots/02-bed-search.png">
   <meta property="og:url" content="https://findabed.org/demo/for-funders.html">
   <meta name="twitter:card" content="summary_large_image">
@@ -30,7 +30,7 @@
         "name": "What makes Finding A Bed Tonight different from commercial alternatives?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Open source means permanent — unlike vendor platforms that disappear when contracts end. Zero client PII by design. DV survivor protection with address never stored and referral tokens hard-deleted within 24 hours. Novel demand data that captures unmet need — searches that return zero results by population type, time, and geography. No HMIS system currently produces this data."
+          "text": "Open source means permanent — unlike vendor platforms that disappear when contracts end. Zero client PII on the DV referral path; on non-DV reentry holds, tenants can opt in to collecting client name, date of birth, and notes — encrypted at rest with a per-tenant key, and erased no later than 25 hours after the hold ends. Default-off. DV survivor protection with address never stored and referral tokens hard-deleted within 24 hours. Novel demand data that captures unmet need — searches that return zero results by population type, time, and geography. No HMIS system currently produces this data."
         }
       },
       {
@@ -38,7 +38,7 @@
         "name": "What is the sustainability model?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "A staged plan: Apache 2.0 open source ensures the software cannot disappear. With pilot adoption, a fiscal sponsor receives grants. With multiple adopters, a cost-sharing consortium. At scale, an institutional host. Every deployment runs on standard technology (Java, PostgreSQL, React) with no proprietary components."
+          "text": "A staged plan: Apache 2.0 open source means the software cannot be locked to a single vendor -- any community can take a fork forward if maintenance changes hands. With pilot adoption, a fiscal sponsor receives grants. With multiple adopters, a cost-sharing consortium. At scale, an institutional host. Every deployment runs on standard technology (Java, PostgreSQL, React) with no proprietary components."
         }
       },
       {
@@ -46,7 +46,7 @@
         "name": "What does funding enable?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Three things: community adoption support (helping CoCs deploy and train), a full-time maintainer (moving from single-maintainer to sustainable development), and a third-party accessibility audit (strengthening the case for government adoption). Every dollar builds permanent infrastructure under Apache 2.0 — freely available to every community, forever."
+          "text": "Three things: community adoption support (helping CoCs deploy and train), a full-time maintainer (moving from single-maintainer to sustainable development), and a third-party accessibility audit (strengthening the case for government adoption). Every dollar builds permanent infrastructure under Apache 2.0 — freely available to any community that chooses to adopt it."
         }
       },
       {
@@ -177,7 +177,7 @@
 
   <header class="header">
     <h1>For Funders</h1>
-    <p>Every dollar builds permanent infrastructure. Open-source, zero-PII, measurable impact.</p>
+    <p>Every dollar builds permanent infrastructure. Open-source, opt-in privacy posture, measurable impact.</p>
   </header>
 
   <main id="main" class="content">
@@ -242,6 +242,15 @@
         <tr><td><strong>Full</strong></td><td>Metro areas with real-time HMIS integration</td><td>$100+</td></tr>
       </tbody>
     </table>
+    <p style="margin-top: 16px;">
+      The platform supports emergency, transitional, overflow, DV, and reentry-eligible
+      shelter types. v0.55 added optional support for transitional shelters serving people
+      returning from incarceration -- a population segment where most municipal HMIS
+      deployments do not yet model the eligibility nuances (criminal-record policy,
+      accepting-felonies posture, VAWA-survivor protections in transitional settings).
+      See the <a href="reentry-story.html">reentry walkthrough</a> for the operator-facing
+      flow.
+    </p>
 
     <h2>Sustainability</h2>
     <ol>
@@ -265,15 +274,15 @@
     <p>
       Every dollar builds permanent infrastructure. The Apache 2.0 license means the software,
       its documentation, and every improvement funded by a grant remains freely available to
-      every community, forever. There is no scenario where funding builds something that later
-      becomes proprietary or inaccessible.
+      any community that chooses to adopt it. There is no scenario where funding builds
+      something that later becomes proprietary or inaccessible.
     </p>
 
     <h2>What Makes This Different</h2>
     <div class="checklist">
       <ul>
         <li><strong>Open source means permanent.</strong> Unlike vendor platforms that disappear when contracts end, this software is irrevocably free.</li>
-        <li><strong>Zero client PII.</strong> The platform never stores names, dates of birth, or identifying information about the people being served.</li>
+        <li><strong>Zero client PII on the DV referral path.</strong> On non-DV reentry holds, optional client name, date of birth, and notes can be collected if the CoC enables <code>reentryMode</code> -- encrypted at rest with a per-tenant key, erased no later than 25 hours after the hold ends. Default-off.</li>
         <li><strong>DV survivor protection.</strong> No address stored, no client information, referral tokens hard-deleted within 24 hours. Designed to support VAWA and FVPSA requirements.</li>
         <li><strong>Novel demand data.</strong> Captures unmet demand (searches returning zero results by population type, time, and geography). No HMIS system currently produces this data.</li>
       </ul>
@@ -304,6 +313,7 @@
       <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a> &middot;
       No more midnight phone calls.
     </p>
+    <p style="margin-top: 8px; font-size: 12px;">This page is currently English-only. A Spanish version is planned for a future minor release. Most of the platform itself is bilingual today.</p>
   </footer>
 </body>
 </html>

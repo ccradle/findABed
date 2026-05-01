@@ -211,6 +211,15 @@ The optional `/navigator` desktop route (call-center-optimized layout) expands t
 
 The `tenantConfig.features` shape is fetched via the existing `useTenantConfig()` hook (Phase D ships this); no new endpoint required.
 
+**Implementation status (post-`reentry-release-readiness` Round 5 + §16):** the flag-read shape shipped differs from the design here — the actual implementation borrows the JWT-claim transport pattern from `dvAccess` rather than a per-render config fetch, and adds an API serialization gate that the original D13 design did not include:
+
+- The flag is loaded by `JwtService.loadReentryMode(tenantId)` at token-issue time and emitted as a `reentryMode` JWT claim (60s Caffeine cache; fail-safe default false).
+- The JWT claim is parsed by `frontend/src/auth/AuthContext.tsx::decodeJwtPayload` into `DecodedUser.reentryMode`. The four UI gates (`OutreachSearch`, `ShelterForm`, `HoldDialog`, `CoordinatorDashboard`) consult `user?.reentryMode` instead of a separate hook.
+- `ReservationResponse.from()` strips the three hold-attribution PII fields (`heldForClientName`, `heldForClientDob`, `holdNotes`) when `TenantContext.getReentryMode()` is false. This is the API serialization gate (defense-in-depth) — even if a frontend regression rendered the fields, the API would not return their values. Backend behavior is therefore NOT uniform across tenants for this specific surface; the reentry-mode tenants get plaintext PII in the response, others get null.
+- Token-TTL caveat: a tenant flipping the flag waits up to 15 minutes (the access-token TTL) for already-logged-in operators to see the change.
+
+Why the divergence: the JWT-claim pattern reuses an existing well-understood transport (matches `dvAccess`, `mfaVerified`); the API gate emerged from Round 5 BLOCKER B2 — frontend-only gating leaves a parallel-render-path risk if a future cache layer or HMR quirk re-renders stale PII. See `reentry-release-readiness/design.md` §D14 + `tasks.md` §16 for the full Round 5 story. Implementation lands across commits 2dd578a (§16.A — JWT claim emission) → 6204677 (§16.B — API serialization gate) → dfa9f0e (§16.C — frontend gates) → 78f692e (§16.D + §16.E seed flip).
+
 ## Risks / Trade-offs
 
 **[Data quality risk: criminal record policy fields will be empty for most shelters at launch]** → Mitigation: `requires_verification_call = true` is the default sentinel for any shelter where criminal record policy JSONB is not populated. Navigators see "call to verify" rather than silence. Documentation and training materials emphasize that the platform reduces calls, it does not replace verification.
