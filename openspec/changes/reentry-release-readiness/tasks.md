@@ -226,9 +226,12 @@
 ## 15. Combined deploy + post-deploy validation
 
 - [ ] 15.1 **Pre-deploy gates** — re-run all pre-deploy gates from `docs/oracle-update-notes-v0.55.0.md` §4 against the v0.55.0 tag. Per `feedback_runbook_groundtruth_vm`, ground-truth on the live VM, not from memory.
+- [ ] 15.1a **Static-content scp** per `docs/oracle-update-notes-v0.55.0.md` §5.0 — 12 HTML files (root index.html + 10 demo HTML + new demo/reentry-story.html) + 18 screenshots (12 re-captured + 6 NEW reentry-* PNGs) to `/var/www/findabed-docs/`. Bundle with v0.55 deploy per operator decision 2026-04-30 (do NOT ship ahead).
+- [ ] 15.1b **Cloudflare cache purge** — "Purge Everything" via Cloudflare dashboard after §15.1a scp (operator decision: bigger hammer, simpler than enumerating 12 URLs). 1-2 min refill from origin.
 - [ ] 15.2 **Deploy** per `docs/oracle-update-notes-v0.55.0.md` §5. Single-stage; 5-file compose chain.
 - [ ] 15.3 **Post-deploy smoke** per `docs/oracle-update-notes-v0.55.0.md` §6 mandatory smoke gate.
 - [ ] 15.4 **§6.5 PII purge verification** (the new section authored in §4.3) — run the operator commands; document the output in the deploy log.
+- [ ] 15.4a **Static-content verification** per runbook §6 "Static-content (docs site) verification" — 6 curl checks: reentry-story.html serves real content (not 592-byte SPA fallback); 6 reentry PNGs return 200; for-funders.html has DV-scoped claim (not platform-wide); for-coc-admins.html has Reentry-Mode Tenant Flag section; index.html has 5th "Reentry Walkthrough" tile; root index.html "ever" claim DV-scoped.
 - [ ] 15.5 **Live-site claim verification** — fetch `https://findabed.org/` post-deploy; verify the "ever" claim is gone; verify the new `demo/reentry-story.html` is reachable and renders; verify all cross-page links work.
 - [ ] 15.6 **Demo flow walkthrough** as `outreach@blueridge.fabt.org` — exercise the reentry advanced filters, hold dialog with attribution, verify tooltips render, confirm the failure-path scenario (filter for a county where the only reentry shelter excludes a specific offense type) renders the expected UI state.
 - [ ] 15.7 **Demo flow walkthrough** as `cocadmin@blueridge.fabt.org` — open Reservation Settings, verify the hold-duration field is editable and persists.
