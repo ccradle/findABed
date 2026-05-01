@@ -310,7 +310,9 @@
       shelters document criminal-record policy, program requirements, documentation
       needed, and intake hours. Second, optional client-attribution fields on the bed-hold
       dialog: client name, date of birth, and notes. These fields are encrypted at rest
-      with a per-tenant key and are <strong>not</strong> displayed on DV referral flows.
+      with a per-tenant key, and they appear in the dialog and in API responses only when
+      the <code>reentryMode</code> flag is set on the requesting session. The DV referral
+      flow is a separate code path and does not collect or display these fields.
     </p>
     <h3>Default off; CoC admin controls the flip</h3>
     <p>
@@ -323,10 +325,13 @@
     <h3>Privacy posture for hold-attribution PII</h3>
     <p>
       When a navigator records optional client name, date of birth, or notes, those
-      values are encrypted at rest with a tenant-scoped data encryption key. A 15-minute
-      decryption token gates read access for legitimate workflows (admin review,
-      coordinator hold-list). Encrypted PII is erased no later than 25 hours after the
-      hold ends. The 25-hour SLA is currently unmonitored -- see the
+      values are encrypted at rest with a tenant-scoped data encryption key. Read access
+      is gated at the API serialization layer by the same <code>reentryMode</code> flag,
+      carried as a claim on the user's JWT session; the claim is refreshed at most every
+      60 seconds and naturally rotates with the 15-minute JWT TTL, so a flag flip
+      propagates to readers within at most 15 minutes. Encrypted PII is erased no later
+      than 25 hours after the hold ends. The 25-hour SLA is currently unmonitored -- see
+      the
       <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/security/compliance-posture-matrix.md">compliance
       posture matrix</a> for the honest disclosure of this gap.
     </p>
