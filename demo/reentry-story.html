@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reentry on release day — a navigator's day with Finding A Bed Tonight</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <meta name="description" content="What a reentry navigator's day looks like with Finding A Bed Tonight: filtering for eligibility, placing a hold before the intake window closes, and what happens when no shelter in the county matches.">
+  <meta property="og:title" content="Reentry on release day — Finding A Bed Tonight">
+  <meta property="og:description" content="A reentry navigator's workflow: filtering for eligibility, placing a hold before the intake window closes, and the moments when the platform's job ends and the navigator's continues.">
+  <meta property="og:type" content="article">
+  <meta property="og:image" content="https://findabed.org/demo/screenshots/reentry-02-search-results-filtered.png">
+  <meta property="og:url" content="https://findabed.org/demo/reentry-story.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reentry on release day — Finding A Bed Tonight">
+  <meta name="twitter:description" content="A reentry navigator's workflow with FABT: filtering for eligibility, placing a hold, and the moments where the navigator's work continues outside the platform.">
+  <link rel="canonical" href="https://findabed.org/demo/reentry-story.html">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    header { background: linear-gradient(135deg, #0c4a6e 0%, #0e7490 50%, #14b8a6 100%); padding: 48px 24px; text-align: center; border-bottom: 3px solid #14b8a6; }
+    header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+    header p { font-size: 16px; color: #99f6e4; max-width: 760px; margin: 0 auto; }
+    header .badge { display: inline-block; background: #14b8a6; color: #0f172a; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-top: 12px; }
+    .container { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+    .lede { font-size: 18px; line-height: 1.7; color: #cbd5e1; margin-bottom: 32px; padding: 0 4px; }
+    .lede strong { color: #5eead4; font-weight: 600; }
+    section.story { margin-bottom: 36px; }
+    section.story h2 { font-size: 22px; font-weight: 700; color: #5eead4; margin-bottom: 12px; letter-spacing: -0.01em; }
+    section.story p { font-size: 16px; color: #cbd5e1; margin-bottom: 12px; }
+    section.story p:last-child { margin-bottom: 0; }
+    .card { background: #1e293b; border-radius: 12px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .card-header { padding: 14px 18px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+    .card-number { background: #14b8a6; color: #0f172a; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .card-title { font-size: 16px; font-weight: 700; color: #e2e8f0; }
+    .card-role { font-size: 11px; color: #94a3b8; background: #0f172a; padding: 2px 8px; border-radius: 8px; margin-left: auto; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card-caption { padding: 12px 18px; font-size: 14px; color: #94a3b8; border-bottom: 1px solid #334155; line-height: 1.55; }
+    .card img { width: 100%; display: block; }
+    .callout { background: #042f2e; border: 1px solid #115e59; border-radius: 12px; padding: 16px 20px; margin: 0 0 28px; }
+    .callout h2 { color: #5eead4; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .callout p { color: #99f6e4; font-size: 14px; line-height: 1.55; }
+    .callout p + p { margin-top: 8px; }
+    footer { padding: 32px 24px; color: #64748b; font-size: 13px; border-top: 1px solid #1e293b; max-width: 880px; margin: 0 auto; }
+    footer h2 { color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+    footer ul { list-style: none; padding: 0; margin-bottom: 18px; }
+    footer ul li { margin-bottom: 4px; }
+    footer a { color: #5eead4; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer .meta { color: #94a3b8; font-size: 12px; line-height: 1.6; }
+    footer .meta + .meta { margin-top: 8px; }
+    @media (max-width: 640px) {
+      header h1 { font-size: 24px; }
+      section.story h2 { font-size: 19px; }
+      .card-title { font-size: 14px; }
+      .card-header { flex-wrap: wrap; }
+      .card-role { margin-left: 0; margin-top: 4px; }
+      .lede { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+<a href="#main" class="skip-link" style="position:absolute;left:-9999px;top:auto;padding:8px 16px;background:#14b8a6;color:#0f172a;font-weight:700;border-radius:4px;z-index:1000;" onfocus="this.style.left='16px';this.style.top='16px';" onblur="this.style.left='-9999px';this.style.top='auto';">Skip to content</a>
+
+<header>
+  <h1>Reentry on release day: a navigator&rsquo;s day with FABT</h1>
+  <p>A walkthrough of the workflow a reentry navigator follows in Finding A Bed Tonight when the bed has to be found before the intake window closes &mdash; and what the platform does and does not do.</p>
+  <span class="badge">Capability deep-dive &middot; 6 screenshots</span>
+</header>
+
+<main id="main" class="container">
+
+  <p class="lede">It&rsquo;s the afternoon Andre is getting out. His navigator has worked toward this day for weeks. The release paperwork is in. The bus ticket is in. The thing that isn&rsquo;t in is a confirmed bed for tonight. The shelter the navigator has been calling closes intake at 5. There are <strong>two hours left.</strong></p>
+
+  <section class="story" aria-labelledby="h2-morning">
+    <h2 id="h2-morning">1. The morning Andre walks out</h2>
+    <p>The navigator opens FABT because the deadline moved. The phone has been ringing since 9. Most of the calls are routine; one was from the prison social worker confirming the release time has slipped from noon to 3:45. The math: by the time Andre is processed out and on the road, the shelter the navigator was working with all week will be inside its 5 o&rsquo;clock cutoff.</p>
+    <p>This is what the platform is for. Not the rest of the work &mdash; not the clothes, not the ride, not the conversation about the first 48 hours. Just the bed. Just the question: <em>which shelter in this county can hold a bed for Andre tonight, and which one will pick up the phone in the next 90 minutes?</em></p>
+  </section>
+
+  <section class="story" aria-labelledby="h2-search">
+    <h2 id="h2-search">2. What the navigator sees in FABT</h2>
+    <p>Reentry holds aren&rsquo;t every shelter&rsquo;s shape of work. Some shelters take everyone; some have specific eligibility &mdash; criminal record policy, sobriety requirements, intake hours that don&rsquo;t match a release-day timeline. The navigator filters down to the shape they&rsquo;re actually looking for: shelters across the CoC&rsquo;s coverage area that have a transitional or reentry-transitional designation. Active chips render filled-solid; inactive chips render outline-only, so the active filter set is visible without relying on color. The county dropdown is left wide-open here because Andre is willing to take a bed in any county the navigator&rsquo;s CoC covers, but on a different day a more constrained search is one click away.</p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-number">1</span>
+        <span class="card-title">Filtered search: shelter-type chips and county dropdown</span>
+        <span class="card-role">Reentry navigator</span>
+      </div>
+      <div class="card-caption">The advanced filters &mdash; visible only when this tenant has reentry-mode turned on &mdash; give the navigator the three dimensions that matter for this kind of hold: the county the shelter is in, the shelter type the inventory needs to match, and a tri-state toggle for shelters that accept holds for someone with a felony record.</div>
+      <img loading="lazy" src="screenshots/reentry-01-advanced-search-filters.png" alt="Outreach search with shelter-type chips for Transitional Housing and Reentry Transitional Housing filled-solid; county dropdown shown but not narrowed.">
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-number">2</span>
+        <span class="card-title">Filtered results: three shelters, two beds tonight</span>
+        <span class="card-role">Reentry navigator</span>
+      </div>
+      <div class="card-caption">Three matches across three counties &mdash; the inventory the navigator&rsquo;s CoC covers tonight. Two have beds available right now; the third has its &ldquo;requires verification call&rdquo; flag set, which means the navigator needs to speak to the coordinator before the platform will let the hold be placed.</div>
+      <img loading="lazy" src="screenshots/reentry-02-search-results-filtered.png" alt="Three shelters returned across three counties: two with available beds tonight, and a third with a 'requires verification call' badge.">
+    </div>
+  </section>
+
+  <section class="story" aria-labelledby="h2-hold">
+    <h2 id="h2-hold">3. Placing the hold</h2>
+    <p>The navigator clicks into the first match to read the eligibility criteria all the way through. This is the page where the platform is asking the navigator to do the navigator&rsquo;s real work: <strong>read carefully</strong>. The shelter has spelled out what they accept, what they don&rsquo;t, and what they&rsquo;ll need to know at intake. The platform&rsquo;s job is to surface this honestly; the navigator&rsquo;s job is to know which of these constraints applies to Andre. For Andre, the relevant question is whether the felony category and the pending-charges status are both covered.</p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-number">3</span>
+        <span class="card-title">Shelter detail: eligibility criteria spelled out</span>
+        <span class="card-role">Reentry navigator</span>
+      </div>
+      <div class="card-caption">The eligibility section is structured so a navigator can answer one question fast: <em>does this shelter take Andre tonight?</em> The shelter has said it accepts felonies excluding sex offenses, accepts pending charges, and requires sobriety on intake. There is also a free-text policy note that the shelter&rsquo;s admin maintains directly.</div>
+      <img loading="lazy" src="screenshots/reentry-03-shelter-detail-eligibility.png" alt="Shelter detail showing eligibility criteria: accepts felonies excluding sex offenses, accepts pending charges, requires sobriety.">
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-number">4</span>
+        <span class="card-title">Hold dialog: optional client attribution</span>
+        <span class="card-role">Reentry navigator</span>
+      </div>
+      <div class="card-caption">The hold dialog accepts an optional client name, date of birth, and a free-text note &mdash; only used so the shelter coordinator knows who to expect at intake. The privacy framing matters. Here&rsquo;s what happens to those three fields after the hold ends: encrypted at rest with a per-tenant key, and erased automatically <strong>no later than 25 hours after the hold reaches a terminal status</strong>. The privacy posture renders above the form, not inside a tooltip; the navigator sees it at the moment they decide whether to enter PII.</div>
+      <img loading="lazy" src="screenshots/reentry-04-hold-dialog-attribution.png" alt="Hold dialog with optional client-attribution fields. Privacy note: information is encrypted and erased automatically no later than 25 hours after the hold ends.">
+    </div>
+
+    <p>This part is for the CoC admin reading along: hold-duration is a per-tenant setting, not a navigator-side override.</p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-number">5</span>
+        <span class="card-title">CoC-admin context: hold duration is configurable</span>
+        <span class="card-role">CoC admin</span>
+      </div>
+      <div class="card-caption">Different CoCs have different operational realities. This CoC&rsquo;s admin has set hold duration to 180 minutes &mdash; the navigator has three hours from the moment of the hold to confirm with the shelter, and the shelter has the same window to accept or decline. The hold gives the navigator three hours; tonight, the shelter&rsquo;s 5 o&rsquo;clock intake window is the binding constraint, not the hold duration. The default is 90 minutes; any value the CoC admin chooses applies to all new holds going forward and is recorded in the audit chain.</div>
+      <img loading="lazy" src="screenshots/reentry-05-admin-reservation-settings.png" alt="CoC admin view: hold-duration setting at 180 minutes, applies to all new holds going forward.">
+    </div>
+  </section>
+
+  <section class="story" aria-labelledby="h2-no-match">
+    <h2 id="h2-no-match">4. When no shelter in the county matches</h2>
+    <p>The path the navigator hopes for is the one above. The path that doesn&rsquo;t always work is the one below.</p>
+    <p>Sometimes the platform doesn&rsquo;t return a match. A navigator working in this field has put it this way: <em>the platform is honest about &ldquo;no.&rdquo; That&rsquo;s most of what I need it to be honest about. The rest of the work is mine.</em> The county might have one reentry shelter and that one shelter excludes the offense category that applies to the person the navigator is placing. The platform shows that, plainly, on the search page.</p>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-number">6</span>
+        <span class="card-title">No match available in this county tonight</span>
+        <span class="card-role">Reentry navigator</span>
+      </div>
+      <div class="card-caption">The platform&rsquo;s answer is <em>no shelter in this county matches</em>. The navigator&rsquo;s answer to that is not in the platform &mdash; it&rsquo;s on the phone, in the next county, or back at the prison social worker. The platform&rsquo;s job ends here; the navigator&rsquo;s job continues outside it.</div>
+      <img loading="lazy" src="screenshots/reentry-06-no-match-failure-path.png" alt="Search result for a county where the only reentry shelter excludes the relevant offense type. The platform shows no match available; the navigator's work continues outside the platform.">
+    </div>
+  </section>
+
+  <section class="story" aria-labelledby="h2-changes">
+    <h2 id="h2-changes">5. What this changes &mdash; and what it doesn&rsquo;t</h2>
+    <p>What changed in v0.55: a reentry navigator working a release-day hold can filter shelters by the dimensions that actually apply to reentry intake (county, shelter type, criminal-record policy), can read structured eligibility before placing the hold, and can record an optional client name + DOB + intake note that the shelter coordinator sees at the other end. The PII fields are encrypted at rest, gated behind a per-tenant configuration flag (off by default), and erased automatically no later than 25 hours after the hold reaches a terminal status.</p>
+    <p>What didn&rsquo;t change: the platform still doesn&rsquo;t replace verification, doesn&rsquo;t predict outcomes, doesn&rsquo;t share information with anyone the navigator hasn&rsquo;t routed it to, and doesn&rsquo;t survive a tenant-level data-rights request. The navigator places the hold; the shelter coordinator confirms by phone. FABT shows eligible options. The eligible options are honest about what they are and what they aren&rsquo;t.</p>
+  </section>
+
+  <div class="callout">
+    <h2>Privacy posture &mdash; in one paragraph</h2>
+    <p>The three optional PII fields (client name, date of birth, free-text note) are encrypted at rest with a per-tenant data-encryption key and erased no later than 25 hours after the hold reaches a terminal status. They are surfaced only to the shelter coordinator who needs to confirm intake and the navigator who placed the hold &mdash; never published over HMIS, AsyncAPI, OAuth2 webhooks, or any external system. The fields are not surfaced in the UI or returned by the API for tenants that have not affirmatively enabled <code>features.reentryMode</code> on their tenant configuration; default-off is the production-correct posture.</p>
+    <p style="font-size: 12px; color: #99f6e4; margin-top: 10px;">Designed to support reentry coordination with explicit privacy posture and a default-off PII surface. CoC operators evaluating FABT for reentry workflows should review their own state and federal confidentiality obligations with qualified counsel.</p>
+  </div>
+
+</main>
+
+<footer>
+  <nav aria-label="See also">
+    <h2>See also</h2>
+    <ul>
+      <li><a href="../index.html">Finding A Bed Tonight &mdash; Main</a></li>
+      <li><a href="dvindex.html">DV Opaque Referral &mdash; capability deep-dive</a></li>
+      <li><a href="for-coordinators.html">For shelter coordinators &mdash; what coordinators see</a></li>
+    </ul>
+  </nav>
+  <p class="meta">Screenshots captured via Playwright. Regenerate with <code>./capture.sh reentry</code>.</p>
+  <p class="meta">This page is currently English-only. A Spanish version is planned for a future minor release. Most of the platform itself is bilingual today.</p>
+  <p class="meta">Names and details in the walkthrough are synthetic. The platform&rsquo;s behavior is real; the person isn&rsquo;t.</p>
+  <p class="meta" style="margin-top: 14px; font-size: 11px;">Finding A Bed Tonight is provided as-is under the Apache 2.0 License, without warranty of any kind. This documentation does not constitute legal advice. Organizations deploying FABT for reentry workflows should consult qualified legal counsel regarding applicable federal, state, and local confidentiality requirements.</p>
+</footer>
+
+</body>
+</html>

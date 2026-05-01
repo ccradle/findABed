@@ -266,6 +266,7 @@
 
     <h2>DV Shelter Protection</h2>
     <h3>What the system stores about a DV shelter</h3>
+    <p><strong>For DV shelters specifically:</strong></p>
     <ul>
       <li>The shelter exists (name, general service area, population types)</li>
       <li>Current bed availability (number only)</li>
@@ -293,6 +294,48 @@
       It has not been independently certified as compliant. The zero-PII, zero-address,
       24-hour hard-delete design means there is effectively nothing to subpoena -- the
       data does not exist.
+    </p>
+
+    <h2>Reentry-Mode Tenant Flag (v0.55+)</h2>
+    <p>
+      v0.55 introduces optional support for transitional and reentry shelters serving
+      people returning from incarceration or other institutional settings. This work is
+      opt-in. Your CoC sees the v0.54 platform until you choose to flip the
+      <code>reentryMode</code> tenant flag.
+    </p>
+    <h3>What enabling reentryMode does</h3>
+    <p>
+      Flipping the flag unlocks two surfaces. First, the eligibility-criteria editor on
+      the shelter form, which lets coordinators of <code>REENTRY_TRANSITIONAL</code>-typed
+      shelters document criminal-record policy, program requirements, documentation
+      needed, and intake hours. Second, optional client-attribution fields on the bed-hold
+      dialog: client name, date of birth, and notes. These fields are encrypted at rest
+      with a per-tenant key and are <strong>not</strong> displayed on DV referral flows.
+    </p>
+    <h3>Default off; CoC admin controls the flip</h3>
+    <p>
+      Every tenant ships with <code>features.reentryMode = false</code>. As a CoC admin
+      you enable it yourself via the Admin panel (Tenants &rarr; Settings). No developer
+      is needed. Flipping the flag does not auto-enable PII collection on any specific
+      hold -- a navigator still chooses whether to enter optional fields when placing
+      each hold.
+    </p>
+    <h3>Privacy posture for hold-attribution PII</h3>
+    <p>
+      When a navigator records optional client name, date of birth, or notes, those
+      values are encrypted at rest with a tenant-scoped data encryption key. A 15-minute
+      decryption token gates read access for legitimate workflows (admin review,
+      coordinator hold-list). Encrypted PII is erased no later than 25 hours after the
+      hold ends. The 25-hour SLA is currently unmonitored -- see the
+      <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/security/compliance-posture-matrix.md">compliance
+      posture matrix</a> for the honest disclosure of this gap.
+    </p>
+    <p>
+      For the operator-facing walkthrough -- with screenshots and end-to-end navigator
+      flow -- see the <a href="reentry-story.html">reentry story page</a>. For the
+      configuration runbook see the
+      <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/docs/operations/reentry-mode-user-guide.md">reentry
+      mode user guide</a>.
     </p>
 
     <h2>HMIS Connectivity</h2>
@@ -338,6 +381,7 @@
       <a href="https://github.com/ccradle/finding-a-bed-tonight/blob/main/LICENSE">Apache License 2.0</a> &middot;
       No more midnight phone calls.
     </p>
+    <p style="margin-top: 8px; font-size: 12px;">This page is currently English-only. A Spanish version is planned for a future minor release. Most of the platform itself is bilingual today.</p>
   </footer>
 </body>
 </html>
