@@ -34,6 +34,7 @@
     footer a { color: #a78bfa; text-decoration: none; }
     footer a:hover { text-decoration: underline; }
     .section-divider { text-align: center; padding: 24px 0 8px; font-size: 13px; font-weight: 600; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.1em; }
+    .walkthrough-steps { list-style: none; padding-left: 0; margin: 0; }
     @media (max-width: 640px) {
       header h1 { font-size: 24px; }
       .card-title { font-size: 15px; }
@@ -60,7 +61,8 @@
 
   <div class="section-divider">Outreach Worker: Request a Referral</div>
 
-  <div class="card">
+  <ol class="walkthrough-steps" role="list">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">1</span>
       <span class="card-title">DV Shelter in Search Results</span>
@@ -68,9 +70,9 @@
     </div>
     <div class="card-caption">A woman and her two children need a safe place tonight. Darius searches for beds — and because he has DV authorization, safety shelters appear in his results. Instead of "Hold This Bed," a purple "Request Referral" button appears. He doesn't know the shelter's address. That's by design.</div>
     <img loading="lazy" src="screenshots/dv-01-search-referral-button.png" alt="DV shelter with Request Referral button">
-  </div>
+    </li>
 
-  <div class="card">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">2</span>
       <span class="card-title">Referral Request Form</span>
@@ -78,9 +80,9 @@
     </div>
     <div class="card-caption">Darius fills in only what the shelter needs to make a decision — household size, urgency, special needs. No names. No addresses. No client PII enters the system at any point.</div>
     <img loading="lazy" src="screenshots/dv-02-referral-request-modal.png" alt="Referral request modal">
-  </div>
+    </li>
 
-  <div class="card">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">3</span>
       <span class="card-title">Pending Referral — Waiting for Response</span>
@@ -88,11 +90,13 @@
     </div>
     <div class="card-caption">The referral is submitted. Now Darius waits — a countdown timer shows how long the shelter has to respond. He stays with the family.</div>
     <img loading="lazy" src="screenshots/dv-03-my-referrals-pending.png" alt="My Referrals with pending token">
-  </div>
+    </li>
+  </ol>
 
   <div class="section-divider">DV Shelter Staff: Screen &amp; Respond</div>
 
-  <div class="card">
+  <ol class="walkthrough-steps" role="list" start="4">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">4</span>
       <span class="card-title">Safety Screening View</span>
@@ -100,9 +104,9 @@
     </div>
     <div class="card-caption">At the shelter, the coordinator sees the referral come in — household size, urgency, special needs. No names, no faces. She reviews what she needs to make a safe decision: can we serve this family tonight?</div>
     <img loading="lazy" src="screenshots/dv-04-coordinator-screening.png" alt="Coordinator screening view">
-  </div>
+    </li>
 
-  <div class="card">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">5</span>
       <span class="card-title">Referral Accepted — Begin Warm Handoff</span>
@@ -110,9 +114,9 @@
     </div>
     <div class="card-caption">She accepts. Darius's notification bell lights up instantly — the referral status changes to Accepted and the shelter's intake phone number appears — but still not the address. That comes next, voice to voice.</div>
     <img loading="lazy" src="screenshots/dv-05-referral-accepted.png" alt="Referral accepted">
-  </div>
+    </li>
 
-  <div class="card">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">6</span>
       <span class="card-title">Warm Handoff — Worker Sees Phone Number</span>
@@ -120,11 +124,13 @@
     </div>
     <div class="card-caption">Darius calls the shelter intake line. The coordinator gives the address over the phone — the warm handoff. The address never appeared on a screen, never hit a database, never left a digital trace.</div>
     <img loading="lazy" src="screenshots/dv-06-warm-handoff.png" alt="Warm handoff phone number">
-  </div>
+    </li>
+  </ol>
 
   <div class="section-divider">Rejection Flow</div>
 
-  <div class="card">
+  <ol class="walkthrough-steps" role="list" start="7">
+    <li class="card">
     <div class="card-header">
       <span class="card-number">7</span>
       <span class="card-title">Referral Rejected with Reason</span>
@@ -132,7 +138,8 @@
     </div>
     <div class="card-caption">Sometimes the answer is no — "No capacity for pets at this time." The coordinator explains why without revealing anything about the client. Darius sees the reason and can request a referral to a different shelter immediately.</div>
     <img loading="lazy" src="screenshots/dv-07-referral-reject-reason.png" alt="Referral rejection with reason">
-  </div>
+    </li>
+  </ol>
 
   <div class="callout">
     <h2>What Happens After</h2>
