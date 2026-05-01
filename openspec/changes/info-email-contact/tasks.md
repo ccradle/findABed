@@ -27,7 +27,12 @@ The endpoint mirrors `PATCH /api/v1/admin/tenants/{id}/hold-duration` (existing 
 - [ ] 3.3 Implement `PATCH /api/v1/admin/tenants/{tenantId}/contact-email` controller method:
   - Bind `@Valid @RequestBody ContactEmailRequest body` (Spring runs `@Email` + `@Size` at the boundary).
   - Tenant-scope guard: caller's JWT-claim tenant must equal the path tenantId; reject with 403 otherwise. Mirrors slice-2D verify-round-2 C1 cross-tenant scoping.
-  - **DV-policy guard (Q4=B):** if `tenant.dv_policy_enabled = true` AND `body.email()` is non-empty, return 400 with structured error code `tenant.contactEmail.dvPolicyForbidden`. Empty-string PATCH (clearing) MUST still succeed for DV tenants — operators must always be able to revert to platform inheritance.
+  - **DV-policy guard (Q4=B):** if `Tenant.isDvPolicyEnabled() == true` AND `body.email()` is non-empty, return 400 with structured error code `tenant.contactEmail.dvPolicyForbidden`. Empty-string PATCH (clearing) MUST still succeed for DV tenants — operators must always be able to revert to platform inheritance.
+    **DEPENDENCY (added 2026-05-01):** `Tenant.isDvPolicyEnabled()` is provided by the separate `dv-policy-tenant-flag` OpenSpec change (which adds the JSONB key `tenant.config.dv_policy_enabled` + a system-wide invariant that DV shelters require the flag to be true). Slice B of info-email-contact MUST land AFTER `dv-policy-tenant-flag` ships, because:
+    1. The spec's prior reference to `dv_policy_enabled` was a phantom field — ground-truthed against the codebase 2026-05-01 and found nowhere.
+    2. The DV-policy invariant is a tenant-capability boundary that cuts across multiple features (this contact-email guard + future HMIS suppression + audit/forensic queries), not just info-email-contact.
+    3. The warroom (11 personas, 2026-05-01) reached strong consensus on splitting the flag into its own change to keep both spec surfaces clean.
+    See `project_dv_policy_tenant_flag_decisions.md` memory for the warroom verdict + operator decisions (1=split confirmed, 2=COC_ADMIN with extra confirm, 3=ships before info-email-contact, 4=Slice A stays as-is).
   - Persist the value to `tenant.config.contact.email`. Empty string clears the key (consistent with how `reentryMode` empty resolves to default).
   - Emit `TENANT_CONFIG_UPDATED` audit event with old + new values (mirrors slice-2D B1).
   - Do NOT annotate with `@PreAuthorize` for public-permitted; the SecurityConfig URL rule already handles the role gate (this is an admin-prefixed path so role gating is already in place).
