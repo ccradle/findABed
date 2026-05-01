@@ -158,9 +158,14 @@ For terms with regional variation (none surfaced in this audit), cross-academy c
 8. **Privacy/legal precision** — "no later than 25 hours" → "a más tardar 25 horas" — preserved. ✓
    - Sub-note: "Avoid sensitive identifiers" → "Evite identificadores sensibles" preserves the imperative. The phrase "you wouldn't want surfaced" → "que no quiera que el coordinador vea" uses subjunctive for indirect command — appropriate.
 
-**Citations** — RAE: `navegador` (https://dle.rae.es/navegador) — both senses (browser + sailor) listed; the social-services domain meaning isn't in RAE because it's a U.S.-domain concept. Disambiguation by adding `de servicios` is the conservative pan-Latin choice. HUD Spanish materials (e.g., HUD's "Patient Navigator Outreach and Chronic Disease Prevention Act" Spanish translations) use the disambiguated form.
+**Citations** — RAE: `navegador` (https://dle.rae.es/navegador) — both senses (browser + sailor) listed; the social-services domain meaning isn't in RAE because it's a U.S.-domain concept. Disambiguation by adding `de servicios` is the conservative pan-Latin choice.
 
-**Recommendation:** **REVISE** — change `un número de teléfono del navegador` → `un número de teléfono del navegador de servicios`.
+**Implementation-warroom re-grounding (2026-05-01, post-revision web search):** the dominant Spanish term for the "navigator" role per Linguee + ProZ + Huntsman/U Utah patient-navigator program is `navegador de pacientes` (in healthcare contexts) or, more broadly, `asesor/a` (advisor), `guía` (guide), or `enlace comunitario` (community liaison). `navegador de servicios` (my synthetic-Maria choice) is plausible but is NOT the dominant pan-Latin form. A real native-Spanish reviewer is likely to flag it as overly literal and recommend `enlace comunitario` (HUD-Hispanic convention) or `asesor/a` (broader). The shipped revision (`del navegador` → `del navegador de servicios`) is intelligible — better than the bare anglicism it replaced — but represents the weakest of the 3 D2 revisions. Per `feedback_truthfulness_above_all`, this is recorded honestly here rather than re-revising the es.json on the AI's authority alone; a future real-native-reviewer pass should make the final call.
+
+**Recommendation:** **REVISE (with explicit native-reviewer-flag for the specific term)** — shipped: `un número de teléfono del navegador` → `un número de teléfono del navegador de servicios`. Future-real-native-reviewer task: re-evaluate `navegador de servicios` against `enlace comunitario` / `asesor/a` / `guía` / `navegador de pacientes` and revise if a real reviewer prefers one of those. Web-research sources for the future reviewer:
+- [patient navigator — Linguee](https://www.linguee.com/english-spanish/translation/patient+navigator.html)
+- [Huntsman Cancer Institute Spanish-Speaking Patient Navigators](https://healthcare.utah.edu/huntsmancancerinstitute/wellness-support/patient-navigators/spanish-speaking)
+- [patient navigators > asesores de pacientes (ProZ KudoZ)](https://www.proz.com/kudoz/english-to-spanish/medical-health-care/1113069-patient-navigator.html)
 
 ---
 
@@ -206,10 +211,10 @@ For terms with regional variation (none surfaced in this audit), cross-academy c
 | `hold.clientAttributionPrivacyNote` | KEEP | Privacy/legal precision strict; all 8 dimensions clean |
 | `hold.help.clientName` | KEEP | Clean across all dimensions |
 | `hold.help.clientDob` | REVISE | `solo` → `únicamente` for register-consistency with Key 1 |
-| `hold.help.notes` | REVISE | `del navegador` → `del navegador de servicios` for anglicism disambiguation |
+| `hold.help.notes` | REVISE (with native-reviewer-flag) | `del navegador` → `del navegador de servicios` (anglicism disambiguation). Implementation-warroom web research surfaces stronger alternatives (`navegador de pacientes` / `enlace comunitario` / `asesor/a` / `guía`) that a real native-Spanish reviewer is likely to prefer. Shipped revision is intelligible but represents the weakest of the 3 D2 calls. See Key 4 analysis for citations + future-reviewer task. |
 | `shelter.eligibility.notes.help` | REVISE | `trabajadores de extensión` → `trabajadores de alcance comunitario` for pan-Latin neutrality |
 
-3 keys revised. 0 keys flagged for future-real-native-reviewer (all 5 are well-grounded with cited Spanish-language sources). The privacy-claim semantics on `hold.clientAttributionPrivacyNote` and the data-retention "25 horas" promise across Keys 1-4 are all strict-quantifier-preserving (`a más tardar`).
+3 keys revised. **1 key flagged for future-real-native-reviewer** (`hold.help.notes` — the specific term `navegador de servicios` should be re-evaluated against `enlace comunitario` / `asesor/a` / `guía`; the broader revision-of-the-bare-anglicism is correct but the specific replacement may not be the optimal pan-Latin form). The privacy-claim semantics on `hold.clientAttributionPrivacyNote` and the data-retention "25 horas" promise across Keys 1-4 are all strict-quantifier-preserving (`a más tardar`).
 
 ## Next steps
 
