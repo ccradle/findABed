@@ -171,41 +171,38 @@ This task is performed by Claude playing the Maria persona, with WebSearch/WebFe
 
 ## 10. Validation pass
 
-- [ ] 10.1 Run full backend test suite: `cd finding-a-bed-tonight && mvn clean test`. Expect green; flag any new failure as a regression of the §3, §4, or §5 work.
-- [ ] 10.2 Run full Playwright suite against dev-start + nginx (per `feedback_check_ports_before_assuming`): `BASE_URL=http://localhost:8081 npx playwright test --trace on 2>&1 | tee logs/v055-1-playwright-$(date +%Y%m%d-%H%M%S).log`. Expect §3 + §4 specs green. Pre-existing 7-flake long-tail noted but not gating.
-- [ ] 10.3 `npm run build` in `finding-a-bed-tonight/frontend/` — expect clean (per `feedback_build_before_commit`).
-- [ ] 10.4 Static-content visual diff: load modified `index.html` + `demo/dvindex.html` in a browser; confirm no styling regression from §7 semantic-markup elevation.
-- [ ] 10.5 Capture-spec smoke: `bash demo/capture.sh reentry` (per §6.4) — expect at least the reentry capture spec runs and produces output.
-- [ ] 10.6 AI-synthetic audit doc completeness check: review `synthetic-maria-pass.md` — every key has all 8 dimensions covered (with explicit `N/A — <reason>` for non-applicable dimensions per Q3) + at least one citation per non-obvious call + a clear recommendation. The first-paragraph AI-synthetic disclosure header is present and verbatim.
+- [x] 10.1 Run full backend test suite: `cd finding-a-bed-tonight && mvn clean test`. Expect green; flag any new failure as a regression of the §3, §4, or §5 work.
+- [x] 10.2 Run full Playwright suite against dev-start + nginx (per `feedback_check_ports_before_assuming`): `BASE_URL=http://localhost:8081 npx playwright test --trace on 2>&1 | tee logs/v055-1-playwright-$(date +%Y%m%d-%H%M%S).log`. Expect §3 + §4 specs green. Pre-existing 7-flake long-tail noted but not gating.
+- [x] 10.3 `npm run build` in `finding-a-bed-tonight/frontend/` — expect clean (per `feedback_build_before_commit`).
+- [x] 10.4 Static-content visual diff: load modified `index.html` + `demo/dvindex.html` in a browser; confirm no styling regression from §7 semantic-markup elevation.
+- [x] 10.5 Capture-spec smoke: `bash demo/capture.sh reentry` (per §6.4) — expect at least the reentry capture spec runs and produces output.
+- [x] 10.6 AI-synthetic audit doc completeness check: review `synthetic-maria-pass.md` — every key has all 8 dimensions covered (with explicit `N/A — <reason>` for non-applicable dimensions per Q3) + at least one citation per non-obvious call + a clear recommendation. The first-paragraph AI-synthetic disclosure header is present and verbatim.
 
 ## 11. Deploy
 
 This slice splits across two deploy paths:
 
-- [ ] 11.1 **Static-only path (S1, S2):** scp `index.html` + `demo/dvindex.html` + 3 dark-mode PNGs to `/var/www/findabed-docs/` on the Oracle VM. Use the same scp recipe from `oracle-update-notes-v0.55.0.md` §5.0.
-- [ ] 11.2 Cloudflare Purge Everything (single click).
-- [ ] 11.3 Post-deploy verification:
+- [x] 11.1 **Static-only path (S1, S2):** scp `index.html` + `demo/dvindex.html` + 3 dark-mode PNGs to `/var/www/findabed-docs/` on the Oracle VM. Use the same scp recipe from `oracle-update-notes-v0.55.0.md` §5.0.
+- [x] 11.2 Cloudflare Purge Everything (single click).
+- [x] 11.3 Post-deploy verification:
   - `curl -sf https://findabed.org/ | grep -c '<section'` → expect ≥ baseline + N (where N is the number of replaced section-divider divs).
   - `curl -sfI https://findabed.org/demo/screenshots/dark-search.png` → expect 200 + recent `last-modified`.
   - Browser load both pages; confirm no visual regression.
-- [ ] 11.4 **Code-repo path (T1, T2, O1, D3, D2-revisions-if-any):** open PR; merge to main. Backend rebuild + frontend rebuild only if (a) O1 IT should ride to production-bundle, OR (b) D2 surfaced revisions to es.json. If neither: no production deploy.
-  - **If bundling backend rebuild (O1 ride-along):** follow `oracle-update-notes-v0.55.0.md` §5 pattern (preserve image tags → checkout v0.55.1 tag → mvn clean package → docker build → compose up --force-recreate → §6 smoke gate).
-  - **If bundling frontend rebuild (D2 revisions):** mirror the v0.55.0 frontend rebuild step. Run the §9.7 locale-toggle smoke (Path A spec if authored, else manual) post-deploy to confirm Spanish revisions render correctly on prod.
-  - **If neither:** docs-only release as v0.55.1, no version tag in code repo (or tag `docs-v0.55.1` only).
-- [ ] 11.5 Tag v0.55.1 in code repo if a code change rides to prod. Otherwise tag `docs-v0.55.1` only.
+- [x] 11.4 **Code-repo path (T1, T2, O1, D3, D2-revisions-if-any):** PR opened, merged to main, frontend rebuild bundled (D2 + B1 + T1 + T2 + O1). v0.55.1 deployed 2026-05-01 ~20:50 UTC; smoke gate green.
+- [x] 11.5 Tag v0.55.1 in code repo (release v0.55.1 published).
 
 ## 12. Post-deploy hygiene
 
-- [ ] 12.1 Update `project_live_deployment_status.md` memory: append v0.55.1 deploy date + git ref(s) + Flyway HWM (unchanged).
-- [ ] 12.2 Update `project_resume_point.md` memory.
-- [ ] 12.3 Update `project_v055_1_backlog.md` memory:
+- [x] 12.1 Update `project_live_deployment_status.md` memory: append v0.55.1 deploy date + git ref(s) + Flyway HWM (unchanged).
+- [x] 12.2 Update `project_resume_point.md` memory.
+- [x] 12.3 Update `project_v055_1_backlog.md` memory:
   - Mark T1, T2, O1, D3, S1, S2, D2 as RESOLVED with the v0.55.1 git ref.
   - Leave seed-reentry-shelters fix in the backlog with note: "Deferred 2026-05-01 (Q5): recently shipped seed changes; not a priority. Operator workaround documented in `project_seed_reentry_shelters_gap.md` — manual V95+V96 SQL replay after `--fresh`."
   - Leave D1, D4, D5, O2, 7-flake long-tail in the backlog with their reasons.
-- [ ] 12.4 Update `CHANGELOG.md` for v0.55.1 with the standard changes-per-section entries (Tests, Localization, Documentation, Accessibility).
-- [ ] 12.5 **NEW "Truthfulness disclosure" CHANGELOG section (per warroom H4 + Q2 = new section header).** Add a new top-level `### Truthfulness disclosure` section to the v0.55.1 CHANGELOG entry (NOT folded into "Localization") with this entry:
+- [x] 12.4 Update `CHANGELOG.md` for v0.55.1 with the standard changes-per-section entries (Tests, Localization, Documentation, Accessibility).
+- [x] 12.5 **NEW "Truthfulness disclosure" CHANGELOG section (per warroom H4 + Q2 = new section header).** Add a new top-level `### Truthfulness disclosure` section to the v0.55.1 CHANGELOG entry (NOT folded into "Localization") with this entry:
 
   > Spanish translation review on v0.55.0 reentry keys was performed by AI (Claude playing the Maria persona, with web-search-grounded linguistic research and per-key citations), NOT by a native speaker. The original commitment was a real-native-reviewer pass; this softening was operator-accepted on 2026-05-01 (warroom Q1). A real-native-reviewer pass remains a future option. See audit doc at `openspec/changes/archive/2026-05-01-v0-55-1-followup/audit/synthetic-maria-pass.md` for the methodology + citations + per-key recommendations.
 
   This section is the user-facing disclosure surface required by `feedback_truthfulness_above_all`. It MUST appear under a `### Truthfulness disclosure` header (or `## Truthfulness disclosure` if the CHANGELOG uses h2 for sub-sections), NOT under "Localization."
-- [ ] 12.6 `/opsx:archive v0-55-1-followup` once all in-scope tasks complete.
+- [x] 12.6 `/opsx:archive v0-55-1-followup` once all in-scope tasks complete.
