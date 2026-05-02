@@ -244,7 +244,8 @@
     <ol>
       <li>Create the shelter profile in the admin panel -- or bulk-import from a 211 CSV file (Admin &rarr; Imports &rarr; 2-1-1 Import)</li>
       <li>Review imported data and edit any details that need correction via the Edit link on the Shelters tab</li>
-      <li>If the shelter serves DV survivors, enable the DV Shelter toggle -- this activates address redaction and audit logging</li>
+      <li>If your CoC will operate any DV shelters, first enable DV shelter operations at the CoC level (Admin &rarr; Settings &rarr; DV Shelter Operations); without this, the per-shelter DV toggle is rejected. This step acknowledges that the CoC has the necessary review processes and trained staff in place to manage DV shelters responsibly. The change is auditable and takes effect immediately.</li>
+      <li>If the shelter serves DV survivors, enable the DV Shelter toggle on the shelter -- this activates address redaction and audit logging</li>
       <li>Create a coordinator user account for the shelter's point person</li>
       <li>Assign the coordinator to the shelter</li>
     </ol>
@@ -294,6 +295,51 @@
       It has not been independently certified as compliant. The zero-PII, zero-address,
       24-hour hard-delete design means there is effectively nothing to subpoena -- the
       data does not exist.
+    </p>
+
+    <h2>DV Shelter Operations — CoC-level acknowledgement (v0.56+)</h2>
+    <p>
+      Before any shelter in your CoC can be flipped to <code>dvShelter=true</code>, the
+      CoC itself must acknowledge that it operates DV-shelter infrastructure. This is
+      a one-time tenant-level acknowledgement, not a per-shelter setting.
+    </p>
+    <h3>Where to find it</h3>
+    <p>
+      Admin &rarr; Settings &rarr; <strong>DV Shelter Operations</strong> panel
+      (sits adjacent to the Bed Hold Duration panel). The panel shows the current
+      state and a toggle. Flipping the toggle opens an extra-confirm modal that
+      describes what the change means before it commits.
+    </p>
+    <h3>Why this exists</h3>
+    <p>
+      The existing per-shelter <code>dvShelter</code> flag triggers DV protections
+      (address redaction, restricted access, audit-suppressed referrals). All those
+      protections presuppose that the CoC has the necessary review processes and
+      trained staff in place. The CoC-level acknowledgement makes that presupposition
+      explicit and auditable. Without this acknowledgement, the per-shelter DV toggle
+      is rejected at the API boundary with a clear error directing the operator here.
+    </p>
+    <h3>How to use it</h3>
+    <ol>
+      <li>If your CoC is migrating from v0.55 with existing DV shelters, the flag has been auto-enabled by the V97 migration -- no action needed.</li>
+      <li>For a new CoC: enable DV shelter operations <em>before</em> creating any DV shelter. The order matters; reversing it produces an actionable error message.</li>
+      <li>To disable: every active DV shelter must first be deactivated. The system reports the count of remaining DV shelters in the rejection if disable is attempted while DV shelters exist; the error includes a link to the filtered Shelters tab so you can identify them. Re-enabling is unrestricted.</li>
+    </ol>
+    <h3>Permissions</h3>
+    <p>
+      Both <code>COC_ADMIN</code> role and <code>dvAccess=true</code> on the user
+      account are required to flip this flag. The two together represent "trained
+      operator authorized to manage DV-shelter posture." Platform Operators do not
+      have this capability by default; the operational responsibility sits with
+      the CoC.
+    </p>
+    <h3>Audit trail</h3>
+    <p>
+      Every flag change emits a <code>TENANT_CONFIG_UPDATED</code> audit row. So
+      does every <em>rejected</em> disable attempt -- the attempt itself is
+      forensically interesting. Cross-tenant probe attempts (a CoC admin from
+      tenant A trying to flip tenant B's flag) emit a defense-in-depth audit row
+      and surface as a 403 with no inventory leak.
     </p>
 
     <h2>Reentry-Mode Tenant Flag (v0.55+)</h2>
