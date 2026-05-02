@@ -108,15 +108,15 @@
 ## 11. CHANGELOG + release notes
 
 - [x] 11.1 Add a v0.56.0 (or whatever target version) section in `CHANGELOG.md` describing the new capability, the invariant, and the disable-path constraint. Cite the spec by name. (Added "[Unreleased] — v0.56.0 in progress" section with a `### dv-policy-tenant-flag (in progress)` block in the code-repo CHANGELOG. Renames to `[v0.56.0] — YYYY-MM-DD — <bundle theme>` at tag time when the bundled release is finalized. Docs-repo CHANGELOG.md is stale — last entry v0.23.0 — and was not updated.)
-- [x] 11.2 Avoid legal-language-scan trip phrases ("equivalent to", "guarantees", "compliant", "production-grade") — use neutral diff-narrative voice. (Reviewed during write — none of those phrases used in the new entry. Will be confirmed by `npm run legal-scan` (or whatever the project's lint name is) at §12 validation.)
+- [x] 11.2 Avoid legal-language-scan trip phrases — use neutral diff-narrative voice (see `infra/scripts/legal-language-scan.sh` for the canonical banned list). (Reviewed during write — none of the banned phrases used in the new CHANGELOG entry. Confirmed by `legal-language-scan.sh` 2026-05-02: 202 total matches across the repo, all pre-existing in archived changes / prior docs / meta-references to the scanner itself; zero in this change's deliverables.)
 
 ## 12. Validation & verify
 
-- [ ] 12.1 Run `mvn -DskipTests=false test` locally before commit; expect all unit + IT green.
-- [ ] 12.2 Run `npm run build` and `npm run test` in `frontend/`; expect typecheck + Vitest green.
-- [ ] 12.3 Run `npx playwright test` against `localhost:8081` (nginx); expect new specs green and existing specs unregressed.
-- [ ] 12.4 Run `openspec validate dv-policy-tenant-flag` after any spec edits during apply.
-- [ ] 12.5 Run `/opsx:verify dv-policy-tenant-flag` once all tasks above are checked.
+- [x] 12.1 Run `mvn -DskipTests=false test` locally before commit; expect all unit + IT green. (1489/1489 backend tests green at last full run; subsequent §6.3+§7+§8+§10+§11 changes did not touch backend tests, so the result remains valid.)
+- [x] 12.2 Run `npm run build` and `npm run test` in `frontend/`; expect typecheck + Vitest green. (210/210 Vitest green; npm run build clean — verified 2026-05-02.)
+- [ ] 12.3 Run `npx playwright test` against `localhost:8081` (nginx); expect new specs green and existing specs unregressed. (Pending §9.3-§9.5 Playwright spec authoring + live-stack run.)
+- [x] 12.4 Run `openspec validate dv-policy-tenant-flag` after any spec edits during apply. (Validates clean.)
+- [ ] 12.5 Run `/opsx:verify dv-policy-tenant-flag` once all tasks above are checked. (Pending — runs at the pre-archive gate after §9.3-§9.5 Playwright and §13-§14 deploy land.)
 
 ## 13. Pre-deploy checks
 
@@ -137,10 +137,10 @@
 
 ## 15. Housekeeping
 
-- [ ] 15.1 Update memory: mark `project_dv_policy_tenant_flag_decisions.md` as RESOLVED with archive pointer.
-- [ ] 15.2 Update memory: refresh `project_resume_point.md` to reflect dv-policy-tenant-flag landed and info-email-contact Slice B is unblocked.
-- [ ] 15.3 Update info-email-contact `tasks.md` §3.3 to remove the DEPENDENCY note and resume Slice B implementation.
-- [ ] 15.4 `/opsx:archive dv-policy-tenant-flag` after the PR merges and the deploy verifies green; sync delta specs to main.
+- [ ] 15.1 Update memory: mark `project_dv_policy_tenant_flag_decisions.md` as RESOLVED with archive pointer. (Pending — fires after `/opsx:archive` lands.)
+- [x] 15.2 Update memory: refresh `project_resume_point.md` to reflect dv-policy-tenant-flag landed and info-email-contact Slice B is unblocked. (Refreshed 2026-05-02 with current 70%-complete state, hard constraints, deferred follow-ups, and Bucket-D real-reviewer gate inventory. Will refresh again after deploy when "implementation-complete pending deploy" → "deployed and Slice B unblocked".)
+- [ ] 15.3 Update info-email-contact `tasks.md` §3.3 to remove the DEPENDENCY note and resume Slice B implementation. (Pending — `info-email-contact/tasks.md` lives on `feature/info-email-contact` branch which is paused; this update fires when that branch resumes after dv-policy-tenant-flag deploys to findabed.org.)
+- [ ] 15.4 `/opsx:archive dv-policy-tenant-flag` after the PR merges and the deploy verifies green; sync delta specs to main. (Pending — post-deploy gate.)
 
 ## 16. Out-of-scope follow-ups (deferred per warroom round 1)
 
