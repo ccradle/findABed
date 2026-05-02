@@ -132,6 +132,22 @@ This gap surfaced when `info-email-contact` Slice B referenced `tenant.dv_policy
 
 **AuditEventType reuse**: confirm at apply time whether the existing `TENANT_CONFIG_UPDATED` enum value covers this, or whether a dedicated `CROSS_TENANT_ACCESS_DENIED` (or similar) value is more appropriate. The audit table schema accommodates either; the choice is a categorization decision for the audit reader. Default: reuse `TENANT_CONFIG_UPDATED` with the structured `rejection_code` doing the disambiguation, matching the rejected-disable audit shape.
 
+### D10: Endpoint requires `dvAccess=true`, not just `COC_ADMIN` role
+
+**Decision (warroom round 2, 2026-05-02 IT discovery)**: the `PATCH .../dv-policy` endpoint requires the caller's JWT to carry `dvAccess=true` IN ADDITION TO the `COC_ADMIN` role. A COC_ADMIN without `dvAccess` is rejected with `403 Forbidden`.
+
+**Rationale (grounded in production semantics)**: the disable-path guard (D4) reads `shelter` to count active DV shelters. That table is RLS-protected: the policy filters DV shelters out for callers with `dvAccess=false`. If a COC_ADMIN without `dvAccess` calls the disable path, the count returns 0 even when DV shelters exist on the tenant — and the disable wrongly succeeds. This is the EXACT failure mode the invariant was added to prevent.
+
+Two architectural options were considered:
+- **(a) Require `dvAccess=true` on the endpoint** (chosen). One-line guard. Matches the warroom rationale that COC_ADMIN owns this flag because they have DV-context awareness — `dvAccess` is the formal claim representing that awareness.
+- **(b) Use a privileged DataSource for the count query** to bypass RLS for the authoritative count. Architecturally cleaner ("system-level vs user-visibility-level" reads) but requires new injection / SET LOCAL ROLE mechanism — more invasive than the current change warrants.
+
+**Where the check lives**: `DvPolicyController.updateDvPolicy` (controller method, after the tenant-scoping check, before the inventory query). Both checks fire BEFORE any DV-shelter-derived data is read so a probe cannot learn inventory state via timing.
+
+**Why this matters for spec maintenance**: a future maintainer might "simplify" by removing the `dvAccess` check, viewing it as redundant against the `COC_ADMIN` role. This decision documents WHY the gate exists (RLS coupling) so the refactor is correctly rejected. The IT scenario `cocAdminWithoutDvAccessForbidden` covers it.
+
+**Spec scenario**: "COC_ADMIN without dvAccess cannot flip flag" (added to `dv-policy-tenant-flag/spec.md` under PATCH endpoint requirement).
+
 ## Risks / Trade-offs
 
 - **[Risk]** Onboarding sequence confusion: an operator stands up a fresh tenant, attempts to flip a shelter to DV before enabling the flag, and gets a 400. → **Mitigation**: runbook update documents the sequence ("Enable DV policy BEFORE creating the first DV shelter"); the 400 error message points to the admin-UI tab; admin-UI surface places `DvPolicySettings.tsx` adjacent to shelter management so the dependency is visible.
