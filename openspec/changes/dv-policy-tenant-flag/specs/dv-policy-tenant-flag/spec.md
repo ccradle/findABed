@@ -21,7 +21,7 @@ The system SHALL persist a tenant-level boolean flag `dv_policy_enabled` under t
 
 ### Requirement: PATCH dv-policy endpoint
 
-The system SHALL expose `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy` accepting `{"dvPolicyEnabled": <boolean>}`. The endpoint SHALL require role `COC_ADMIN`. The endpoint SHALL enforce tenant scoping: the path's `tenantId` MUST equal the caller's JWT-bound `TenantContext.getTenantId()`. On success the endpoint SHALL return `200 OK` with the updated value as confirmation.
+The system SHALL expose `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy` accepting `{"dvPolicyEnabled": <boolean>}`. The endpoint SHALL require role `COC_ADMIN`. The endpoint SHALL additionally require that the caller's JWT carries `dvAccess=true` — without that claim, the disable-path inventory query (which reads `shelter` through RLS) would not see DV shelters and the disable would wrongly succeed even when DV shelters exist. The endpoint SHALL enforce tenant scoping: the path's `tenantId` MUST equal the caller's JWT-bound `TenantContext.getTenantId()`. On success the endpoint SHALL return `200 OK` with the updated value as confirmation.
 
 #### Scenario: COC_ADMIN enables flag on own tenant
 
@@ -46,6 +46,12 @@ The system SHALL expose `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy` accep
 
 - **WHEN** a COORDINATOR or OUTREACH_WORKER sends `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy`
 - **THEN** the response is `403 Forbidden`
+
+#### Scenario: COC_ADMIN without dvAccess cannot flip flag
+
+- **WHEN** a COC_ADMIN whose JWT carries `dvAccess=false` sends `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy`
+- **THEN** the response is `403 Forbidden`
+- **AND** the JWT-bound `TenantContext.getDvAccess()` check fires before any DV-shelter inventory query, so the response carries no inventory-derived data
 
 #### Scenario: Missing or malformed body returns 400
 
