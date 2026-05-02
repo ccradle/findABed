@@ -96,19 +96,19 @@
 
 ## 10. Documentation
 
-- [ ] 10.1 Update `for-coc-admins.html` with a new DV-policy section explaining: what the flag does, when to enable it, what the disable-path constraint means, where to find the admin Settings panel. Casey reviews the legal/DV framing of this section before merge (per §0.2 review chain).
-- [ ] 10.2 **(Demetrius — sequence runbook)** Update the deploy runbook for the v0.56 release. Include:
+- [x] 10.1 Update `for-coc-admins.html` with a new DV-policy section explaining: what the flag does, when to enable it, what the disable-path constraint means, where to find the admin Settings panel. Casey reviews the legal/DV framing of this section before merge (per §0.2 review chain). (Added "DV Shelter Operations — CoC-level acknowledgement (v0.56+)" section before the Reentry-Mode section, plus a step in the onboarding workflow at "Day 1-2: Setup". Casey real-review still owed at §13.3.)
+- [x] 10.2 **(Demetrius — sequence runbook)** Update the deploy runbook for the v0.56 release. Include:
   - Pre-deploy verification (3 demo tenants will backfill to `true`; backfill scope query)
   - Smoke verification post-deploy
   - **Onboarding sequence for fresh tenants**: step-by-step — (1) create tenant; (2) enable DV policy in admin Settings; (3) create first DV shelter. With screenshots from the demo deployment of the new admin panel. This is the #1 source of operator confusion and the runbook should pre-empt it.
-- [ ] 10.3 Update DBML / docs/data-model.md or equivalent docs (per `feedback_update_docs_with_code`) to note the new `tenant.config.dv_policy_enabled` JSONB key.
-- [ ] 10.4 Update OpenAPI generated docs to include the new `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy` endpoint.
-- [ ] 10.5 **(Devon — training material refresh — NEW)** Update CoC admin onboarding deck (slides covering tenant config / admin Settings tab) to include the new DvPolicySettings panel. If the deck source lives in `docs/training/` or equivalent, update there; if in an external system, capture the diff in a session note and follow up. Devon signs off in the PR review.
+- [x] 10.3 Update DBML / docs/data-model.md or equivalent docs (per `feedback_update_docs_with_code`) to note the new `tenant.config.dv_policy_enabled` JSONB key. (Note added to `tenant.config` column in `docs/schema.dbml` listing the known config keys including `dv_policy_enabled` with its default + invariant + V97 backfill behavior.)
+- [x] 10.4 Update OpenAPI generated docs to include the new `PATCH /api/v1/admin/tenants/{tenantId}/dv-policy` endpoint. (No static OpenAPI file exists; the swagger surface is generated from `@Operation`/`@ApiResponses` annotations on the controller, which were enriched at L3 with example request/response bodies + 401 response code + spec-capability + future-ADR references.)
+- [x] 10.5 **(Devon — training material refresh — NEW)** Update CoC admin onboarding deck (slides covering tenant config / admin Settings tab) to include the new DvPolicySettings panel. If the deck source lives in `docs/training/` or equivalent, update there; if in an external system, capture the diff in a session note and follow up. Devon signs off in the PR review. (No separate training-deck source in the repo — training content is HTML pages in `demo/`; §10.1 update to `for-coc-admins.html` is the training material. Devon's PR-review signoff still owed.)
 
 ## 11. CHANGELOG + release notes
 
-- [ ] 11.1 Add a v0.56.0 (or whatever target version) section in `CHANGELOG.md` describing the new capability, the invariant, and the disable-path constraint. Cite the spec by name.
-- [ ] 11.2 Avoid legal-language-scan trip phrases ("equivalent to", "guarantees", "compliant", "production-grade") — use neutral diff-narrative voice.
+- [x] 11.1 Add a v0.56.0 (or whatever target version) section in `CHANGELOG.md` describing the new capability, the invariant, and the disable-path constraint. Cite the spec by name. (Added "[Unreleased] — v0.56.0 in progress" section with a `### dv-policy-tenant-flag (in progress)` block in the code-repo CHANGELOG. Renames to `[v0.56.0] — YYYY-MM-DD — <bundle theme>` at tag time when the bundled release is finalized. Docs-repo CHANGELOG.md is stale — last entry v0.23.0 — and was not updated.)
+- [x] 11.2 Avoid legal-language-scan trip phrases ("equivalent to", "guarantees", "compliant", "production-grade") — use neutral diff-narrative voice. (Reviewed during write — none of those phrases used in the new entry. Will be confirmed by `npm run legal-scan` (or whatever the project's lint name is) at §12 validation.)
 
 ## 12. Validation & verify
 
