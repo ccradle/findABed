@@ -16,35 +16,33 @@
 
 The endpoint mirrors `PATCH /api/v1/admin/tenants/{id}/hold-duration` (existing pattern; see `ReservationSettings.tsx` consumer + the corresponding backend controller). This pattern is preferred over the generic `PUT /tenants/{id}/config` because it gives Bean validation, audit emission, and tenant-scope enforcement at the boundary.
 
-- [ ] 3.1 Update the existing `Tenant.config` JSONB schema documentation (DBML and AsyncAPI/OpenAPI doc snippets) to enumerate `contact.email` as a valid key with type `string` (RFC 5322 email format, max 254 chars) and default empty.
-- [ ] 3.2 Author `ContactEmailRequest` typed Java record:
+- [x] 3.1 Updated `docs/schema.dbml` line 677 `tenant.config` note to enumerate `contact.email` (string, RFC 5322 max 254 chars, default empty, DV-policy-forbidden when non-empty, empty-PATCH always allowed). AsyncAPI doc surface unchanged because `tenant.config` is internal-only — no async event publishes the JSONB blob; the public `GET /api/v1/public/contact-info` surface (§4) gets its own OpenAPI annotations on `ContactInfoController`.
+- [x] 3.2 Authored `org.fabt.tenant.api.ContactEmailRequest`:
   ```java
   public record ContactEmailRequest(
-      @Email @Size(max = 254) String email
+      @Email(message = "email must be a well-formed RFC 5322 address")
+      @Size(max = 254, message = "email must be <= 254 characters")
+      String email
   ) {}
   ```
-  This is the typed-DTO shape that makes `@Valid` cascade work. Mirrors `HoldDurationRequest` exactly in style.
-- [ ] 3.3 Implement `PATCH /api/v1/admin/tenants/{tenantId}/contact-email` controller method:
-  - Bind `@Valid @RequestBody ContactEmailRequest body` (Spring runs `@Email` + `@Size` at the boundary).
-  - Tenant-scope guard: caller's JWT-claim tenant must equal the path tenantId; reject with 403 otherwise. Mirrors slice-2D verify-round-2 C1 cross-tenant scoping.
-  - **DV-policy guard (Q4=B):** if `Tenant.isDvPolicyEnabled() == true` AND `body.email()` is non-empty, return 400 with structured error code `tenant.contactEmail.dvPolicyForbidden`. Empty-string PATCH (clearing) MUST still succeed for DV tenants — operators must always be able to revert to platform inheritance.
-    **DEPENDENCY (added 2026-05-01):** `Tenant.isDvPolicyEnabled()` is provided by the separate `dv-policy-tenant-flag` OpenSpec change (which adds the JSONB key `tenant.config.dv_policy_enabled` + a system-wide invariant that DV shelters require the flag to be true). Slice B of info-email-contact MUST land AFTER `dv-policy-tenant-flag` ships, because:
-    1. The spec's prior reference to `dv_policy_enabled` was a phantom field — ground-truthed against the codebase 2026-05-01 and found nowhere.
-    2. The DV-policy invariant is a tenant-capability boundary that cuts across multiple features (this contact-email guard + future HMIS suppression + audit/forensic queries), not just info-email-contact.
-    3. The warroom (11 personas, 2026-05-01) reached strong consensus on splitting the flag into its own change to keep both spec surfaces clean.
-    See `project_dv_policy_tenant_flag_decisions.md` memory for the warroom verdict + operator decisions (1=split confirmed, 2=COC_ADMIN with extra confirm, 3=ships before info-email-contact, 4=Slice A stays as-is).
-  - Persist the value to `tenant.config.contact.email`. Empty string clears the key (consistent with how `reentryMode` empty resolves to default).
-  - Emit `TENANT_CONFIG_UPDATED` audit event with old + new values (mirrors slice-2D B1).
-  - Do NOT annotate with `@PreAuthorize` for public-permitted; the SecurityConfig URL rule already handles the role gate (this is an admin-prefixed path so role gating is already in place).
-- [ ] 3.4 Backend integration tests:
-  - Happy path: PATCH valid email → 200, persisted, audit row exists.
-  - Malformed email → 400 (Bean Validation).
-  - Empty string → 200, key cleared.
-  - >254 chars → 400 (`@Size`).
-  - DV-policy tenant non-empty PATCH → 400 with `tenant.contactEmail.dvPolicyForbidden` code.
-  - DV-policy tenant empty-string PATCH → 200 (clearing is allowed even on DV tenants).
-  - Cross-tenant attempt (tenant A admin PATCHes tenant B) → 403.
-  - COORDINATOR role attempt (non-admin) → 403.
+  Mirrors `HoldDurationRequest` in style. Hibernate-Validator's `@Email` permits null + empty string by default, so the controller treats both as "clear." Validation messages set explicitly so the GlobalExceptionHandler 400 carries readable text rather than the default `{javax.validation.constraints.Email.message}` placeholder.
+- [x] 3.3 Implemented `org.fabt.tenant.api.ContactEmailController` with `PATCH /api/v1/admin/tenants/{tenantId}/contact-email`. **Spec correction:** the original §3.3 instruction to "Do NOT annotate with @PreAuthorize" assumed the SecurityConfig had a role-gating rule for `/api/v1/admin/**`. Ground-truth: SecurityConfig has no such rule — the catch-all is `.anyRequest().authenticated()`, which only requires authentication, not COC_ADMIN. The controller therefore uses `@PreAuthorize("hasRole('COC_ADMIN')")` matching the canonical pattern from `ReservationConfigController` and `DvPolicyController`. Without it, any authenticated role (COORDINATOR, OUTREACH_WORKER) would reach the method body.
+  Implementation follows DvPolicyController's STEP 1–5 ordering verbatim:
+  - STEP 1: Tenant-scope guard with defense-in-depth audit row on cross-tenant attempt (rejection_code = `tenant.crossTenantAccess`, target_tenant_id captured).
+  - STEP 2: Read current value + dv_policy_enabled state once via `tenantService.findById` + `Tenant.isDvPolicyEnabled` (conservative: corrupt config → false).
+  - STEP 3: DV-policy guard. Audit emitted FIRST, then `StructuredErrorException(TENANT_CONTACT_EMAIL_DV_POLICY_FORBIDDEN, ...)`. Empty-string normalization (`null` and blank both treated as clear) happens before the guard so empty-PATCH on DV-flagged tenant succeeds.
+  - STEP 4: `tenantService.setContactEmail(tenantId, newValue)` — new method handling the nested `contact.email` write (preserves sibling `contact.*` keys; removes `contact` subtree when empty).
+  - STEP 5: Applied audit with `value_changed` field distinguishing real flips from idempotent re-sets.
+  New error code `ErrorCodes.TENANT_CONTACT_EMAIL_DV_POLICY_FORBIDDEN = "tenant.contactEmail.dvPolicyForbidden"` registered.
+- [x] 3.4 Backend integration tests (`ContactEmailControllerTest` — 8/8 green, 29s):
+  - `happyPathValidEmail` — 200, persisted, audit row's `new_value` matches.
+  - `malformedEmailRejected` — 400, persisted state unchanged.
+  - `emptyStringClears` — 200, `contact.email` removed AND `contact` subtree removed (single-key cleanup).
+  - `oversizeEmailRejected` — 400 (`@Size`).
+  - `dvPolicyForbidsNonEmpty` — 400 with structured `errorCode` + `dv_policy_enabled: true` context + audit row with rejection_code.
+  - `dvPolicyAllowsEmptyClear` — 200 (uses direct-JDBC seed via `||`-concat to model "stale override set before flag was enabled").
+  - `crossTenantProbe` — 403 + cross-tenant audit row in caller's tenant chain.
+  - `coordinatorForbidden` — 403 (`@PreAuthorize` enforces role).
 
 ## 4. Backend: public REST endpoint
 
