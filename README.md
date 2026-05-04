@@ -245,8 +245,36 @@ findABed/                                        # Docs repo root
 │   ├── specs/                                   # Main specs (57 capabilities, synced from changes)
 │   └── changes/
 │       └���─ archive/                             # 24 archived changes
+├── scripts/                                     # Docs-repo CI guards
+│   └── ci/
+│       └── check-contact-placeholder.sh         # info-email-contact §9 guard
+├── contact.js                                   # info-email-contact §6 static-site fetcher
 └── finding-a-bed-tonight/                       # Code monorepo (Git submodule)
 ```
+
+---
+
+## CI Guards
+
+The docs repo carries a small set of shell-based guards that catch
+content drift in the static-site tree.
+
+| Guard | What it checks | When |
+|---|---|---|
+| [`scripts/ci/check-contact-placeholder.sh`](scripts/ci/check-contact-placeholder.sh) | Every in-scope HTML page has the canonical `class="contact-email"` placeholder, `aria-live="polite"`, the `/contact.js` script tag, a `<noscript>` GH-issues fallback, and NO literal `@findabed.org` email in source. The 14-page list is baked in (not a glob); adding a new page requires an explicit code change. | Run before any commit that touches `index.html`, `404.html`, or `demo/*.html`. Future: wire to a precommit hook or GH Actions workflow (info-email-contact §9.4). |
+
+**To run:**
+
+```bash
+bash scripts/ci/check-contact-placeholder.sh
+```
+
+Exit codes:
+- `0` — all checks pass
+- `1` — at least one check failed (message names file + check)
+- `2` — invocation error (file from canonical list missing)
+
+Exit-1 is the regression case; exit-2 means the canonical list and the filesystem are out of sync (someone removed a page without updating the script).
 
 ---
 

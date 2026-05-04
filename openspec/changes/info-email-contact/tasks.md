@@ -156,33 +156,17 @@ Each audience page gets a context-specific CTA in its existing "next steps" / "g
 
 ## 9. CI guard against drift
 
-- [ ] 9.1 Author `scripts/ci/check-contact-placeholder.sh` with a **canonical in-scope page list** baked in (not a glob). The list:
-  ```
-  index.html
-  404.html
-  demo/index.html
-  demo/dvindex.html
-  demo/hmisindex.html
-  demo/analyticsindex.html
-  demo/reentry-story.html
-  demo/for-cities.html
-  demo/for-coc-admins.html
-  demo/for-coordinators.html
-  demo/for-funders.html
-  demo/outreach-one-pager.html
-  demo/pitch-briefs.html
-  demo/shelter-onboarding.html
-  ```
-  For each file, the guard MUST:
-  - Confirm the file contains `class="contact-email"`.
-  - Confirm the file contains `aria-live="polite"` on the placeholder.
-  - Confirm the file contains `/contact.js` (script tag).
-  - Confirm the file contains a `<noscript>` block with a GH-issues link.
-  - Confirm the file does NOT contain any string matching `/[A-Za-z0-9._%+-]+@findabed\.org/` (catches accidental literal-email check-in).
-  - Exit non-zero with a descriptive message naming the offending file and which check failed.
-- [ ] 9.2 Run the guard locally; confirm green on a clean tree post-§7 + §8.
-- [ ] 9.3 Document the guard in the docs-repo `README.md` or equivalent landing doc.
-- [ ] 9.4 (Optional) Wire into a precommit hook or GH Actions workflow on the docs repo. Not blocking for v1; can ship as a follow-up.
+- [x] 9.1 Authored `scripts/ci/check-contact-placeholder.sh` with the canonical 14-page list baked in (not a glob). All 5 per-file checks implemented:
+  - `class="contact-email"` placeholder
+  - `aria-live="polite"`
+  - `/contact.js` script reference
+  - `<noscript>` block with a GitHub Issues link (multi-line awk match across the noscript span)
+  - forbidden-email regex `[A-Za-z0-9._%+-]+@findabed\.org` returns 0 hits
+  - Exit codes: 0 = all checks pass, 1 = check failure (message names file + check + offending line if applicable), 2 = invocation error (canonical-list file missing from filesystem). The exit-2 case catches "page removed without updating the script" drift; the exit-1 case catches the per-page content regression.
+  - Bash with `set -eu`. `${BASH_SOURCE[0]}` resolution makes the script work regardless of cwd.
+- [x] 9.2 Ran `bash scripts/ci/check-contact-placeholder.sh` on the clean post-§7+§8 tree → exit 0 with `OK: 14 pages pass all 5 checks`. Verified the failure path catches a regression by temporarily mutating `class="contact-email"` → `class="CONTACT_BROKEN"` in `index.html`; the guard reported `FAIL: index.html: missing  class="contact-email"  placeholder element` and returned exit 1. Tree restored.
+- [x] 9.3 Added a "CI Guards" section to `README.md` describing the guard, how to run it, and the three exit codes. Updated the Repository Structure tree to enumerate `scripts/ci/check-contact-placeholder.sh` and `contact.js`.
+- [ ] 9.4 (Optional, deferred per spec) Wire the guard into a precommit hook or GH Actions workflow. Not blocking for v1; can ship as a follow-up. Today the guard runs manually before any commit that touches the in-scope pages.
 
 ## 10. Validation pass — pre-deploy
 
