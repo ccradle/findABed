@@ -92,14 +92,14 @@ The endpoint mirrors `PATCH /api/v1/admin/tenants/{id}/hold-duration` (existing 
 
 ## 6. Static content: shared JS fetcher
 
-- [ ] 6.1 Author `/contact.js` (lives in the static-content tree, served from findabed.org root). Behavior:
-  - Embed a lang-aware i18n dict at the top of the file (per §7.15 + Q1). On script start, derive `lang = (document.documentElement.lang === 'es') ? 'es' : 'en'`; use `lang` to pick lead-in and noscript-fallback copy from the dict. Strings: `leadIn.en = "Contact the FABT project team:"`, `leadIn.es = "Contacte al equipo del proyecto FABT:"`, `ghFallback.en = "Contact via GitHub Issues"`, `ghFallback.es = "Contacte por GitHub Issues"`.
-  - Find every element matching `a.contact-email[hidden]` on the page.
-  - Find every element matching `span.footer-contact-leadin` and set its text content to `leadIn[lang]` (i18n the lead-in copy adjacent to the placeholder).
-  - Fetch `/api/v1/public/contact-info` once.
-  - On success with non-empty platform email: for each `a.contact-email[hidden]` element, set `href="mailto:<email>"`, set text content to the email, remove `hidden` attribute. The `aria-live="polite"` already on the element causes screen readers to announce.
-  - **On failure (network, non-2xx, empty email):** for each element, replace the placeholder with the GH-issues fallback link — set `href="https://github.com/ccradle/finding-a-bed-tonight/issues"`, set text content to `ghFallback[lang]`, remove `hidden` attribute. Single console.warn for ops; no error spam.
-- [ ] 6.2 Add the script reference (`<script defer src="/contact.js"></script>`) once per in-scope HTML page, near the `</body>` closing tag.
+- [x] 6.1 Authored `/contact.js` at the docs-repo root (`findABed/contact.js`; served from `findabed.org/contact.js` via the existing static-content nginx rule). Behavior matches spec:
+  - Embedded EN/ES i18n dict at the top of the file. `lang` derived from `document.documentElement.lang` with `.toLowerCase().startsWith('es')` matching (defaults to `en`).
+  - `hydrateLeadIns(text)` called BEFORE the fetch so the lead-in copy appears even during the fetch window.
+  - Single `fetch()` to `/api/v1/public/contact-info` with `Accept: application/json` and `credentials: omit` (this is a public anonymous endpoint; no need to send cookies/auth).
+  - On success with non-empty `body.platform.email`: every `<a.contact-email[hidden]>` gets `href="mailto:<email>"`, textContent = email, hidden removed. The `aria-live="polite"` on the element causes screen readers to announce.
+  - On any failure (network throw, non-2xx, missing/empty email): all placeholders swap to the GH-issues link with `ghFallback[lang]` text. Single `console.warn` for ops; no spam.
+  - IIFE-wrapped + 'use strict'; DOMContentLoaded gated. `defer` script tag handles ordering at the source. Belt-and-suspenders DOMContentLoaded gate covers any browser that ignores `defer` semantics for whatever reason.
+- [x] 6.2 Added `<script defer src="/contact.js"></script>` to all 14 in-scope HTML pages near the `</body>` closing tag.
 
 ## 7. Static content: footer placeholder + noscript fallback on every in-scope HTML page
 
@@ -121,26 +121,26 @@ Insert above the existing footer tagline (or in an analogous footer slot if a pa
 
 **Spanish footer support (Q1, ground-truthed 2026-05-01):** all 14 in-scope HTML pages currently render `<html lang="en">` and have NO existing Spanish-localized variants or runtime locale-toggle harness on the static-content tree. Per operator decision: add Spanish footer support via a lang-aware dict embedded in `/contact.js` (§6.1). The script reads `document.documentElement.lang || 'en'` and selects EN or ES copy from a small inline dict — no per-page Spanish HTML duplication, no build-time templating step. Pages keep `lang="en"` today; future Spanish-localized pages opt in by setting `lang="es"` on the `<html>` element. Both English and Spanish copy land day-one in `/contact.js`.
 
-- [ ] 7.1 **`index.html` (root)** — add placeholder + noscript above the existing "No more midnight phone calls." tagline at lines ~540-541.
-- [ ] 7.2 **`demo/index.html`** — add to footer.
-- [ ] 7.3 **`demo/dvindex.html`** — add to footer.
-- [ ] 7.4 **`demo/hmisindex.html`** — add to footer.
-- [ ] 7.5 **`demo/analyticsindex.html`** — add to footer.
-- [ ] 7.6 **`demo/reentry-story.html`** — add to footer.
-- [ ] 7.7 **`demo/for-cities.html`** — add placeholder to footer (additional CTA edit in §8).
-- [ ] 7.8 **`demo/for-coc-admins.html`** — add placeholder to footer (additional CTA edit in §8).
-- [ ] 7.9 **`demo/for-coordinators.html`** — add placeholder to footer (additional CTA edit in §8).
-- [ ] 7.10 **`demo/for-funders.html`** — add placeholder to footer (additional CTA edit in §8).
-- [ ] 7.11 **`demo/outreach-one-pager.html`** — add placeholder to footer (additional CTA edit in §8).
-- [ ] 7.12 **`demo/pitch-briefs.html`** — add to footer.
-- [ ] 7.13 **`demo/shelter-onboarding.html`** — add to footer.
-- [ ] 7.14 **`404.html`** — add to footer.
-- [ ] 7.15 **Spanish footer support — lang-aware /contact.js dict (H4 + Q1, ground-truthed 2026-05-01):** all 14 pages stay `lang="en"` today. The Spanish copy lives in `/contact.js` (§6.1) inside a small dict keyed by `document.documentElement.lang` (`en` or `es`; default `en`). The `<noscript>` fallback in HTML stays in the page's primary language (English on all current pages). When a future change Spanish-localizes a page (sets `lang="es"`), that change is responsible for swapping the `<noscript>` copy to Spanish for that page; the JS-injected lead-in copy already supports it. Strings to add to the JS dict in this change:
-  - EN lead-in: `"Contact the FABT project team:"`
-  - ES lead-in: `"Contacte al equipo del proyecto FABT:"`
-  - EN noscript-fallback link text (matches HTML default): `"Contact via GitHub Issues"`
-  - ES noscript-fallback link text (for JS-rendered swap on lang=es pages): `"Contacte por GitHub Issues"`
-  Spanish copy reviewed by the same AI-synthetic process used for v0.55.1 D2, OR by a real native-Spanish reviewer when one is available — not a release gate.
+- [x] 7.1 `index.html` (root) — placeholder added above the `footer-tagline`. Script tag added before `</body>`.
+- [x] 7.2 `demo/index.html` — placeholder added before `</footer>`. Script tag added between `</footer>` and `</body>`.
+- [x] 7.3 `demo/dvindex.html` — placeholder + script added.
+- [x] 7.4 `demo/hmisindex.html` — placeholder + script added.
+- [x] 7.5 `demo/analyticsindex.html` — placeholder + script added.
+- [x] 7.6 `demo/reentry-story.html` — placeholder + script added.
+- [x] 7.7 `demo/for-cities.html` — placeholder + script added (CTA edit deferred to §8.1).
+- [x] 7.8 `demo/for-coc-admins.html` — placeholder + script added (CTA edit deferred to §8.2).
+- [x] 7.9 `demo/for-coordinators.html` — placeholder + script added (CTA edit deferred to §8.3).
+- [x] 7.10 `demo/for-funders.html` — placeholder + script added (CTA edit deferred to §8.4).
+- [x] 7.11 `demo/outreach-one-pager.html` — placeholder added above `footer-tagline` (page has no `<footer>` element). Script tag added before `</body>`. CTA edit deferred to §8.5.
+- [x] 7.12 `demo/pitch-briefs.html` — placeholder + script added.
+- [x] 7.13 `demo/shelter-onboarding.html` — placeholder + script added.
+- [x] 7.14 `404.html` — placeholder added inside `<main>` (page has no `<footer>` element; placeholder placed after the existing tagline). Script tag added before `</body>`.
+- [x] 7.15 Spanish footer support — lang-aware `/contact.js` dict landed (§6.1). All 14 pages stay `lang="en"` today. ES strings (`leadIn.es`, `ghFallback.es`) live inside `/contact.js` and only render when a future change sets `lang="es"` on the `<html>` element. The 4 dict strings (2 EN + 2 ES) are AI-synthetic-reviewed only and logged in `reference_es_json_ai_synthetic_reviewed.md` for future native-reviewer pass.
+
+Verification (§6+§7 wrap):
+- All 14 pages have exactly 1 `footer-contact-leadin` placeholder + 1 `/contact.js` script reference.
+- Precise regex search for actual platform-contact email literals in any of the 14 pages → 0 hits. (The demo seed credentials displayed on `index.html` and `demo/index.html` — `admin@dev.fabt.org`, `coordinator@blueridge.fabt.org`, etc. — are intentional demo-user documentation and are NOT the platform contact email this change is surfacing.)
+- All 14 pages have the canonical `<a class="contact-email" href="#" hidden aria-live="polite">contact</a>` placeholder verbatim.
 
 ## 8. Audience-page CTA upgrades
 
