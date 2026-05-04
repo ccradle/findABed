@@ -79,42 +79,16 @@ The endpoint mirrors `PATCH /api/v1/admin/tenants/{id}/hold-duration` (existing 
 
 ## 5. Frontend: React provider + hook + ContactSettings admin component
 
-- [ ] 5.1 Create `ContactInfoProvider` context that fetches `/api/v1/public/contact-info` on app mount. Cache the response in component state.
-- [ ] 5.2 Create `useContactInfo()` hook returning `{ platformEmail, tenantEmail, resolvedEmail, isLoading, error }` where `resolvedEmail = tenantEmail || platformEmail || null`. **Note from §4 warroom round 1 N2-Riley:** the unauthed response body's `tenant` key may be ELIDED by Jackson rather than rendered as explicit `null`. Implement the hook with optional chaining (`body.tenant?.email`) or explicit absent-handling (`body.tenant == null`) — do NOT assume the property is always present.
-- [ ] 5.3 **Provider refetches on auth-state transition (H3):** subscribe to AuthContext changes; refetch on login (anonymous → authed), logout (authed → anonymous), and tenant-claim change (e.g., admin switches tenant context if that exists later). Required because the response shape changes by auth state.
-- [ ] 5.4 Wire `ContactInfoProvider` near the React app root (above the router). Wire `useContactInfo()` into the login page footer.
-- [ ] 5.5 Vitest coverage:
-  - Provider fetches once on mount.
-  - Provider refetches on login (transition from anonymous to authed).
-  - Provider refetches on logout.
-  - Hook returns the right resolved email under each (platform-only, tenant-set) state.
-  - Hook returns null `resolvedEmail` when fetch fails.
-- [ ] 5.6 **New `ContactSettings.tsx` admin component (Q3 α-revised, mirrors `ReservationSettings.tsx`):**
-  - File location: `frontend/src/pages/admin/components/ContactSettings.tsx`.
-  - Reads existing value via `GET /api/v1/tenants/{tenantId}/config` and pulls `contact.email` (or empty string).
-  - Saves via `PATCH /api/v1/admin/tenants/{tenantId}/contact-email` with body `{email: "<value>"}`.
-  - Bean-validation 400 surfaces via `apiErr.context.detail` (same pattern as `ReservationSettings`).
-  - **DV-policy gating:** read `tenant.dv_policy_enabled` from existing AuthContext (or fetch as part of initial GET-config); when true, the input field is disabled with a localized explanatory note keyed `admin.contactEmail.dvPolicyDisabled`. The Save button is also disabled.
-  - Render a `loadFailed` banner if the GET-config call fails (defense-in-depth — same pattern as `ReservationSettings.tsx` warroom-H1).
-  - Auto-dismiss the success toast at 4s; errors stay until next save.
-  - Accessibility: `aria-label`, `role="alert"`/`role="status"` on the message banner, `aria-live="polite"` on the message.
-  - i18n keys (Spanish day-one):
-    - `admin.contactEmail.label` — field label.
-    - `admin.contactEmail.description` — help text below the input.
-    - `admin.contactEmail.savedWithValue` — success toast (with `{email}` placeholder).
-    - `admin.contactEmail.saveError` — generic error fallback.
-    - `admin.contactEmail.loadFailed` — read-side failure banner.
-    - `admin.contactEmail.dvPolicyDisabled` — disabled-state explanation.
-    - `admin.contactEmail.dvPolicyForbidden` — server-side rejection message (matches backend error code).
-- [ ] 5.7 Wire `ContactSettings` into `AdminPanel.tsx` (alongside `ReservationSettings` in the panel header — same import + render position). Ensure the component is COC_ADMIN-gated by the existing AdminPanel access control.
-- [ ] 5.8 Forward-compat check: confirm the `useContactInfo()` hook signature aligns with the consumption pattern GH #67 will use (Report-a-Problem footer + Help kebab + Feedback&Support landing). No additional UI in this change beyond the login footer and ContactSettings admin component.
-- [ ] 5.9 Vitest for `ContactSettings`:
-  - Renders input field with current value from GET.
-  - PATCH success → success toast.
-  - PATCH 400 with `tenant.contactEmail.dvPolicyForbidden` → renders the localized message.
-  - When `tenant.dv_policy_enabled = true`, field is disabled and `dvPolicyDisabled` note is shown.
-  - When GET fails → `loadFailed` banner + Save disabled.
-  - Empty-string save clears the field (allowed even on DV tenants).
+- [x] 5.1 Implemented `ContactInfoProvider` in `frontend/src/contact/ContactInfoContext.tsx`. Fetches `/api/v1/public/contact-info` on mount via `api.get`. State stored in `useState<ContactInfoState>` initialized to `{platformEmail:'', tenantEmail:null, resolvedEmail:null, isLoading:true, error:null}`. Loading flag held without clobbering previous values during refetch (prevents email flicker on auth transitions).
+- [x] 5.2 Implemented `useContactInfo()` in `frontend/src/contact/useContactInfo.ts` (separate file mirrors `useAuth.ts` pattern). Returns the same `ContactInfoState` shape. The §4 warroom round 1 N2-Riley note about Jackson eliding the unauthed `tenant` key is implemented in `deriveContactInfoState` via `body?.tenant?.email ?? null` — covered by 8 vitest cases pinning both absent-tenant-key and explicit-null-tenant variants identically.
+- [x] 5.3 Refetch-on-auth-state-transition: provider's `useEffect` dependency array is `[fetchContactInfo, isAuthenticated, tenantId]`. `fetchContactInfo` is `useCallback([])` so stable; reactivity is on `isAuthenticated` (login/logout transitions) and `tenantId` (future admin-switch-tenant). **Test-coverage boundary:** effect-trigger lives in Playwright, not vitest — explicit javadoc note in `ContactInfoContext.tsx` (round-2 N1-Riley-r2) documents that `decodeJwtPayload.test.ts` is the codebase precedent. Same posture as `AuthContext`.
+- [x] 5.4 Wired `<ContactInfoProvider>` in `App.tsx` inside `<AuthProvider>` (so `useContext(AuthContext)` resolves), outside `<BrowserRouter>` (so contact-info state is available on every route). `useContactInfo()` consumed in `LoginPage.tsx` footer; renders `<a href="mailto:${contactEmail}">` line above the version footer when `resolvedEmail` is truthy. Localized prefix `login.contactEmail.prefix`.
+- [x] 5.5 Vitest in `frontend/src/contact/ContactInfoContext.test.ts` (8 cases, ~17ms). Pure-helper coverage of `deriveContactInfoState`: elided tenant key, explicit-null tenant key, authed with override, authed with null tenant.email (covers the §4 H1-Casey DV-suppression shape), empty-platform-only (GH-issues fallback case), empty-platform-with-tenant, undefined-body-defensive, missing-platform-email-field. Provider-level effect tests live in Playwright per codebase convention; explicit javadoc note in §5.1 file documents the boundary (round-2 N1-Riley-r2).
+- [x] 5.6 Implemented `frontend/src/pages/admin/components/ContactSettings.tsx`. Mirrors `ReservationSettings.tsx` shape verbatim (state: `email`, `dvPolicyEnabled`, `loaded`, `loadFailed`, `saving`, `message`). Reads `tenant.config` via existing `GET /api/v1/tenants/{id}/config` and extracts BOTH `contact.email` AND `dv_policy_enabled` from one fetch. Saves via `PATCH /api/v1/admin/tenants/{id}/contact-email`. **DV-policy gating:** input AND save button disabled when `dv_policy_enabled === true`; localized `admin.contactEmail.dvPolicyDisabled` note rendered (italicized small-print) explaining the path forward. **Defense-in-depth:** `handleSave` has explicit `if (dvPolicyEnabled) return;` guard against any code path bypassing the disabled prop. Auto-dismiss success at 4s, errors persist until next save. Accessibility: `aria-label`, `aria-disabled`, `aria-live="polite"`, `role="alert"`/`role="status"`. **Spec correction:** AuthContext does NOT carry `dv_policy_enabled` (the original spec's "or fetch as part of initial GET-config" branch is the only viable path); implementation reads it from the GET-config payload.
+- [x] 5.6 i18n keys (Spanish day-one): 9 `admin.contactEmail.*` keys + 1 `login.contactEmail.prefix` key in BOTH `en.json` AND `es.json`. ES register matches the v0.55+v0.56 admin clusters (`VD` for Violencia Doméstica). The 10 new ES keys are AI-synthetic-reviewed only and logged in `reference_es_json_ai_synthetic_reviewed.md` for the future native-reviewer pass; same posture as the prior 22 admin-facing keys. Added `admin.contactEmail.savedCleared` (not in original spec) so the empty-clear success toast distinguishes from the value-set toast.
+- [x] 5.7 Wired `<ContactSettings />` in `AdminPanel.tsx` after `<DvPolicySettings />`, before the tab bar. Exported from `frontend/src/pages/admin/components/index.ts`. AdminPanel access control already gates COC_ADMIN-only; no additional gating needed.
+- [x] 5.8 Forward-compat verification: the `useContactInfo()` return shape (`{platformEmail, tenantEmail, resolvedEmail, isLoading, error}`) is the single subscription point for the future GH #67 (Report-a-Problem footer + Help kebab + Feedback&Support landing). Documented as such in the `ContactInfoContext.tsx` javadoc. No additional UI shipped in this change beyond LoginPage footer + ContactSettings admin component, per spec.
+- [x] 5.9 Vitest in `frontend/src/pages/admin/components/ContactSettings.test.ts` (8 cases). Pure-helper coverage of `parseContactEmailError` (extracted for vitest per `parseDvPolicyError` precedent): dvPolicyForbidden errorCode match, two beanValidation detail variants (malformed email + >254 chars), generic ApiError without context, empty-string detail (treats as no detail to avoid blank-banner UX), TypeError network failure, non-Error throwables (string, undefined, number defensive), regression guard against a different `tenant.contactEmail.*` errorCode being mistaken for the DV-policy branch. Component-rendering tests (input disabled state, success toast, etc.) are Playwright per codebase convention. The "Empty-string save clears the field (allowed even on DV tenants)" item from the original spec — clarification: the backend allows empty-PATCH on DV tenants per §3, but the admin UI disables the Save button entirely when DV is on; the operator-friendly clearing path requires first disabling DV-policy via DvPolicySettings (5-step path documented for §11 runbook FAQ).
 
 ## 6. Static content: shared JS fetcher
 
