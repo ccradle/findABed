@@ -46,34 +46,41 @@ The endpoint mirrors `PATCH /api/v1/admin/tenants/{id}/hold-duration` (existing 
 
 ## 4. Backend: public REST endpoint
 
-- [ ] 4.1 Implement `ContactInfoController` exposing `GET /api/v1/public/contact-info`. Public, unauthenticated. Path under `/api/v1/public/*` follows the existing security-config pattern. Do NOT annotate with `@PreAuthorize` — rely on `requestMatchers("/api/v1/public/**").permitAll()` already in SecurityConfig.
-- [ ] 4.2 Implement response-shape logic:
-  - Unauthed: `{ "platform": { "email": "<value>" }, "tenant": null }`
-  - Authed: `{ "platform": { "email": "<value>" }, "tenant": { "slug": "<caller-tenant-slug>", "email": "<value-or-null>" } }`
-  - The `tenant` block is always returned for authed callers, even when `email` is null (signals "inherit platform").
-- [ ] 4.3 **Cache headers split by auth state (B1):**
-  - Unauthed 200: `Cache-Control: public, max-age=3600` + `ETag`. NO `Vary: Authorization` (unnecessary for public-cacheable response).
-  - Authed 200: `Cache-Control: private, max-age=3600` + `Vary: Authorization` + `ETag`. `private` keeps tenant-varying body out of shared caches; `Vary` is belt-and-suspenders.
-  - ETag derived from a cheap hash (SHA-256 truncated to 16 hex chars) of canonical JSON — never via an extra DB read per request.
-  - Honor `If-None-Match` with 304 Not Modified.
-- [ ] 4.4 **Per-IP rate limit (H2):** wire Bucket4j with default budget 60 req/min/IP, tunable via `fabt.bucket4j.public.contact-info.*`. Returns 429 + `Retry-After` on exhaustion (consistent with existing Bucket4j response shape).
-- [ ] 4.5 Add Micrometer counter at the controller for hit volume (`fabt_contact_info_requests_total{auth_state=…,outcome=…}`). Bespoke dashboards out of scope for v1.
-- [ ] 4.6 Unit tests covering:
-  - Empty platform config → empty platform.email response.
-  - Configured platform-only response (unauthed).
-  - Authed-with-empty-tenant response.
-  - Authed-with-set-tenant response.
-  - **Unauthed has `Cache-Control: public` + ETag, no Vary.**
-  - **Authed has `Cache-Control: private` + Vary: Authorization + ETag.**
-  - **ETag for unauthed and authed responses differ (different bodies).**
-  - 304 conditional GET when ETag matches.
-- [ ] 4.7 **Integration test asserting tenant-scoping:** issue an authed call with a JWT for tenant `dev-coc-east`, then a separate authed call with a JWT for tenant `dev-coc-west`. Assert each response's `tenant.slug` matches exactly the caller's tenant claim and that no field of the response leaks the *other* tenant's slug or email. Reason: tenant-enumeration sanity check.
-- [ ] 4.8 **Integration test asserting rate-limit:** burst 70 requests from a single test-IP within one second, assert ≥10 are 429 with `Retry-After` set.
+- [x] 4.1 Implemented `org.fabt.tenant.api.ContactInfoController` exposing `GET /api/v1/public/contact-info`. **Spec correction:** §4.1 assumed SecurityConfig had a `requestMatchers("/api/v1/public/**").permitAll()` rule already; ground-truth showed only `.anyRequest().authenticated()` on the catch-all. Added the `/api/v1/public/**` permitAll rule with this slice — establishes the convention for any future public endpoints. Controller therefore safely lives without `@PreAuthorize` per the spec's intent.
+- [x] 4.2 Response shape implemented per spec: unauthed → `{platform, tenant:null}`; authed → `{platform, tenant:{slug, email}}`. Empty/null `email` on either block signals inheritance. Note: in the serialized JSON, an unauthed body's `tenant` key may be elided by Jackson rather than rendered as explicit `null` — frontend consumers (§5.2's `tenantEmail || platformEmail || null` hook) treat absent and null identically.
+- [x] 4.3 Cache headers split by auth state implemented per B1:
+  - Unauthed 200: `Cache-Control: public, max-age=3600` + ETag, no Vary added by controller (Spring CorsFilter independently adds `Origin, Access-Control-Request-*` Vary entries; controller MUST NOT add `Authorization`).
+  - Authed 200: `Cache-Control: private, max-age=3600` + `Vary: Authorization` + ETag.
+  - ETag computed as SHA-256 of canonical JSON body, truncated to 16 hex chars (64 bits — sufficient for cache validation; collision threat is accidental, not adversarial). Computed AFTER body assembly; no extra DB read.
+  - Spring's MVC `If-None-Match` machinery handles 304 — controller emits 304 Not Modified (no body) when match.
+- [x] 4.4 Wired the YAML-declared `rate-limit-public-contact-info` filter in `application.yml` (cap 60 req/min/IP, 1-minute bandwidth window, X-Real-IP-aware cache key per Marcus's B1 fix from `rate-limit-dv-referral-create`). JCache cache name registered in `application.conf` with `after-write=1m` eviction matching the bucket bandwidth window. **Spec correction:** §4.4 requested literal `Retry-After` header; bucket4j-spring-boot-starter 0.14.0 emits `X-Rate-Limit-Retry-After-Seconds` per its convention — kept the platform convention rather than diverging just for this endpoint.
+- [x] 4.5 Micrometer counter `fabt.contact_info.requests_total{auth_state, outcome}` emitted on every served request (auth_state ∈ anonymous|authenticated; outcome ∈ 200|304). 429 is owned by the bucket4j filter and not counted at this controller (filter-served responses never reach the method).
+- [x] 4.6 - 4.8 Integration tests across two classes (12 tests total, ~30s + 8s):
+  - `org.fabt.tenant.api.ContactInfoControllerTest` (10 tests, ~30s):
+    - `unauthedPlatformOnly` — unauthed callers see no tenant block.
+    - `authedWithNoTenantOverride` — authed callers receive tenant block with email=null (inherit platform).
+    - `authedWithTenantOverride` — authed callers see tenant override email (test pre-clears `dv_policy_enabled` so the round-1 H1-Casey suppression does not fire).
+    - `unauthedCacheHeaders` — public + max-age + ETag; Vary list does NOT contain Authorization (CORS Vary entries allowed).
+    - `authedCacheHeaders` — private + max-age + Vary: Authorization + ETag.
+    - `etagDiffersByAuthState` — unauthed ETag != authed ETag.
+    - `conditionalGet304` — If-None-Match with current ETag → 304 + ETag echo.
+    - `dvPolicyTenantSuppressesContactEmail` (round-1 H1-Casey) — DV-flagged tenant with stale `contact.email` writes returns `tenant.email=null` on read; persisted DB row is unchanged (read-only suppression).
+    - `tenantScopingNoCrossTenantLeak` — tenant A and tenant B authed reads each see only their own slug + email; cross-tenant strings absent. Both tenants pre-cleared of `dv_policy_enabled` so the H1-Casey suppression does not mask the test signal.
+    - `rateLimitOnBurst` — 70-request burst from one IP yields ≥10 × 429 (60-budget bucket).
+    - Test ordering: `@TestMethodOrder(OrderAnnotation)` keeps `rateLimitOnBurst` last (`@Order(99)`); other tests `@Order(1)`. Without ordering, alphabetical default ran the burst BEFORE `unauthed*` and `tenant*` tests, which then hit 429 from the still-empty bucket.
+  - `org.fabt.tenant.api.ContactInfoControllerEmptyPlatformTest` (1 test, ~8s, round-1 M1-Riley):
+    - `emptyPlatformConfigReturnsEmptyEmail` — `@TestPropertySource(fabt.platform.contact-email=)` exercises the not-yet-deployed branch (operator hasn't set FABT_PLATFORM_CONTACT_EMAIL); response carries `platform.email=""` and `tenant=null`. Lives in a separate class because `@TestPropertySource` is class-scoped.
+
+- [x] 4.W ArchUnit guard `org.fabt.architecture.PublicEndpointAllowlistTest` (round-1 M3-Alex) — enumerates classes permitted to declare `@RequestMapping("/api/v1/public/...")` mappings. Verified to catch a missing-allowlist regression by temporarily removing `ContactInfoController` from the allowlist (test failed with the expected violation message); allowlist restored once verified. Adding a new public endpoint requires both a code change and a paired warroom-approved allowlist entry.
+
+- [x] 4.X DV-policy read-side suppression (round-1 H1-Casey) — `ContactInfoController.buildResponseBody` now returns `tenant.email=null` when `Tenant.isDvPolicyEnabled() == true` regardless of the persisted JSONB value. Defends the temporal-window inconsistency where a tenant set `contact.email` BEFORE enabling `dv_policy_enabled`; the §3 PATCH guard prevents new such writes but does NOT sanitize existing values. Read-side suppression is belt-and-suspenders for the §3 write-side guard.
+
+- [x] 4.Y `Tenant.readContactEmail(JsonString config, ObjectMapper mapper)` shared helper (round-1 M2-Sam) — extracted from controller-private `readContactEmailFromConfig` methods that had drifted into both `ContactEmailController` (audit `old_value` capture) and `ContactInfoController` (response body read). One source of truth eliminates the divergence risk where one method gets a fix the other misses. Mirrors `Tenant.isDvPolicyEnabled` static-helper pattern.
 
 ## 5. Frontend: React provider + hook + ContactSettings admin component
 
 - [ ] 5.1 Create `ContactInfoProvider` context that fetches `/api/v1/public/contact-info` on app mount. Cache the response in component state.
-- [ ] 5.2 Create `useContactInfo()` hook returning `{ platformEmail, tenantEmail, resolvedEmail, isLoading, error }` where `resolvedEmail = tenantEmail || platformEmail || null`.
+- [ ] 5.2 Create `useContactInfo()` hook returning `{ platformEmail, tenantEmail, resolvedEmail, isLoading, error }` where `resolvedEmail = tenantEmail || platformEmail || null`. **Note from §4 warroom round 1 N2-Riley:** the unauthed response body's `tenant` key may be ELIDED by Jackson rather than rendered as explicit `null`. Implement the hook with optional chaining (`body.tenant?.email`) or explicit absent-handling (`body.tenant == null`) — do NOT assume the property is always present.
 - [ ] 5.3 **Provider refetches on auth-state transition (H3):** subscribe to AuthContext changes; refetch on login (anonymous → authed), logout (authed → anonymous), and tenant-claim change (e.g., admin switches tenant context if that exists later). Required because the response shape changes by auth state.
 - [ ] 5.4 Wire `ContactInfoProvider` near the React app root (above the router). Wire `useContactInfo()` into the login page footer.
 - [ ] 5.5 Vitest coverage:
