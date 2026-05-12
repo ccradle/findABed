@@ -34,11 +34,11 @@
 
 ## 4. Landing Page "Feedback & Support" Section
 
-- [ ] 4.1 Add a "Feedback & Support" section to the landing page HTML (below existing content, above footer)
-- [ ] 4.2 Add three links: Report a Problem → `report-a-problem.yml`, Request a Feature → `feature-request.yml`, Ask a Question → Discussions Q&A
-- [ ] 4.3 All links open in new tab with `rel="noopener noreferrer"`
-- [ ] 4.4 Ensure section works in dark mode (`prefers-color-scheme` media query)
-- [ ] 4.5 Ensure section reflows at 320px with 44px minimum touch targets
+- [x] 4.1 Added `<section class="section section-alt" aria-labelledby="feedback-heading">` to root `index.html`, positioned between the Open Source section and `</main>` (above the footer).
+- [x] 4.2 Three links wired: Report a Problem → `report-a-problem.yml` template; Request a Feature → `feature-request.yml` template; Ask a Question → `discussions/categories/q-a`. Each carries `data-testid="landing-feedback-{...}"` for Playwright selectors.
+- [x] 4.3 All three links use `target="_blank"` + `rel="noopener noreferrer"`.
+- [x] 4.4 Section uses `var(--accent)` for link border/text — picks up the existing `@media (prefers-color-scheme: dark)` block at `index.html:68` automatically (root-level CSS variables are theme-aware).
+- [x] 4.5 `display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;` on the link container; each link has `min-height: 44px; min-width: 44px; box-sizing: border-box`. Reflows to single-column stacking on 320px viewports. Verified existing placeholder CI guard `bash scripts/ci/check-contact-placeholder.sh` → `OK: 14 pages pass all 5 checks` post-edit.
 
 ## 5. Tests (10 Playwright + 1 axe + 1 build)
 
