@@ -57,36 +57,36 @@
 
 ## 6. Documentation
 
-- [ ] 6.1 Add CHANGELOG entry for the feedback links feature
+- [x] 6.1 Added `[v0.57.4]` CHANGELOG entry (`CHANGELOG.md` top) covering all surfaces (footer link, kebab Help, landing-page section, DV-policy gate, backend dvPolicyEnabled field, noscript fallback, i18n keys, CI guard). Includes the 3-rounds-of-warroom process disclosure.
 
 ## 7. Validation pass
 
-- [ ] 7.1 Run `npm run build` (tsc + vite) — must exit 0.
-- [ ] 7.2 Run `npx vitest run src/contact src/components/Layout.test.ts` — all green.
-- [ ] 7.3 Run focused Playwright suite for the new specs against `dev-start.sh + nginx` per `feedback_check_ports_before_assuming` — covers: (a) footer "Report a Problem" link on outreach/coordinator/admin, (b) mobile kebab "Help" item, (c) landing page "Feedback & Support" section, (d) DV-policy fixture (footer + kebab → mailto), (e) mailto fallback rendered with non-empty contact-info, (f) mailto-absent regression guard when contact-info is empty, (g) noscript fallback with JavaScript disabled, (h) viewport overflow at 320×568 + 568×320.
-- [ ] 7.4 Banned-word grep across the full diff (`git diff main..HEAD -- '*.tsx' '*.ts' '*.json' '*.html'`) — pattern: `always|every|guarantees|ensures|we'?ll respond|response time|will reply` — must return 0 hits in added lines.
-- [ ] 7.5 axe-core scan via `accessibility.spec.ts` — zero new violations.
-- [ ] 7.6 Verify all new `target="_blank"` links carry `rel="noopener noreferrer"` (grep test: `target=.\"_blank.\".*?rel=.\"noopener` must match every occurrence).
-- [ ] 7.7 Real-stakeholder-name scan (`feedback_no_named_stakeholders_in_docs`): grep added lines for documented external-stakeholder names — must return 0 hits.
-- [ ] 7.8 Mailto-injection grep: assert no `href="mailto:.*\?` patterns in any new `*.tsx` or HTML. Pattern: `mailto:[^"]*\?` must return 0 hits in added lines.
+- [x] 7.1 `npm run build` (tsc + vite) → exit 0, 67 modules built in 1.31s during Phase 3.
+- [x] 7.2 `npx vitest run src/contact` → 12/12 green in 554ms during Phase 1-2 (4 new dvPolicyEnabled cases + 8 pre-existing). Layout.test.ts not used in this codebase — vitest scope is `src/contact` per existing convention.
+- [ ] 7.3 Run focused Playwright suite for the new specs against `dev-start.sh + nginx` per `feedback_check_ports_before_assuming` — covers: (a) footer "Report a Problem" link on outreach/coordinator/admin, (b) mobile kebab "Help" item, (c) landing page "Feedback & Support" section, (d) DV-policy fixture (footer + kebab → mailto), (e) mailto fallback rendered with non-empty contact-info, (f) mailto-absent regression guard when contact-info is empty, (g) noscript fallback with JavaScript disabled, (h) viewport overflow at 320×568 + 568×320. **DEFERRED to §5 testing phase** (next session) — requires dev-start.sh + nginx running.
+- [x] 7.4 Banned-word grep across diff (both repos) for `always|every|guarantees|ensures|we'?ll respond|response time|will reply` — **0 hits** in added lines (verified Phase 5).
+- [ ] 7.5 axe-core scan via `accessibility.spec.ts` — zero new violations. **DEFERRED to §5 testing phase** alongside other Playwright work.
+- [x] 7.6 `target="_blank"` + `rel="noopener noreferrer"` pairing verified by the new `scripts/ci/check-feedback-link-discipline.sh` guard (Python multi-line JSX-element-aware). Local run + mutation test confirm exit 0 / exit 1 contract.
+- [x] 7.7 Real-stakeholder-name scan (`feedback_no_named_stakeholders_in_docs`): grep added lines for `Dickerson|Whitfield|Monroe|Sandra Kim|Devon Kessler` → **0 hits** (verified Phase 5).
+- [x] 7.8 Mailto-injection grep: `mailto:[^"]*\?` against diff → **0 hits** (verified Phase 5).
 
 ## 8. CI guard
 
-- [ ] 8.1 Add a small CI script `scripts/ci/check-feedback-link-discipline.sh` (in code repo) that asserts: (a) any `target="_blank"` in `frontend/src/**/*.tsx` is paired with `rel="noopener noreferrer"`, (b) any new GH issue URL is constructed from the allowlisted builder, not inline `https://github.com/.../issues/new?` strings outside the builder file. Wire into `.github/workflows/ci.yml` as a fast lint step.
-- [ ] 8.2 Run the guard locally; confirm it returns exit 0 on clean tree and exit 1 when an inline GH issue URL is introduced (mutation test).
-- [ ] 8.3 Document the guard in `docs/FOR-DEVELOPERS.md` CI Guards section.
+- [x] 8.1 `scripts/ci/check-feedback-link-discipline.sh` written + wired into `.github/workflows/ci.yml` as the new `feedback-link-discipline` job alongside `legal-language`. Bash entry point delegates to Python for multi-line JSX-element-aware matching (bash/grep handled per-line, which gave false positives on properly-paired multi-line JSX attributes).
+- [x] 8.2 Local clean-tree run → exit 0 with "ok: all feedback-link-discipline assertions pass". Mutation test (injected inline `https://github.com/.../issues/new?...` URL into Layout.tsx) → exit 1 with `FAIL: ... inline GitHub issue URL — must use buildReportProblemUrl()` message. Restore → exit 0. Both assertions verified end-to-end.
+- [x] 8.3 Documented in `docs/FOR-DEVELOPERS.md` Recent Changes "In-app Issue Reporting + Feedback Links (v0.57.4)" entry — explicit mention of `scripts/ci/check-feedback-link-discipline.sh` enforcing both URL-builder discipline AND target/noopener pairing.
 
 ## 9. Deploy notes
 
-- [ ] 9.1 No new env vars; no new Flyway migrations; no backend rebuild required. Static-content scp of the modified landing page + frontend rebuild for `Layout.tsx` changes. Per `feedback_runbook_compose_chain`, frontend rebuild forces frontend container recreate via standard 4-file compose chain.
-- [ ] 9.2 Note in the next `oracle-update-notes-vX.Y.Z.md` that the DV-policy authenticated-surface gate is render-time conditional on `useContactInfo().tenant?.dvPolicyEnabled` (sourced from the public `/api/v1/public/contact-info` endpoint per §12, NOT from the JWT) — operators must verify the gate visibly via Playwright fixture before declaring smoke-pass.
+- [x] 9.1 Verified scope: no new env vars; no Flyway migration (HWM stays V98); backend `ContactInfoController` IS rebuilt (small delta — `dvPolicyEnabled` field on response); frontend rebuilds for `Layout.tsx` + new `ReportProblemLink.tsx` + `index.html` `<noscript>` block. Per `feedback_runbook_compose_chain`, frontend + backend rebuild forces both containers recreate via standard 4-file compose chain. Documented in CHANGELOG `[v0.57.4]` Added section.
+- [ ] 9.2 **DEFERRED to release-runbook drafting** — next `oracle-update-notes-vX.Y.Z.md` (when this change is grouped into a release) must include the DV-policy authenticated-surface gate verification step: operators visit a DV-policy-on tenant in a browser and confirm the footer "Report a Problem" link has `href="mailto:..."`, not `github.com/.../issues/new?...`. Playwright fixture (§3.8) automates the same check in CI.
 
 ## 10. Memory + docs follow-ups
 
-- [ ] 10.1 Add a one-line note to `project_live_deployment_status.md` recording the ship release for issue-reporting-feedback.
-- [ ] 10.2 Update `MEMORY.md` index entry for `project_resume_point.md` post-ship.
-- [ ] 10.3 Update `FOR-DEVELOPERS.md` Recent Changes section with a brief Issue Reporting + Feedback Links entry.
-- [ ] 10.4 Add CHANGELOG entry under the target version (`[v0.57.x]`) covering: footer "Report a Problem" link, mobile kebab "Help" item, landing page Feedback & Support section, DV-policy authenticated-surface mailto fallback, useContactInfo() reuse from info-email-contact.
+- [ ] 10.1 **DEFERRED to post-ship** — `project_live_deployment_status.md` one-liner records the ship release after `oracle-update-notes-vX.Y.Z.md` deploy lands. Cannot land pre-ship because the version + commit ref are not known yet.
+- [ ] 10.2 **DEFERRED to post-ship** — `MEMORY.md` index entry refresh happens during the post-ship memory-update step (`project_resume_point.md` gets a new state stanza).
+- [x] 10.3 "In-app Issue Reporting + Feedback Links (v0.57.4, planned)" section added to `docs/FOR-DEVELOPERS.md` Recent Changes (above the existing v0.57 Platform + Per-Tenant Contact Email entry). Covers URL allowlist + DV-policy gate sourcing + small backend delta + JS-disabled fallback + 3-rounds-of-warroom process disclosure.
+- [x] 10.4 `[v0.57.4]` entry added to `CHANGELOG.md` top — see §6.1 above for content summary. Identical entry serves both §6.1 and §10.4 per Keep-a-Changelog convention.
 
 ## 11. 7-day post-deploy hygiene
 
