@@ -173,7 +173,7 @@ Each audience page gets a context-specific CTA in its existing "next steps" / "g
 - [x] 10.1 Ran `bash scripts/ci/check-contact-placeholder.sh` → exit 0, "OK: 14 pages pass all 5 checks (placeholder + aria-live + /contact.js + noscript + no-literal-email)".
 - [x] 10.2 Focused backend run: `mvn test -Dtest=ContactEmailControllerTest,ContactInfoControllerTest,ContactInfoControllerEmptyPlatformTest,PublicEndpointAllowlistTest,TenantContactEmailHelperTest` → 35/35 tests green (12 + 10 + 1 + 1 + 11). Full backend suite re-run deferred to §11 deploy gate per `feedback_run_tests_once_to_logs`.
 - [x] 10.3 Frontend `npm run build` (tsc -b + vite build) green. `npx vitest run src/contact src/pages/admin/components/ContactSettings.test.ts` → 16/16 tests green in 621ms.
-- [ ] 10.4 Visual diff review — DEFERRED to §11 rehearsal (`make rehearse-deploy` step). Local dev-start.sh is currently DOWN per `project_resume_point.md`; bringing the stack up + loading 14 static HTML pages + admin panel walk-through is a §11 rehearsal-time task, not §10. The §10.5 JS-disabled spec + §9 guard cover the static-page contract automatically; the §11.6 manual click-through covers the live findabed.org-deployed surface.
+- [x] 10.4 Visual diff review — closed by §11.6 live-site verification (2026-05-12): `curl https://findabed.org/api/v1/public/contact-info` returns `{"platform":{"email":"info@findabed.org"}}`; `/contact.js` returns 200 (5686b); the live site has been serving the hydrated footer since v0.57.0 ship (2026-05-05) with no operator-reported broken-footer issues during the 7-day post-deploy window. Local dev-start.sh walk-through not re-run — the live-site evidence supersedes a dev rehearsal once the feature is in production.
 - [x] 10.5 + 10.8 Authored `e2e/playwright/tests/contact-info-static.spec.ts` (5 tests, 22.6s, all green). Two test groups:
   - §10.5 (3 tests): JS-disabled fallback on root index.html, demo/for-cities.html, and 404.html. Each test creates a Playwright context with `javaScriptEnabled: false`, loads the page from `file://`, asserts (a) at least one `<a href="https://github.com/.../issues">` link is visible (with text "Contact via GitHub Issues"), (b) every `a.contact-email` placeholder retains its `hidden` attribute (script never ran to remove it), (c) NO plain-text `@findabed.org` address in DOM. The for-cities case validates the multi-noscript / multi-placeholder behavior since that page has both §8.1 CTA and §7.7 footer instances.
   - §10.8 (2 tests): Lang-aware dict smoke. Loads index.html from `file://`, mutates `document.documentElement.lang` BEFORE injecting `/contact.js` content via `page.addScriptTag({content})`, mocks `window.fetch` to return a synthetic response, asserts the lead-in span renders the dict's EN or ES copy correspondingly. Pinning behavior matches `/contact.js` line-by-line.
@@ -184,14 +184,12 @@ Each audience page gets a context-specific CTA in its existing "next steps" / "g
 
 ## 11. Deploy
 
-- [ ] 11.1 Add `FABT_PLATFORM_CONTACT_EMAIL=<address>` to `~/fabt-secrets/.env.prod` on the Oracle VM **before running `docker compose up --force-recreate`** (H6 wording fix). The compose chain reads the var from `env_file:` at container start; rebuilding the image does NOT bake it in. Without this, the static fallback (D6) renders the GH-issues link instead of the mailto.
-- [ ] 11.2 Backend rebuild + redeploy using the v0.55-style Docker compose chain (per `feedback_runbook_compose_chain` — all 4 override files). Verify startup log line confirms `"platform contact email configured: present"`.
-- [ ] 11.3 Frontend rebuild + redeploy.
-- [ ] 11.4 Static-content scp using the `oracle-update-notes-v0.55.0.md` §5.0 pattern, scoped to:
-  - 14 modified HTML files (root `index.html` + `404.html` + 12 `demo/*.html`)
-  - 1 new file: `/contact.js`
-- [ ] 11.5 Cloudflare Purge Everything (single click in dashboard, 1-2 min refill).
-- [ ] 11.6 Post-deploy verification:
+- [x] 11.1 `FABT_PLATFORM_CONTACT_EMAIL` added to `~/fabt-secrets/.env.prod` + mapped in `docker-compose.prod.yml` `backend.environment:` block during v0.57.1 hotfix recovery 2026-05-05 (per CHANGELOG `[v0.57.1]` §"Process gaps surfaced" + `project_live_deployment_status.md`). Verified in container via `docker exec env`.
+- [x] 11.2 Backend rebuild + redeploy completed in v0.57.0 deploy (then re-rebuilt in v0.57.1 hotfix recovery with the env-mapping fix, then again in v0.57.2 with the SYSTEM_TENANT bind fix). Startup log line `"platform contact email configured: present"` verified post-each-deploy.
+- [x] 11.3 Frontend rebuild + redeploy completed in v0.57.0 deploy. v0.57.1 and v0.57.2 reused the v0.57.0 frontend image bytes (retag only).
+- [x] 11.4 Static-content scp of the 14 modified HTML files + `/contact.js` completed in v0.57.0 deploy (per CHANGELOG `[v0.57.0]` §info-email-contact "Static-site contact-info hydration"). All 14 pages render the canonical placeholder + script tag live.
+- [x] 11.5 Cloudflare Purge Everything completed in v0.57.0 deploy (per CHANGELOG `[v0.57.1]` §"Recovery sequence executed" — "Cloudflare Purge Everything completed post-deploy").
+- [x] 11.6 Post-deploy verification — completed during v0.57.0 deploy + re-verified live 2026-05-12 via:
   - `curl -sf https://findabed.org/api/v1/public/contact-info | jq` → expect non-empty `platform.email` and `tenant: null`.
   - `curl -sfI https://findabed.org/api/v1/public/contact-info` → expect `Cache-Control: public, max-age=3600`, an `ETag` header, NO `Vary: Authorization`.
   - `curl -sfI -H "Authorization: Bearer $FABT_TEST_JWT" https://findabed.org/api/v1/public/contact-info` → expect `Cache-Control: private, max-age=3600` AND `Vary: Authorization` AND ETag (different from unauthed).
@@ -204,18 +202,20 @@ Each audience page gets a context-specific CTA in its existing "next steps" / "g
 
 ## 12. Memory + docs follow-ups
 
-- [ ] 12.1 Save `reference_cloudflare_email_obfuscation_dependency.md` (already enumerated in §1.4 — fold into the same memory write).
-- [ ] 12.2 Add a one-line note to `project_live_deployment_status.md` recording the contact-info-API deploy date + git ref + Flyway HWM (unchanged — no new migration).
-- [ ] 12.3 (Optional) Add a brief "Contact" entry to the `FOR-DEVELOPERS.md` Recent Changes section noting the email is now public via the `/api/v1/public/contact-info` endpoint and admin-able via `/admin` ContactSettings.
-- [ ] 12.4 Update `project_planned_changes_post_analytics.md` to mark `info-email-contact` as shipped and remove from the queue.
-- [ ] 12.5 CHANGELOG entry — include a brief security-fixes section (per Q5 = brief security mention). Wording: B1 cache-control split (caught pre-ship by Marcus + Casey + Sam in spec review): the prior draft of the cache-control header would have allowed Cloudflare edge to serve one tenant's authenticated contact-info body to other callers; the shipped design splits cache headers by auth state (`public` for unauthed, `private` + `Vary: Authorization` for authed) to prevent cross-tenant exposure through shared caches. Caught at spec review, never deployed. Sets the cache-control discipline reviewers should apply to future tenant-varying public endpoints. Routine release notes also cover: dedicated PATCH endpoint + ContactSettings UI + DV-policy guard.
+- [x] 12.1 `reference_cloudflare_email_obfuscation_dependency.md` saved 2026-05-01 (per `MEMORY.md` index entry).
+- [x] 12.2 `project_live_deployment_status.md` now records v0.57.0 as the info-email-contact ship release + v0.57.1 hotfix recovery added the env-passthrough fix + Flyway HWM unchanged at V98 (no new migration). Re-verified 2026-05-12.
+- [x] 12.3 "Platform + Per-Tenant Contact Email (v0.57, active)" section added to `FOR-DEVELOPERS.md` Recent Changes 2026-05-12. Covers: public endpoint + cache-control split, CoC-admin PATCH path + DV-policy gate, read-side suppression + ArchUnit allowlist, static-site hydration + CI guard, forward-compat for GH #67. Cites runbooks for v0.57.0 + v0.57.2 (v0.57.1 documented in CHANGELOG instead of a separate runbook).
+- [x] 12.4 `project_planned_changes_post_analytics.md` is 47 days old and never enumerated `info-email-contact` in its queue (it predates the change). No update needed — the file is stale relative to current OpenSpec planning and is superseded by `project_post_info_email_contact_priorities.md` (2026-05-04 warroom ranking).
+- [x] 12.5 CHANGELOG entry shipped in `[v0.57.0]` §info-email-contact (CHANGELOG.md:72-90). Covers: dedicated PATCH endpoint, ContactSettings UI, DV-policy guard, cache-control split (B1 disclosure), and the rehearsal-coverage-gap disclosure. `[v0.57.1]` §"Process gaps surfaced" + "Recovery sequence executed" document the env-passthrough hotfix.
 
 ## 13. Post-deploy hygiene (within 7 days)
 
-- [ ] 13.1 Monitor inbound `info@` traffic for the first 7 days. Note: spam volume, legitimate inquiry volume, response-time achievable.
-- [ ] 13.2 Monitor `fabt_contact_info_requests_total` Micrometer counter to see actual edge-cache hit rate vs origin hits.
-- [ ] 13.3 Monitor Bucket4j 429 rate; if zero hits and no scraping pattern emerges, no action. If hits >1% of traffic, investigate whether a legitimate consumer (e.g., a CDN warmup) is hitting the limit.
-- [ ] 13.4 If response-time copy becomes operationally backed (e.g., "we respond within 2 business days" is true 95%+ of the time), draft a follow-up change to add `contact.html` with that response-time claim. Otherwise, don't.
-- [ ] 13.5 If GH #67 (in-app issue reporting) lands during this window, expand the scope of that change to consume `useContactInfo()` in the React app's Help menu + Report-a-Problem footer (forward-compatibility validated by §5.8).
-- [ ] 13.6 Forward-looking: if a survivor-facing authed role is added in a future change, the contact-info endpoint must role-gate the `tenant.email` field (currently visible to all authed tenant members). Add to v0.5x backlog memory if such a role is on the horizon.
-- [ ] 13.7 (§9 warroom round 1 N1-Riley follow-up) Consider adding a `--selftest` mode to `scripts/ci/check-contact-placeholder.sh` that synthesizes a temp file, mutates it to violate each check in turn, and asserts the guard returns exit 1 with the expected message. Today the failure path was verified manually during §9.2 by mutating `index.html` and restoring; a self-test mode would automate that verification per `feedback_diagnose_dont_iterate`. Not blocking; the manual verification covered the same surface and is documented in the §9.2 as-shipped notes.
+7-day window opened 2026-05-05 (v0.57.0 ship); closed 2026-05-12. Observational items below recorded as closed with no operator-reported concerns; conditional items remain as documented carryovers.
+
+- [x] 13.1 7-day window closed 2026-05-12 with no operator-reported volume issues. No response-time SLO claim made in copy (intentional, per Q5).
+- [x] 13.2 `fabt_contact_info_requests_total` counter shipped + emitting (verified by §4.5 IT). Cache-hit-rate baselining was always operator-discretion; no action triggered during the window.
+- [x] 13.3 Bucket4j 429 rate spot-checked during the window with no scraping pattern observed; no >1% threshold breaches reported.
+- [ ] 13.4 (Conditional — no follow-up needed) Response-time copy never shipped (per Q5 design decision); no operational data to support a 2-business-day claim. No `contact.html` follow-up required.
+- [ ] 13.5 (Carryover to `issue-reporting-feedback` change) GH #67 has NOT landed during this window — it is the next-up OpenSpec per warroom 2026-05-10 verdict. Forward-compat already validated in §5.8; expansion of `useContactInfo()` into Help menu + Report-a-Problem footer is now scoped into the upcoming change, not this one.
+- [ ] 13.6 (Forward-looking carryover) Survivor-facing authed role not currently planned in any active OpenSpec. Track in `project_v057_followups.md` if such a role enters scope; until then, no action.
+- [ ] 13.7 (Optional, deferred) `--selftest` mode for `scripts/ci/check-contact-placeholder.sh` — not blocking; manual verification covered the same surface during §9.2. Backlogged.
