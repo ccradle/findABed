@@ -7,28 +7,28 @@
 
 ## 2. Footer "Report a Problem" Link
 
-- [ ] 2.1 Add "Report a Problem" link to the footer in `Layout.tsx`, below the version text
-- [ ] 2.2 Construct GitHub issue URL with `template=report-a-problem.yml` and `labels=triage` query params (matches the privacy allowlist in design.md §6 / spec `report-link-prefill-privacy`; the `bug` label is auto-applied by `report-a-problem.yml` itself, no duplication needed in the URL)
-- [ ] 2.3 Include app version in the URL when available (read existing `appVersion` state; null-guard so a pre-resolution click omits the parameter — never emit literal "null").
-- [ ] 2.4 Set `target="_blank"` and `rel="noopener noreferrer"` on the link
-- [ ] 2.5 Use `FormattedMessage` with the `feedback.reportProblem` i18n key
-- [ ] 2.6 Verify link meets WCAG: focusable, visible focus indicator, descriptive text.
-- [ ] 2.7 Consume `useContactInfo()` hook in the footer link component; conditionally render secondary `mailto:` link when `resolvedEmail` is non-empty.
-- [ ] 2.8 Add `<noscript>` fallback rendering a static GitHub issues index link.
+- [x] 2.1 Added `<FooterReportProblemLink>` inside the `Layout.tsx` footer (`Layout.tsx:622-641`), below the version text + tenant-name line. Footer un-gated so it renders even when `appVersion` is null (per warroom H5).
+- [x] 2.2 URL constructed via `buildReportProblemUrl(appVersion)` in `ReportProblemLink.tsx:45-53` using `URLSearchParams` with `template=report-a-problem.yml` + `labels=triage` (privacy allowlist enforced).
+- [x] 2.3 `appVersion` is null-guarded in `buildReportProblemUrl`: when truthy → `fabt_version={value}` appended; when null/undefined → param omitted entirely. Tests will cover both branches in §5.
+- [x] 2.4 Primary link sets `target="_blank"` + `rel="noopener noreferrer"` (conditional — omitted on DV-policy mailto branch since mailto: doesn't need them).
+- [x] 2.5 `<FormattedMessage id="feedback.reportProblem" />` rendered on the primary link.
+- [x] 2.6 Link uses `<a href>` semantic (focusable by default), inherits browser focus ring + theme color, has descriptive text via `feedback.reportProblem` ("Report a Problem"). WCAG 2.4.4 + 2.4.7 met.
+- [x] 2.7 `useContactInfo()` consumed in `FooterReportProblemLink`. Secondary `mailto:{resolvedEmail}` link renders below the primary GitHub link when `resolvedEmail` is non-empty AND DV-policy is OFF (on DV-policy ON, primary IS the mailto so no second).
+- [x] 2.8 `<noscript>` fallback added to `frontend/index.html:10-21` outside `#root` so React mounting does NOT touch it. Shows a static GitHub issues index link when JavaScript is disabled.
 - [x] 2.9 Added `feedback.reportProblem.email` i18n key to en.json:796 + es.json:796 ("Email the project team" / "Enviar correo al equipo del proyecto").
-- [ ] 2.10 In the footer link component, read `tenant.dvPolicyEnabled` from `useContactInfo()` (NOT from the JWT). When true AND `resolvedEmail` is non-empty, render `mailto:{resolvedEmail}` instead of the GitHub URL.
+- [x] 2.10 `shouldRouteToMailto(tenant?.dvPolicyEnabled, resolvedEmail)` in `ReportProblemLink.tsx:80-84` gates the primary link `href`. When DV-policy ON + resolvedEmail present → `mailto:{resolvedEmail}`; otherwise → GitHub URL. Sourced from `useContactInfo()`, NOT from JWT.
 - [ ] 2.11 Add Playwright fixture for a DV-policy-on tenant; mock `useContactInfo()` to return `{dvPolicyEnabled: true, resolvedEmail: '...'}`; verify the footer link href is `mailto:`, not `github.com`.
-- [ ] 2.12 Vitest update for `deriveContactInfoState`: add cases for `dvPolicyEnabled` true/false/undefined and platform-operator (absent tenant block).
+- [x] 2.12 Vitest cases for `deriveContactInfoState.dvPolicyEnabled` true/false/absent/anon shipped in Phase 1-2 commit `c886ffc` (4 new tests at `ContactInfoContext.test.ts:106-160`). 12/12 green.
 
 ## 3. Mobile Kebab Menu "Help" Item
 
-- [ ] 3.1 Add "Help" menu item to the kebab dropdown in `Layout.tsx`, positioned before "Sign Out"
-- [ ] 3.2 Link to GitHub issue template chooser (`/issues/new/choose`)
-- [ ] 3.3 Add `data-testid="header-overflow-help"` attribute
-- [ ] 3.4 Add `role="menuitem"` and minimum 44px height (matching existing menu items)
-- [ ] 3.5 Close kebab menu after tap (matching existing menu item behavior)
-- [ ] 3.6 Use `FormattedMessage` with the `feedback.help` i18n key
-- [ ] 3.7 Apply the same DV-policy gate to the kebab "Help" item using the same `useContactInfo()` source.
+- [x] 3.1 Added `<a>` element with `data-testid="header-overflow-help"` in `Layout.tsx:541-565`, positioned between Security and Sign Out items.
+- [x] 3.2 Primary `href` builds from `buildIssueChooserUrl()` (`https://github.com/ccradle/finding-a-bed-tonight/issues/new/choose`) when DV-policy OFF.
+- [x] 3.3 `data-testid="header-overflow-help"` on the `<a>` element.
+- [x] 3.4 `role="menuitem"` + `minHeight: '44px'` + `boxSizing: 'border-box'` mirrors the existing menu-item button style.
+- [x] 3.5 `onClick={() => setKebabOpen(false)}` closes the kebab on tap.
+- [x] 3.6 `<FormattedMessage id="feedback.help" />` rendered as the link text.
+- [x] 3.7 DV-policy gate via `shouldRouteToMailto(tenant?.dvPolicyEnabled, resolvedEmail)` at `Layout.tsx:92-94`. When DV-policy ON + resolvedEmail present, kebab `href` is `mailto:{resolvedEmail}` and `target/rel` are omitted; otherwise the GH issue chooser opens in a new tab with `noopener noreferrer`.
 - [ ] 3.8 Playwright test (mobile viewport, DV-policy tenant): kebab Help item href is mailto:.
 - [ ] 3.9 Playwright test (platform-operator session): kebab Help item href falls through to GitHub (not mailto).
 
