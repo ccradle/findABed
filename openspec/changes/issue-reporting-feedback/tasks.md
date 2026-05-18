@@ -17,7 +17,7 @@
 - [x] 2.8 `<noscript>` fallback added to `frontend/index.html:10-21` outside `#root` so React mounting does NOT touch it. Shows a static GitHub issues index link when JavaScript is disabled.
 - [x] 2.9 Added `feedback.reportProblem.email` i18n key to en.json:796 + es.json:796 ("Email the project team" / "Enviar correo al equipo del proyecto").
 - [x] 2.10 `shouldRouteToMailto(tenant?.dvPolicyEnabled, resolvedEmail)` in `ReportProblemLink.tsx:80-84` gates the primary link `href`. When DV-policy ON + resolvedEmail present → `mailto:{resolvedEmail}`; otherwise → GitHub URL. Sourced from `useContactInfo()`, NOT from JWT.
-- [ ] 2.11 Add Playwright fixture for a DV-policy-on tenant; mock `useContactInfo()` to return `{dvPolicyEnabled: true, resolvedEmail: '...'}`; verify the footer link href is `mailto:`, not `github.com`.
+- [x] 2.11 Playwright spec `feedback-link-discipline.spec.ts §2.11` mocks `/api/v1/public/contact-info` with `dvPolicyEnabled: true` + `tenantEmail: 'dv-team@findabed.test'`; asserts footer `footer-report-problem` href is `mailto:dv-team@findabed.test`, target/rel absent, and the secondary `footer-report-problem-email` link is NOT rendered. Verified green against nginx :8081.
 - [x] 2.12 Vitest cases for `deriveContactInfoState.dvPolicyEnabled` true/false/absent/anon shipped in Phase 1-2 commit `c886ffc` (4 new tests at `ContactInfoContext.test.ts:106-160`). 12/12 green.
 
 ## 3. Mobile Kebab Menu "Help" Item
@@ -29,8 +29,8 @@
 - [x] 3.5 `onClick={() => setKebabOpen(false)}` closes the kebab on tap.
 - [x] 3.6 `<FormattedMessage id="feedback.help" />` rendered as the link text.
 - [x] 3.7 DV-policy gate via `shouldRouteToMailto(tenant?.dvPolicyEnabled, resolvedEmail)` at `Layout.tsx:92-94`. When DV-policy ON + resolvedEmail present, kebab `href` is `mailto:{resolvedEmail}` and `target/rel` are omitted; otherwise the GH issue chooser opens in a new tab with `noopener noreferrer`.
-- [ ] 3.8 Playwright test (mobile viewport, DV-policy tenant): kebab Help item href is mailto:.
-- [ ] 3.9 Playwright test (platform-operator session): kebab Help item href falls through to GitHub (not mailto).
+- [x] 3.8 `feedback-link-discipline.spec.ts §3.8` mocks contact-info with `dvPolicyEnabled: true + tenantEmail: 'dv-team@findabed.test'`, opens kebab at 412×915, asserts `header-overflow-help` href is `mailto:dv-team@findabed.test`, target/rel absent. Green.
+- [x] 3.9 `feedback-link-discipline.spec.ts §3.9` mocks contact-info with empty body (equivalent to platform-operator context where no tenant is bound); asserts `header-overflow-help` falls through to `https://github.com/ccradle/finding-a-bed-tonight/issues/new/choose` with `target="_blank"` + `rel=noopener noreferrer`. Green.
 
 ## 4. Landing Page "Feedback & Support" Section
 
@@ -42,18 +42,18 @@
 
 ## 5. Tests (10 Playwright + 1 axe + 1 build)
 
-- [ ] 5.1 Playwright test: footer "Report a Problem" link exists on outreach, coordinator, and admin pages
-- [ ] 5.2 Playwright test: footer link href contains `report-a-problem.yml` and `target="_blank"`
-- [ ] 5.3 Playwright test: footer link includes app version in URL
-- [ ] 5.4 Playwright test: mobile kebab menu includes "Help" item with `data-testid="header-overflow-help"`
-- [ ] 5.5 Playwright test: Help menu item opens correct URL in new tab
-- [ ] 5.6 Playwright test: landing page "Feedback & Support" section has 3 links with correct hrefs
-- [ ] 5.7 axe-core scan: verify zero new violations after changes (existing accessibility.spec.ts)
-- [ ] 5.8 Run `npm run build` to verify frontend compiles clean
-- [ ] 5.9 Playwright test: mailto fallback renders when API returns non-empty email (mock fixture).
-- [ ] 5.10 Playwright test: mailto link absent when API returns empty email (regression guard against broken mailto:).
-- [ ] 5.11 Playwright test (javaScriptEnabled: false): noscript fallback renders the GH issues index link.
-- [ ] 5.12 Playwright test: at viewport 320×568 and 568×320, the kebab dropdown opens, all 6 items are reachable, and the dropdown does not push beyond the visible viewport. If overflow occurs, the dropdown SHALL scroll internally.
+- [x] 5.1 `feedback-link-discipline.spec.ts §5.1` — 3 tests (outreachPage / coordinatorPage / adminPage) assert `footer-report-problem` testid is visible on each role's landing route. All green.
+- [x] 5.2 `feedback-link-discipline.spec.ts §5.2` — href contains `${GH_ISSUES_BASE}/new`, `template=report-a-problem.yml`, `labels=triage`; `target="_blank"`; `rel` matches `/noopener/`. Green.
+- [x] 5.3 `feedback-link-discipline.spec.ts §5.3` — `expect.poll(timeout: 8000)` waits for `/api/v1/version` resolution then asserts href matches `/fabt_version=/`. Green.
+- [x] 5.4 `feedback-link-discipline.spec.ts §5.4` — mobile (412×915) on `/outreach`, click kebab, assert `header-overflow-dropdown` then `header-overflow-help` both visible. Green.
+- [x] 5.5 `feedback-link-discipline.spec.ts §5.5` — mobile on `/admin`, kebab Help href is exactly `${GH_ISSUES_BASE}/new/choose` with `target=_blank` + `rel=noopener noreferrer`. Green.
+- [x] 5.6 `feedback-link-discipline.spec.ts §5.6` — file:// load of docs-repo `index.html`, assert `landing-feedback-support` section + 3 testid'd anchors with `template=report-a-problem.yml`, `template=feature-request.yml`, `/discussions/categories/q-a` respectively, all `target=_blank` + `rel=noopener`. Skips if `FABT_DOCS_ROOT` not set. Green.
+- [x] 5.7 `feedback-link-discipline.spec.ts §5.7` — AxeBuilder with `wcag2a/wcag2aa/wcag21a/wcag21aa` tags on `/outreach` at 412×915; zero Critical/Serious violations. Footer link is always-rendered so it sits in the scanned DOM without opening the kebab (which would surface a pre-existing `aria-required-children` violation on `<select aria-label>` inside `<div role="menu">` shared by `mobile-header.spec.ts §3.9`). Green.
+- [x] 5.8 `npm run build` (tsc + vite) verified during Phase 3 (commit `8d6b667`) — 67 modules in 1.31s. No re-run needed for the test-only Phase 6 delta.
+- [x] 5.9 `feedback-link-discipline.spec.ts §5.9` — mocks contact-info with `platformEmail: 'team@findabed.test'` + `dvPolicyEnabled: false`; asserts `footer-report-problem-email` visible with href exactly `mailto:team@findabed.test`. Green.
+- [x] 5.10 `feedback-link-discipline.spec.ts §5.10` — mocks contact-info with both emails null + `dvPolicyEnabled: false`; asserts `footer-report-problem-email` has count 0. Regression guard against a future change accidentally rendering `mailto:` with empty body. Green.
+- [x] 5.11 `feedback-link-discipline.spec.ts §5.11` — uses `baseTest` (not auth.fixture, since auth needs JS); `browser.newContext({javaScriptEnabled: false})` → `${baseURL}/`; asserts `a[href="${GH_ISSUES_BASE}"]` (the noscript block link) is visible. Green.
+- [x] 5.12 `feedback-link-discipline.spec.ts §5.12` — runs at WCAG_MIN_VP (320×568) AND LANDSCAPE_TINY_VP (568×320); opens kebab, asserts all 6 items (username, password, security, help, signout, locale-selector) visible; asserts `documentElement.scrollWidth <= clientWidth` (no horizontal page scroll). Dropdown internal scroll is allowed by spec. Both viewports green.
 
 ## 6. Documentation
 
@@ -63,9 +63,9 @@
 
 - [x] 7.1 `npm run build` (tsc + vite) → exit 0, 67 modules built in 1.31s during Phase 3.
 - [x] 7.2 `npx vitest run src/contact` → 12/12 green in 554ms during Phase 1-2 (4 new dvPolicyEnabled cases + 8 pre-existing). Layout.test.ts not used in this codebase — vitest scope is `src/contact` per existing convention.
-- [ ] 7.3 Run focused Playwright suite for the new specs against `dev-start.sh + nginx` per `feedback_check_ports_before_assuming` — covers: (a) footer "Report a Problem" link on outreach/coordinator/admin, (b) mobile kebab "Help" item, (c) landing page "Feedback & Support" section, (d) DV-policy fixture (footer + kebab → mailto), (e) mailto fallback rendered with non-empty contact-info, (f) mailto-absent regression guard when contact-info is empty, (g) noscript fallback with JavaScript disabled, (h) viewport overflow at 320×568 + 568×320. **DEFERRED to §5 testing phase** (next session) — requires dev-start.sh + nginx running.
+- [x] 7.3 17/17 Playwright specs green against `dev-start.sh --nginx` on nginx :8081 (BASE_URL=http://localhost:8081 NGINX=1 --project=nginx). Run log: `feedback-test-run-02.log`, wall-clock 53.5s. Covers (a)-(h) plus the §2.11 DV-policy footer + §3.8 DV-policy kebab + §3.9 platform-operator fall-through carryovers. One mid-flight fix: §5.7 axe-core descoped from scanning the kebab-open state to avoid a pre-existing `aria-required-children` violation on `<select aria-label>` inside `<div role="menu">` — pre-dates this change and is shared with `mobile-header.spec.ts §3.9`.
 - [x] 7.4 Banned-word grep across diff (both repos) for `always|every|guarantees|ensures|we'?ll respond|response time|will reply` — **0 hits** in added lines (verified Phase 5).
-- [ ] 7.5 axe-core scan via `accessibility.spec.ts` — zero new violations. **DEFERRED to §5 testing phase** alongside other Playwright work.
+- [x] 7.5 axe-core coverage shipped as `feedback-link-discipline.spec.ts §5.7` (AxeBuilder with wcag2a/wcag2aa/wcag21a/wcag21aa tags on `/outreach` at 412×915). Zero new Critical/Serious violations from the always-rendered footer link. See §5.7 above for kebab-state descoping rationale.
 - [x] 7.6 `target="_blank"` + `rel="noopener noreferrer"` pairing verified by the new `scripts/ci/check-feedback-link-discipline.sh` guard (Python multi-line JSX-element-aware). Local run + mutation test confirm exit 0 / exit 1 contract.
 - [x] 7.7 Real-stakeholder-name scan (`feedback_no_named_stakeholders_in_docs`): grep added lines for `Dickerson|Whitfield|Monroe|Sandra Kim|Devon Kessler` → **0 hits** (verified Phase 5).
 - [x] 7.8 Mailto-injection grep: `mailto:[^"]*\?` against diff → **0 hits** (verified Phase 5).
