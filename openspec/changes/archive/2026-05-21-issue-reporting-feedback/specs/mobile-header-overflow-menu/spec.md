@@ -14,6 +14,12 @@ On viewports below 768px, the header SHALL show only the app title (shortened), 
 - **THEN** focus SHALL move through menu items in logical order (password, security, **help**, sign out)
 - **AND** when focus leaves the last item, the menu SHALL close
 
+#### Scenario: Dropdown fits in smallest supported viewport
+- **WHEN** the kebab dropdown is open at a 320×568 viewport (smallest WCAG target)
+- **OR** at an iPhone SE landscape 568×320 viewport
+- **THEN** all 6 menu items SHALL be reachable
+- **AND** overflow content (if any) SHALL scroll within the dropdown, not the page background
+
 ## ADDED Requirements
 
 ### Requirement: help-menu-item-in-kebab
