@@ -15,7 +15,7 @@ On viewports below 768px, the header SHALL show only the app title (shortened), 
 
 #### Scenario: Kebab menu opens on tap
 - **WHEN** a user taps the kebab menu icon on mobile
-- **THEN** a dropdown menu SHALL appear showing: username (display only), language selector, change password, security, sign out
+- **THEN** a dropdown menu SHALL appear showing: username (display only), language selector, change password, security, **help**, sign out
 - **AND** each menu item SHALL have a minimum touch target of 44x44px
 
 #### Scenario: Kebab menu closes on outside tap
@@ -32,7 +32,7 @@ On viewports below 768px, the header SHALL show only the app title (shortened), 
 #### Scenario: Tab navigation through kebab menu items
 - **WHEN** the kebab dropdown is open
 - **AND** the user presses Tab
-- **THEN** focus SHALL move through menu items in logical order (password, security, sign out)
+- **THEN** focus SHALL move through menu items in logical order (password, security, **help**, sign out)
 - **AND** when focus leaves the last item, the menu SHALL close
 
 #### Scenario: Kebab menu closes after action selection
@@ -45,6 +45,12 @@ On viewports below 768px, the header SHALL show only the app title (shortened), 
 - **AND** changes the language via the language selector
 - **THEN** the language SHALL change immediately
 - **AND** the kebab menu items SHALL re-render in the selected language
+
+#### Scenario: Dropdown fits in smallest supported viewport
+- **WHEN** the kebab dropdown is open at a 320×568 viewport (smallest WCAG target)
+- **OR** at an iPhone SE landscape 568×320 viewport
+- **THEN** all 6 menu items SHALL be reachable
+- **AND** overflow content (if any) SHALL scroll within the dropdown, not the page background
 
 ### Requirement: Shortened app title on mobile
 On viewports below 768px, the app title SHALL display a shortened form using i18n key `app.nameShort` instead of the full `app.name` to prevent multi-line wrapping. The short name is a brand abbreviation and SHALL be defined in both en.json and es.json.
@@ -104,3 +110,21 @@ All kebab menu elements SHALL have data-testid attributes for Playwright test st
   - `header-overflow-signout` on the sign out menu item
   - `header-overflow-password` on the change password menu item
   - `header-overflow-security` on the security menu item
+
+### Requirement: help-menu-item-in-kebab
+The kebab overflow menu SHALL include a "Help" item that links to issue reporting, positioned before "Sign Out".
+
+#### Scenario: Help item opens GitHub issue chooser
+- **WHEN** a user taps "Help" in the kebab menu
+- **THEN** a new browser tab SHALL open to the GitHub issue template chooser (`/issues/new/choose`)
+- **AND** the kebab menu SHALL close
+
+#### Scenario: Help item has data-testid
+- **WHEN** the mobile header kebab menu is rendered
+- **THEN** the Help menu item SHALL have `data-testid="header-overflow-help"`
+
+#### Scenario: Help item has correct i18n
+- **WHEN** the locale is English
+- **THEN** the menu item SHALL display "Help"
+- **WHEN** the locale is Spanish
+- **THEN** the menu item SHALL display "Ayuda"
